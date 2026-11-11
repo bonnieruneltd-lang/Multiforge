@@ -128,9 +128,12 @@ Purpur fork whose functionality lives in three places:
   chunk unload status and entity id blocks.
 * Live cluster (previous session): one master + two Forge 1.20.1 servers loading the same
   world, acquiring ownership of different chunks, exchanging peer handshakes and chunk data,
-  and flushing 11 MB of chunk data into master storage on a graceful shutdown. This was not
-  re-run after the session that restored `world/` and the file/world synchronization; run the
-  checklist in DEVELOPMENT.md before a release.
+  and flushing 11 MB of chunk data into master storage on a graceful shutdown.
+* Live cluster (this session, after restoring `world/`): master + two Forge servers from
+  `runServer` and `runServer2`. `live2` downloaded `level.dat` and a shared file from the
+  master, fetched chunks from `live1` over the peer protocol, received a real-time file push
+  within a second of the edit, and both servers uploaded their final `level.dat` during a
+  graceful shutdown. No errors in either server or the master log. See DEVELOPMENT_HANDOFF.md.
 * Master restart while both servers ran (previous session): both detected the disconnect,
   reconnected, the master replayed peer addresses and the servers resumed.
 * Clean-checkout build after this session's fixes: `./gradlew build` with Gradle 8.10.2, 14

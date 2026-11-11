@@ -17,6 +17,7 @@ bin/
 
 # Forge / Minecraft runtime output
 /run/
+/multiforge-forge/run/
 /runs/
 /logs/
 *.log
@@ -43,6 +44,7 @@ secrets.properties
 
 # Local verification runs
 .runtime/
-run2/
+/run2/
+/multiforge-forge/run2/
 dev-server-args.json
 *.pid

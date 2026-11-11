@@ -75,8 +75,9 @@ and confirm:
   19 master integration tests pass. The world-state and file-sync classes that were missing
   from git were re-implemented and wired into bootstrap/tick/shutdown; chunk unload status
   and entity id blocks are now used.
-* Not verified this session: a live Forge cluster after those changes. Run the live checklist
-  in DEVELOPMENT.md before releasing.
+* Verified live this session: master + two Forge servers, level.dat and shared-file download,
+  peer chunk transfer, real-time file push and graceful shutdown upload. `runServer2` now
+  works. Details in `docs/DEVELOPMENT_HANDOFF.md`.
 * Biggest gap: entity/player mirroring between servers (TODO items 1-2). Start by designing
   the external entity representation around the entity id blocks that now exist, then port
   MultiPaper's entity packets one by one, each with a test.

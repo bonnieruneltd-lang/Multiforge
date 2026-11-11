@@ -70,11 +70,11 @@ compression threshold, master address) keep the old values until restart.
 
 ## Operational notes
 
-### 9. ForgeGradle second dev server
+### 9. ForgeGradle second dev server (fixed)
 
-`:multiforge-forge:runServer2` exists as a run configuration but ForgeGradle 6 does not assign a
-main class to custom run names, so it fails with "No main class specified". Use a real Forge
-installation or the `MOD_CLASSES` workaround in DEVELOPMENT.md.
+`:multiforge-forge:runServer2` used to fail with "No main class specified" because the
+`server2` run did not inherit ForgeGradle's resolved launch configuration. It now declares
+`parent runs.server` and runs from `run2/`; see DEVELOPMENT.md.
 
 ### 10. Master must be started in (or pointed at) its storage root
 

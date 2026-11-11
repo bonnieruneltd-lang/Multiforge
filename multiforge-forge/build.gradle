@@ -42,15 +42,13 @@ minecraft {
             jvmArg '-Djava.awt.headless=true'
             args '--nogui'
         }
+        // Second server for cluster verification. ForgeGradle only assigns a main
+        // class/args to the run types it knows (`client`, `server`, `data`), so a
+        // custom run must inherit from one via `parent`; without that it fails with
+        // "No main class specified".
         server2 {
-            client = false
+            parent runs.server
             workingDirectory project.file('run2')
-            property 'forge.logging.markers', 'REGISTRIES'
-            property 'forge.logging.console.level', 'debug'
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
-            jvmArg '-Xmx2G'
-            jvmArg '-Djava.awt.headless=true'
             args '--nogui'
         }
     }

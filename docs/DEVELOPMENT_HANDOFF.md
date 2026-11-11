@@ -58,13 +58,26 @@ The new tests are `unloadingPeerIsNotChosenForChunkRead` and
 `entityIdBlocksAreDisjointAndPersisted`; both fail without the fixes described in
 section 4 and pass with them.
 
-**Not verified in this session:** a live Forge dedicated server. The container
-has no Minecraft server installation and a first Forge run downloads assets and
-takes several minutes; the previous session's live-cluster evidence (two servers,
-chunk transfer, ownership split, graceful shutdown) is recorded in
-`PORTING_NOTES.md` section 6 but was not reproduced after these changes. Run the
-live checklist in `DEVELOPMENT.md` before tagging a release. The restored
-world/file code is exercised only by compilation and code review so far.
+**Live verification performed in this session:** a master plus two real Forge 1.20.1
+dedicated servers (`runServer` and `runServer2`) were started against one storage root:
+
+* both bootstrapped MultiForge and connected (`Master connection established`);
+* `live1` generated the world, uploaded `level.dat`, the four user lists and its shared file;
+  `live2` downloaded `level.dat` (36879 bytes) and the missing shared file before the world
+  was usable;
+* `live2` fetched chunks from `live1` over the peer protocol (`Chunk world 2,5 received from
+  peer live2` in the first server's log) and ownership moved between them;
+* editing `config/multiforge-shared.txt` on `live1` produced an immediate upload and a
+  `FileContentMessage` push that `live2` wrote to disk within a second;
+* both servers shut down gracefully, each logged `Stopping MultiForge (server stopped)` and
+  uploaded its final `level.dat` (36884 and 36880 bytes) before closing the master channel;
+* no `ERROR` entries appeared in either server log or the master log.
+
+The live run also exposed a bug in the *new* download path: attaching `copyToAsync` after
+`createInboundDataStream` lost frames that were buffered before handlers were installed, so a
+downloaded file stayed at 0 bytes. The code now uses the handler-accepting factory; the live
+run above is the regression evidence. A unit test for this needs a Forge runtime and is tracked
+in TODO item 22 (automated live check).
 
 ## 3. What is implemented and wired
 
@@ -143,6 +156,20 @@ allocation. It now uses `MasterStorage`, serializes allocation, rejects exhausti
 and persists asynchronously with a shutdown flush. Covered by
 `entityIdBlocksAreDisjointAndPersisted`.
 
+### 4.6 Second development server
+
+The `server2` ForgeGradle run did not inherit a main class, so `runServer2` failed.
+It now uses `parent runs.server` and runs from `run2/`; verified live with two
+servers. See DEVELOPMENT.md.
+
+### 4.7 Data stream download ordering
+
+`FileSyncer` originally registered an inbound stream and attached `copyToAsync`
+afterwards. Frames that the master sent before the handler was attached were
+replayed into no handler, leaving a zero-byte file (observed live). Downloads now
+use the four-argument `createInboundDataStream(channel, id, onData, onClose)`,
+which installs the handlers before replaying buffered frames.
+
 
 ## 5. Known bugs and limitations (see KNOWN_ISSUES.md for symptoms)
 
@@ -161,8 +188,8 @@ and persists asynchronously with a shutdown flush. Covered by
 7. `debug.chunkBorders` is still a silent no-op (declared in config, unimplemented).
 8. Config reload only re-bakes the snapshot; components caching values at
    construction (compression threshold, master address) need a restart.
-9. `runServer2` is not generated correctly by ForgeGradle 6; use a real
-   distribution or the `MOD_CLASSES` workaround in DEVELOPMENT.md.
+9. `runServer2` works now; the durable way to run a production cluster is still a normal
+   Forge installation with two server directories.
 
 ## 6. Architectural concerns for the next agent
 
@@ -184,10 +211,9 @@ and persists asynchronously with a shutdown flush. Covered by
 
 ## 7. Recommended next milestones
 
-1. **Live verification** of this session's changes: master + two servers, check
-   `File synchronization ready`, a shared file pushed between servers, time and
-   gamerule propagation, and a graceful shutdown that leaves `level.dat` on the
-   master. This is the gate before any release.
+1. **Live verification** - done this session (two servers, level.dat/shared-file sync, peer
+   chunk transfer, real-time file push, graceful shutdown). Repeat it after changing chunk,
+   ownership, file or world-state code; the automated version is TODO item 22.
 2. **External entity mirroring** (TODO 1). Start with the entity id blocks that
    now exist, then port `EntityUpdatePacket`, `EntityRemovePacket` and the
    spawn/despawn path one packet at a time with tests.

@@ -32,9 +32,9 @@ coding.
 
 ## Medium priority
 
-8. **Run configuration for a second dev server.** FG6 does not create a usable `runServer2`
-   (no main class). Either add a Gradle task that launches a second JVM with `MOD_CLASSES` or
-   document a proper distribution-based workflow.
+8. **Run configuration for a second dev server** - done: the `server2` ForgeGradle run inherits
+   the resolved launch configuration from `server` (`parent runs.server`) and runs from
+   `run2/`; verified with two live servers in this environment. See DEVELOPMENT.md.
 9. **Scoreboards and boss bars** (`MultiPaperConfig.syncScoreboards` in the original).
 10. **Permissions/op synchronization** (`MultiPaperPermissionSyncer`). Ops JSON is synced; live
     op changes are not broadcast as packets (see item 7).
@@ -71,4 +71,5 @@ coding.
 * Block and block entity broadcasts.
 * Player data, duplicate login prevention, stats, advancements, cluster player list, chat.
 * level.dat, uid.dat, time, weather, gamerules, world border, shared/real-time file sync.
+* Second development server run (`runServer2`, inherited ForgeGradle run).
 * Commands, public API, documentation, protocol and master integration tests.

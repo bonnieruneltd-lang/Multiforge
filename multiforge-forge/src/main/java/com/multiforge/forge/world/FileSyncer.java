@@ -615,15 +615,26 @@ public final class FileSyncer {
             Path temp = destination.resolveSibling(destination.getFileName() + ".mfdownload");
             pendingWrites.add(relative);
             FileOutputStream out = new FileOutputStream(temp.toFile());
-            server.master().dataStreams()
-                    .createInboundDataStream(server.master().channel(), streamId)
-                    .copyToAsync(out)
-                    .addListener(future -> {
+            java.util.concurrent.atomic.AtomicReference<IOException> writeError =
+                    new java.util.concurrent.atomic.AtomicReference<>();
+            // Register the handlers through the four-argument factory: it installs
+            // them before DataStreamManager replays frames that arrived while the
+            // caller was still processing the announcement. Attaching copyToAsync
+            // afterwards loses those frames (observed as a zero-byte download).
+            server.master().dataStreams().createInboundDataStream(server.master().channel(), streamId,
+                    data -> {
                         try {
-                            if (future.cause() != null) {
-                                LOGGER.warn("Download of '{}' failed: {}", relative, future.cause().toString());
-                                Files.deleteIfExists(temp);
-                                return;
+                            out.write(data);
+                        } catch (IOException e) {
+                            writeError.compareAndSet(null, e);
+                        }
+                    },
+                    () -> {
+                        try {
+                            out.close();
+                            IOException error = writeError.get();
+                            if (error != null) {
+                                throw error;
                             }
                             Files.move(temp, destination, StandardCopyOption.REPLACE_EXISTING);
                             if (lastModified > 0) {
@@ -635,6 +646,11 @@ public final class FileSyncer {
                             }
                         } catch (IOException e) {
                             LOGGER.warn("Could not store '{}': {}", relative, e.toString());
+                            try {
+                                Files.deleteIfExists(temp);
+                            } catch (IOException ignored) {
+                                // best effort cleanup
+                            }
                         } finally {
                             pendingWrites.remove(relative);
                         }

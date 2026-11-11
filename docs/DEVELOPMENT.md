@@ -54,25 +54,20 @@ and entity id block allocation.
    The config is `run/config/multiforge-server.toml`; set
    `[server] name = "server1"`.
 
-3. Second server. ForgeGradle does not create a working second server run configuration
-   (custom runs need a main class FG only sets for `client`/`server`), so either:
+3. Second server. The `server2` run inherits the main class, module path, `MOD_CLASSES` and
+   arguments from the `server` run (ForgeGradle only fills those in for inherited runs):
 
-   * copy the project and change `runs.server.workingDirectory`, or
-   * start a second dev server with the same JVM command line as the first, from another
-     directory:
+   ```bash
+   mkdir -p multiforge-forge/run2
+   printf 'eula=true\n' > multiforge-forge/run2/eula.txt
+   cp multiforge-forge/run/server.properties multiforge-forge/run2/server.properties
+   # change server-port in run2/server.properties, then:
+   ./gradlew :multiforge-forge:runServer2
+   ```
 
-     ```bash
-     python3 - <<'PY'
-     import json, os, subprocess
-     args = json.load(open('/tmp/mf-dev-args.json'))   # saved from /proc/<pid>/cmdline
-     env = dict(os.environ, MOD_CLASSES=
-         '<project>/multiforge-forge/build/resources/main:<project>/multiforge-forge/build/classes/java/main')
-     subprocess.Popen(args, cwd='<project>/multiforge-forge/run2', env=env)
-     PY
-     ```
-
-     `MOD_CLASSES` is mandatory: without it FML does not see the mod and the mixin config
-     fails to load.
+   `run2/config/multiforge-server.toml` is created by Forge on the first start; set a unique
+   `[server] name`. Run the two Gradle commands in separate terminals (each needs its own
+   daemon/console).
 
    The durable way for a real cluster is to drop the built jar into a normal Forge server
    installation and run two copies with different `server-port` and `[server] name`.
