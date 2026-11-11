@@ -52,7 +52,8 @@ server (`ServerBoundProtocol`).
 | `SyncChunkOwnerToAllMessage`, `SyncChunkSubscribersMessage`, `SyncEntitiesSubscribersMessage` | ask for authoritative state |
 | `SubscribeChunkMessage`, `UnsubscribeChunkMessage` | block change subscription |
 | `SubscribeEntitiesMessage`, `UnsubscribeEntitiesMessage` | entity subscription |
-| `ChunkChangedStatusMessage(world, cx, cz, status)` | inform the master about load/unload |
+| `ChunkChangedStatusMessage(world, cx, cz, status)` | inform the master about load/unload (also recorded by `ChunkStatusTracker`) |
+| `RequestEntityIdBlock` | reserve a block of cluster-unique entity ids (reply `IntegerPairMessageReply(start, end)`) |
 | `WillSaveChunkLaterMessage`, `WillSaveEntitiesLaterMessage` | hold reads until the write arrives |
 | `ReadChunkMessage(world, path, cx, cz)` | read chunk data (region/entities/poi) |
 | `ForceReadChunkMessage` | read without peer redirection |

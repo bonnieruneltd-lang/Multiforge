@@ -32,20 +32,24 @@ integration tests and by running two real Forge servers against a master:
 | --- | --- |
 | Master process (storage, ownership, subscriptions, proxy, CLI) | implemented |
 | Master protocol (86 message types, data streams, compression) | implemented, unit tested |
-| Chunk data plane through the master (region, entities, poi) | implemented, verified live |
-| Chunk ownership and tick gating | implemented, verified live |
+| Chunk data plane through the master (region, entities, poi) | implemented, verified live (previous session) |
+| Chunk ownership and tick gating | implemented, verified live (previous session) |
+| Chunk unload status respected when redirecting reads | implemented, integration tested |
 | Block and block entity broadcasts | implemented |
-| Peer-to-peer chunk transfer with compression | implemented, verified live |
+| Peer-to-peer chunk transfer with compression | implemented, verified live (previous session) |
 | Server registry, heartbeats, TPS/player counts, global player list | implemented |
 | Player data, statistics, advancements through the master | implemented |
-| level.dat / uid.dat / whitelist / ops / file sync | implemented |
-| Time, weather, gamerules, world border sync | implemented |
+| level.dat / uid.dat / shared files / real-time file sync | implemented (restored this session) |
+| User lists (whitelist/ops/bans) | file sync done, live apply on restart only |
+| Time, weather, gamerules, world border, difficulty/spawn sync | implemented (restored this session) |
 | Cluster-wide chat | implemented |
+| Entity id block allocation | implemented, integration tested |
 | Recovery after master or server disconnects | implemented (see KNOWN_ISSUES) |
 | Live entity/player packet mirroring between servers | partial (see [docs/TODO.md](docs/TODO.md)) |
 | Inventory/ender chest/experience sync | not yet ported |
 
-Read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before running a production world.
+Read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before running a production world, and
+[docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md) for the current audit.
 
 ## Requirements
 
@@ -99,6 +103,7 @@ Read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before running a production wo
 * [TODO](docs/TODO.md)
 * [Known issues](docs/KNOWN_ISSUES.md)
 * [Agent guide](docs/AGENT_GUIDE.md)
+* [Development handoff](docs/DEVELOPMENT_HANDOFF.md)
 
 ## License
 

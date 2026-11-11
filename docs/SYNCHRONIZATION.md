@@ -20,6 +20,9 @@ invariants behind it, and the failure behaviour. Read it together with
 5. **Remote updates never echo.** Applying a network update sets a thread-local flag that
    suppresses re-broadcasting.
 6. **Ids are stable.** Peer packet ids and master message ids are append-only.
+7. **Reads never target a peer that is unloading.** The master records the status each server
+   reports per chunk and serves its own stored copy when the only candidate peer reported
+   `unloaded`/`unloading`; a peer that reported `loaded` is redirected to as before.
 
 ## Chunk data
 
@@ -88,27 +91,37 @@ on servers that do not own the chunk) and the entity-specific peer packets of Mu
 | day time | `TimeUpdatePacket` | last writer wins |
 | rain/thunder + timers | `WeatherUpdatePacket` | last writer wins |
 | world border | `WorldBorderUpdatePacket` | last writer wins |
-| gamerules | `GameRuleUpdatePacket` | applied via `/gamerule` on the receiver |
-| level data (difficulty, spawn) | `LevelDataUpdatePacket` | applied via vanilla commands |
+| gamerules | `GameRuleUpdatePacket` | applied with a validated `/gamerule` command |
+| level data (difficulty, spawn) | `LevelDataUpdatePacket` | compact NBT subset, applied through the level API |
 
 `level.dat` itself is authoritative on the master: it is downloaded before the world is
-loaded and uploaded when it changes (and on shutdown). `uid.dat` is handled the same way so
-all servers share one world UUID (scoreboard/stats identity).
+loaded and uploaded when its content changes and on shutdown. `uid.dat` is handled the same way
+so all servers share one world UUID (scoreboard/stats identity). The peer level-data packet is
+deliberately a subset (difficulty and spawn); it is not a second `level.dat` channel.
+
+Time is broadcast every second (upstream MultiPaper behaviour). Weather is broadcast only when
+the rain/thunder state flips or a timer jumps upwards; comparing decrementing timers every
+second would make every server rebroadcast forever.
 
 ## Files
 
-`FileSyncer` mirrors MultiPaper's `MultiPaperFileSyncer`:
+`FileSyncer` mirrors MultiPaper's `MultiPaperFileSyncer` with a one-second polling scan instead
+of a directory watcher:
 
-* `level.dat` and `uid.dat`: uploaded when the master has none, otherwise downloaded at
-  startup.
-* `whitelist.json`, `ops.json`, `banned-players.json`, `banned-ips.json`: uploaded on start
-  and on change, distributed by the master (`DataUpdateMessage`).
+* `level.dat` and `uid.dat`: downloaded at startup when the master has a copy, otherwise the
+  local copy is uploaded; later content changes and the shutdown state are uploaded with an
+  awaited acknowledgement.
+* `whitelist.json`, `ops.json`, `banned-players.json`, `banned-ips.json`: uploaded to the
+  master on change and adopted at startup. A running server applies them on its next start
+  (no `StoredUserList` hook yet).
 * `filesToSyncOnStartup`: uploaded once at startup (configs, plugin/mod jars, ...).
 * `filesToSyncInRealTime`: directory trees scanned once per second and uploaded when the
-  modification time changes; peers receive the new content immediately.
+  modification time changes; the master immediately pushes the new content to the other
+  servers (`FileContentMessage` + data stream, written atomically).
 * `filesToNotSync`: never uploaded (defaults to logs and crash reports).
 
-Downloads use the data-stream protocol so a 100 MB file does not block a Netty thread.
+Downloads use the data-stream protocol so a 100 MB file does not block a Netty thread, and the
+final rename only happens on the close marker.
 
 ## Recovery
 

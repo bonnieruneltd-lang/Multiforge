@@ -2,7 +2,7 @@
 .gradle/
 build/
 !gradle/wrapper/gradle-wrapper.jar
-out/
+/out/
 
 # IDE
 .idea/
@@ -16,14 +16,14 @@ out/
 bin/
 
 # Forge / Minecraft runtime output
-run/
-runs/
-logs/
+/run/
+/runs/
+/logs/
 *.log
 crash-reports/
-world/
-world_nether/
-world_the_end/
+/world/
+/world_nether/
+/world_the_end/
 
 # Local research / tooling (never committed)
 .research/

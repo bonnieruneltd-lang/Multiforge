@@ -45,6 +45,8 @@ Details:
 
 * Concurrent reads of the same chunk share one future (`inFlightReads`).
 * A missing chunk returns `Optional.empty()`, which is the vanilla signal for "generate".
+* A read is not redirected to a peer that reported the chunk as unloading; the master's stored
+  copy is served instead (`ChunkStatusTracker`).
 * The read is asynchronous (`CompletableFuture`), so the IO worker is never blocked on the
   server thread.
 

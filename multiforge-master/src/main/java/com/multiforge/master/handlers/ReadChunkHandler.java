@@ -5,7 +5,8 @@ import com.multiforge.master.util.MasterStorage;
 import com.multiforge.protocol.messages.masterbound.ReadChunkMessage;
 import com.multiforge.protocol.messages.serverbound.ChunkLoadedOnAnotherServerMessage;
 import com.multiforge.protocol.messages.serverbound.DataMessageReply;
-import com.multiforge.master.*;
+import com.multiforge.master.*; 
+import com.multiforge.master.util.Log;
 import com.multiforge.master.util.RegionFileCache;
 
 import java.io.File;
@@ -39,8 +40,16 @@ public class ReadChunkHandler {
             ServerConnection alreadyLoadedChunk = ChunkSubscriptionManager.getOwnerOrSubscriber(world, cx, cz);
             ChunkSubscriptionManager.subscribe(connection, world, cx, cz);
             if (alreadyLoadedChunk != null && alreadyLoadedChunk != connection) {
-                connection.sendReply(new ChunkLoadedOnAnotherServerMessage(alreadyLoadedChunk.getBungeeCordName()), message);
-                return true;
+                String peer = alreadyLoadedChunk.getBungeeCordName();
+                if (ChunkStatusTracker.isUnloading(world, cx, cz, peer)) {
+                    // The peer is dropping its copy: asking it would cost a round-trip
+                    // that returns an empty payload and falls back to the master.
+                    Log.info("Chunk " + world + " " + cx + "," + cz + " is unloading on " + peer
+                            + ", serving the master copy instead");
+                } else {
+                    connection.sendReply(new ChunkLoadedOnAnotherServerMessage(peer), message);
+                    return true;
+                }
             }
         }
 
@@ -48,8 +57,14 @@ public class ReadChunkHandler {
             ServerConnection alreadyLoadedEntities = EntitiesSubscriptionManager.getSubscriber(world, cx, cz);
             EntitiesSubscriptionManager.subscribe(connection, world, cx, cz);
             if (alreadyLoadedEntities != null && alreadyLoadedEntities != connection) {
-                connection.sendReply(new ChunkLoadedOnAnotherServerMessage(alreadyLoadedEntities.getBungeeCordName()), message);
-                return true;
+                String peer = alreadyLoadedEntities.getBungeeCordName();
+                if (ChunkStatusTracker.isUnloading(world, cx, cz, peer)) {
+                    Log.info("Entity data for " + world + " " + cx + "," + cz + " is unloading on " + peer
+                            + ", serving the master copy instead");
+                } else {
+                    connection.sendReply(new ChunkLoadedOnAnotherServerMessage(peer), message);
+                    return true;
+                }
             }
         }
 

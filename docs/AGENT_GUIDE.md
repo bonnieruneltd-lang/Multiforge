@@ -31,6 +31,12 @@ touching code, then read the architecture document of the subsystem you change.
    (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`) and update docs in the same commit.
 8. **Never commit secrets.** Tavily/API keys belong in environment variables (`TAVILY_API_KEY`),
    never in the repository.
+9. **Check `.gitignore` before adding a directory.** Runtime rules must be anchored
+   (`/world/`, not `world/`); an unanchored rule silently excluded the entire
+   `com.multiforge.forge.world` package from git for a whole session. After adding
+   files, run `git ls-files | grep <package>` to confirm they are tracked.
+10. **Use the committed wrapper.** Gradle 8.8 + ForgeGradle 6.0.54 fails with
+    "Project services has been closed"; the wrapper is 8.10.2 for that reason.
 
 ## 3. Where to change what
 
@@ -50,8 +56,8 @@ touching code, then read the architecture document of the subsystem you change.
 
 ```bash
 ./gradlew build                        # compiles protocol, api, master, mod
-./gradlew :multiforge-protocol:test    # 14 tests
-./gradlew :multiforge-master:test      # 17 integration tests
+./gradlew :multiforge-protocol:test    # 15 tests
+./gradlew :multiforge-master:test      # 19 integration tests
 ```
 
 For changes to chunk IO, ownership or player handling also run a live cluster (DEVELOPMENT.md)
@@ -65,15 +71,21 @@ and confirm:
 
 ## 5. Current state and next best steps
 
-* Verified: master + two Forge servers sharing one world, chunk data through the master and
-  peers, ownership split, graceful shutdown flush, master restart reconnect.
-* Biggest gap: entity/player mirroring between servers (TODO items 1-2). Start by designing the
-  external entity representation and the entity id allocation, then port MultiPaper's entity
-  packets one by one, each with a test.
+* Verified this session: clean checkout builds with Gradle 8.10.2, 15 protocol tests and
+  19 master integration tests pass. The world-state and file-sync classes that were missing
+  from git were re-implemented and wired into bootstrap/tick/shutdown; chunk unload status
+  and entity id blocks are now used.
+* Not verified this session: a live Forge cluster after those changes. Run the live checklist
+  in DEVELOPMENT.md before releasing.
+* Biggest gap: entity/player mirroring between servers (TODO items 1-2). Start by designing
+  the external entity representation around the entity id blocks that now exist, then port
+  MultiPaper's entity packets one by one, each with a test.
 * Second gap: inventory/ender chest/experience live sync (TODO item 3). Player data files
-already work, so the packet layer is the main work.
-* Polish: make `runServer2` usable, implement or remove `debug.chunkBorders`, add fuzz tests for
-  the protocol.
+  already work, so the packet layer is the main work.
+* Third gap: live application of user lists (whitelist/ops/bans); the files are synced, the
+  running `PlayerList` only picks them up on restart.
+* Polish: make `runServer2` usable, implement or remove `debug.chunkBorders`, add fuzz tests
+  for the protocol. Read `docs/DEVELOPMENT_HANDOFF.md` for the full audit.
 
 ## 6. Research resources
 

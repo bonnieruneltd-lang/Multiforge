@@ -1,9 +1,11 @@
 package com.multiforge.master;
 
 import com.multiforge.master.util.MasterStorage;
+import com.multiforge.master.handlers.RequestEntityIdBlockHandler;
 import com.multiforge.protocol.ChunkKey;
 import com.multiforge.protocol.MessageBootstrap;
 import com.multiforge.protocol.messages.masterbound.CallDataStorageMessage;
+import com.multiforge.protocol.messages.masterbound.ChunkChangedStatusMessage;
 import com.multiforge.protocol.messages.masterbound.DownloadFileMessage;
 import com.multiforge.protocol.messages.masterbound.ForceReadChunkMessage;
 import com.multiforge.protocol.messages.masterbound.LockChunkMessage;
@@ -15,6 +17,7 @@ import com.multiforge.protocol.messages.masterbound.ReadLevelMessage;
 import com.multiforge.protocol.messages.masterbound.ReadPlayerMessage;
 import com.multiforge.protocol.messages.masterbound.ReadUidMessage;
 import com.multiforge.protocol.messages.masterbound.RequestChunkOwnershipMessage;
+import com.multiforge.protocol.messages.masterbound.RequestEntityIdBlock;
 import com.multiforge.protocol.messages.masterbound.RequestFilesToSyncMessage;
 import com.multiforge.protocol.messages.masterbound.SubscribeChunkMessage;
 import com.multiforge.protocol.messages.masterbound.UnlockChunkMessage;
@@ -29,6 +32,7 @@ import com.multiforge.protocol.messages.serverbound.ChunkLoadedOnAnotherServerMe
 import com.multiforge.protocol.messages.serverbound.ChunkSubscribersSyncMessage;
 import com.multiforge.protocol.messages.serverbound.DataMessageReply;
 import com.multiforge.protocol.messages.serverbound.FilesToSyncMessage;
+import com.multiforge.protocol.messages.serverbound.IntegerPairMessageReply;
 import com.multiforge.protocol.messages.serverbound.NullableStringMessageReply;
 import com.multiforge.protocol.messages.serverbound.PlayerUpdateMessage;
 import com.multiforge.protocol.messages.serverbound.RemoveChunkSubscriberMessage;
@@ -274,6 +278,62 @@ class MasterIntegrationTest {
         assertTrue(reply instanceof ChunkLoadedOnAnotherServerMessage);
         assertEquals("holder-a", ((ChunkLoadedOnAnotherServerMessage) reply).server);
     }
+    @Test
+    void unloadingPeerIsNotChosenForChunkRead() throws Exception {
+        TestServerClient a = client("unload-a");
+        TestServerClient b = client("unload-b");
+        String world = "unload_world";
+
+        a.send(new SubscribeChunkMessage(world, 10, 10));
+        // The sync reply proves the subscription was processed before the read below.
+        a.send(new com.multiforge.protocol.messages.masterbound.SyncChunkSubscribersMessage(world, 10, 10));
+        a.await(ChunkSubscribersSyncMessage.class, message -> message.world.equals(world), 5000L);
+
+        // While a still reports the chunk as loaded the read is redirected to it.
+        ServerBoundMessage redirected = b.request(new ReadChunkMessage(world, "region", 10, 10)).get();
+        assertTrue(redirected instanceof ChunkLoadedOnAnotherServerMessage);
+
+        // a is now unloading: a read must be served by the master instead of asking
+        // a peer whose in-memory copy is about to disappear.
+        a.clear();
+        a.send(new ChunkChangedStatusMessage(world, 10, 10, "unloaded"));
+        a.send(new com.multiforge.protocol.messages.masterbound.SyncChunkSubscribersMessage(world, 10, 10));
+        a.await(ChunkSubscribersSyncMessage.class, message -> message.world.equals(world), 5000L);
+        ServerBoundMessage fromMaster = b.request(new ReadChunkMessage(world, "region", 10, 10)).get();
+        assertTrue(fromMaster instanceof DataMessageReply,
+                "expected the master copy, got " + fromMaster.getClass().getSimpleName());
+
+        // Once a loaded the chunk again the peer redirection is used again.
+        a.clear();
+        a.send(new ChunkChangedStatusMessage(world, 10, 10, "loaded"));
+        a.send(new com.multiforge.protocol.messages.masterbound.SyncChunkSubscribersMessage(world, 10, 10));
+        a.await(ChunkSubscribersSyncMessage.class, message -> message.world.equals(world), 5000L);
+        ServerBoundMessage redirectedAgain = b.request(new ReadChunkMessage(world, "region", 10, 10)).get();
+        assertTrue(redirectedAgain instanceof ChunkLoadedOnAnotherServerMessage,
+                "expected a peer redirect, got " + redirectedAgain.getClass().getSimpleName());
+    }
+
+    @Test
+    void entityIdBlocksAreDisjointAndPersisted() throws Exception {
+        TestServerClient a = client("entityid-a");
+        TestServerClient b = client("entityid-b");
+
+        IntegerPairMessageReply first = a.request(new RequestEntityIdBlock()).get();
+        IntegerPairMessageReply second = b.request(new RequestEntityIdBlock()).get();
+
+        assertEquals(RequestEntityIdBlockHandler.blockSize(), first.y - first.x);
+        assertEquals(first.y, second.x, "blocks must be adjacent and disjoint");
+        assertTrue(first.x >= 0 && second.x >= 0, "entity ids must stay non-negative");
+
+        RequestEntityIdBlockHandler.flush();
+        Path persisted = MasterStorage.file("lastblock.txt").toPath();
+        assertTrue(java.nio.file.Files.isRegularFile(persisted), "counter must be stored in the master root");
+        assertEquals(Integer.toString(second.y),
+                java.nio.file.Files.readString(persisted).trim(),
+                "persisted counter must be the next unallocated id");
+    }
+
+
 
     @Test
     void entityChunkWriteIsStored() throws Exception {

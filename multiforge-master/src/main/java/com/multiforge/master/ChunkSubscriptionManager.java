@@ -183,6 +183,7 @@ public class ChunkSubscriptionManager {
                 }
                 if (serverConnections.isEmpty()) {
                     chunkSubscribers.remove(key);
+                    ChunkStatusTracker.forgetChunk(key.world, key.x, key.z);
                     synchronized (objectPool) {
                         objectPool.add(serverConnections);
                     }

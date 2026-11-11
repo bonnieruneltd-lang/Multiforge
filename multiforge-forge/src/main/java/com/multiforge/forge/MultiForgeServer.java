@@ -148,6 +148,12 @@ public final class MultiForgeServer {
         } else if (config.syncLevelDat()) {
             LOGGER.warn("Master unreachable, starting from the local world files (standalone mode)");
         }
+        // User lists are read by the dedicated server while it starts; adopting the
+        // cluster copies here means the next start uses them even if this server
+        // never had them. Live changes are uploaded by FileSyncer.tick().
+        if (master.isConnected()) {
+            files.reconcileJsonFilesAtStartup();
+        }
 
         announce();
     }
@@ -387,6 +393,9 @@ public final class MultiForgeServer {
             LOGGER.warn("Shutdown finished with {} pending chunk uploads", chunkIo.pendingWriteCount());
         }
         chunkIo.close();
+        // The read-only world files are written by vanilla after beginStop(); upload
+        // them (and any pending real-time files) while the master channel is alive.
+        files.onShutdown();
         peers.shutdown();
         peerServer.stop();
         master.stop();

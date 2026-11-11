@@ -4,7 +4,8 @@
 
 * JDK 17 (the build uses a Java 17 toolchain; Gradle can provision one via the foojay
   resolver)
-* Gradle 8.8 (wrapper included)
+* Gradle 8.10.2 (wrapper included) - required; ForgeGradle 6.0.54 fails on Gradle 8.8 with
+  "Project services has been closed"
 * ForgeGradle 6.0.x, Forge 47.3.0, MixinGradle 0.7.x, Mixin 0.8.5
 
 ## Build
@@ -25,14 +26,15 @@ Artifacts:
 ## Tests
 
 ```bash
-./gradlew :multiforge-protocol:test   # wire format, message round-trips, data streams
-./gradlew :multiforge-master:test     # real TCP integration tests against a master
+./gradlew :multiforge-protocol:test   # 15 tests: wire format, message round-trips, data streams
+./gradlew :multiforge-master:test     # 19 tests: real TCP integration against a master
 ```
 
 The master tests start a master on an ephemeral port with a temporary storage root and a
 `TestServerClient` that speaks the production protocol. They cover the distributed
 invariants: single owner per chunk, ownership handover, concurrent lock races, disconnect
-cleanup, subscriber sync, duplicate logins, file round-trips and data streams.
+cleanup, subscriber sync, duplicate logins, file round-trips, data streams, chunk unload status
+and entity id block allocation.
 
 ## Running a cluster locally
 

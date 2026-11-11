@@ -151,6 +151,7 @@ public class ServerConnection extends MasterBoundMessageHandler {
     public void channelInactive(ChannelHandlerContext ctx) {
         EntitiesSubscriptionManager.unsubscribeAll(this);
         ChunkSubscriptionManager.unsubscribeAndUnlockAll(this);
+        ChunkStatusTracker.forget(name);
 
         synchronized (connections) {
             connections.remove(this);

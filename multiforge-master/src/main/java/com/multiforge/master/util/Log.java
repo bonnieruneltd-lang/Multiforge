@@ -49,4 +49,12 @@ public final class Log {
     public static void error(String message, Throwable throwable) {
         LOGGER.error(message, throwable);
     }
+
+    /**
+     * @return {@code true} when debug logging is enabled for the master logger;
+     *         lets callers skip building expensive diagnostic strings
+     */
+    public static boolean isDebugEnabled() {
+        return LOGGER.isDebugEnabled();
+    }
 }

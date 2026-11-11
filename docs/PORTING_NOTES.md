@@ -118,15 +118,20 @@ Purpur fork whose functionality lives in three places:
 
 ## 6. Verification performed
 
-* 14 protocol unit tests: framing, varints, representative message round-trips, transaction
+* 15 protocol unit tests: framing, varints, representative message round-trips, transaction
   ids, large payloads, unknown id rejection and data streams (300 KB multi-frame transfer,
   buffering of frames that arrive before the stream is registered).
-* 17 master integration tests against a real master over TCP: ownership arbitration, handover,
+* 19 master integration tests against a real master over TCP: ownership arbitration, handover,
   concurrent locks, disconnect recovery, subscriber sync, chunk read/write, read redirection to
   a peer, forced ownership, duplicate login, player broadcasts, player data, file
-  upload/download (128 KiB), JSON/level/uid round-trip, data storage and the secret handshake.
-* Live cluster: one master + two Forge 1.20.1 servers loading the same world, acquiring
-  ownership of different chunks, exchanging peer handshakes and chunk data, and flushing
-  11 MB of chunk data into master storage on a graceful shutdown.
-* Master restart while both servers ran: both detected the disconnect, reconnected, the master
-  replayed peer addresses and the servers resumed.
+  upload/download (128 KiB), JSON/level/uid round-trip, data storage, the secret handshake,
+  chunk unload status and entity id blocks.
+* Live cluster (previous session): one master + two Forge 1.20.1 servers loading the same
+  world, acquiring ownership of different chunks, exchanging peer handshakes and chunk data,
+  and flushing 11 MB of chunk data into master storage on a graceful shutdown. This was not
+  re-run after the session that restored `world/` and the file/world synchronization; run the
+  checklist in DEVELOPMENT.md before a release.
+* Master restart while both servers ran (previous session): both detected the disconnect,
+  reconnected, the master replayed peer addresses and the servers resumed.
+* Clean-checkout build after this session's fixes: `./gradlew build` with Gradle 8.10.2, 14
+  protocol + 19 master tests green. See DEVELOPMENT_HANDOFF.md.
