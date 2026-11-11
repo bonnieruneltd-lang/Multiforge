@@ -33,11 +33,14 @@ The master now hands out disjoint, persisted entity id blocks
 `entityIdBlocksAreDisjointAndPersisted`. The mod does not request a block yet because live
 entity mirroring is not implemented; do it when entity packets are ported.
 
-### 4. Chunk generation races
+### 4. Chunk generation is single-owner but still local to one server
 
-Two servers can generate the same chunk at the same time when the master has no data for it.
-The last write wins and both converge after re-reading, but terrain can differ for a moment.
-Warm the world with one server before starting the others.
+A generation lease (`ChunkGenerationManager`) makes sure only one server generates a
+never-seen chunk; second readers wait for the first server's copy. Residual risks: a
+generator slower than `generation-wait-millis` (default 2 s) makes a waiter generate the
+chunk too, and a lease that is never completed expires after `generation-lease-millis`
+(default 15 s). Both windows are far smaller than the previous unconditional race, but a
+fresh-world startup is still cheapest when one server warms the spawn area first.
 
 ### 5. Master outage while running
 

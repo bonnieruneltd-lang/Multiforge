@@ -56,6 +56,10 @@ public class MultiForgeMaster extends MessageBootstrap<MasterBoundMessage, Serve
             return;
         }
 
+        ChunkGenerationManager.configure(config.getGenerationLeaseMillis(), config.getGenerationWaitMillis());
+        Log.info("Chunk generation lease: " + ChunkGenerationManager.leaseMillis()
+                + "ms lease, " + ChunkGenerationManager.waitMillis() + "ms waiter budget");
+
         String address = config.getAddress();
         int port = config.getPort();
         int proxyPort = config.getProxyPort();

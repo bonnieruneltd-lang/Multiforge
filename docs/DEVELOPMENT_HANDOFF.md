@@ -39,7 +39,7 @@ not depend on those local paths.
 ```bash
 ./gradlew build :multiforge-master:fatJar
 # :multiforge-protocol:test  -> 17 tests
-# :multiforge-master:test    -> 20 tests
+# :multiforge-master:test    -> 24 tests
 # BUILD SUCCESSFUL
 ```
 
@@ -152,8 +152,10 @@ mod-mod interaction, not a MultiForge ownership failure, and is recorded in
    data files work; live changes do not.
 4. **Live user list application** (TODO 7): files are synced, the running `PlayerList` is
    not reloaded.
-5. **Chunk generation lock**: two servers can still generate the same never-seen chunk
-   concurrently. A master-side generation lease is the next reliability item.
+5. **Chunk generation lease**: implemented (`ChunkGenerationManager`, four integration
+   tests). Only one server generates a never-seen chunk; later readers wait a bounded time
+   and then read the generator's copy. Remaining work is load-aware assignment (an idle
+   server generating for a busy one), not correctness.
 6. **Ownership epochs + packet sequence numbers** before any dynamic ownership work; see
    `DISTRIBUTED_ARCHITECTURE_RESEARCH.md`.
 
@@ -166,7 +168,7 @@ mod-mod interaction, not a MultiForge ownership failure, and is recorded in
 3. **Inventory/experience sync** — second largest.
 4. **Client matrix** for the 15 client targets on a GPU machine, using the pinned manifest
    and the plan in `REQUIRED_MOD_COMPATIBILITY.md`.
-5. **Reliability**: generation lease, reconnect re-upload queue, protocol fuzz tests,
+5. **Reliability**: reconnect re-upload queue, protocol fuzz tests,
    automated two-server cluster in CI.
 
 ## 8. Handoff notes

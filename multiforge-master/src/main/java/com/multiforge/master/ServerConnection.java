@@ -152,6 +152,9 @@ public class ServerConnection extends MasterBoundMessageHandler {
         EntitiesSubscriptionManager.unsubscribeAll(this);
         ChunkSubscriptionManager.unsubscribeAndUnlockAll(this);
         ChunkStatusTracker.forget(name);
+        // Release generation leases last: the retried reads must no longer be
+        // redirected to this connection's (now removed) subscriptions.
+        ChunkGenerationManager.forget(this);
 
         synchronized (connections) {
             connections.remove(this);

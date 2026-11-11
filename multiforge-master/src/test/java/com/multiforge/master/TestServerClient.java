@@ -135,6 +135,14 @@ final class TestServerClient extends ServerBoundMessageHandler implements AutoCl
         <T extends ServerBoundMessage> T get() throws Exception {
             return (T) future.get(10, TimeUnit.SECONDS);
         }
+
+        /**
+         * @return {@code true} when the reply already arrived, for tests that
+         *         assert a request is deliberately still pending
+         */
+        boolean done() {
+            return future.isDone();
+        }
     }
 
     /**

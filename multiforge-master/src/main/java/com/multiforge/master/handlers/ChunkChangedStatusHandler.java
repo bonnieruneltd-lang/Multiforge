@@ -2,6 +2,7 @@ package com.multiforge.master.handlers;
 
 import com.multiforge.protocol.messages.masterbound.ChunkChangedStatusMessage;
 import com.multiforge.protocol.messages.serverbound.ServerChangedChunkStatusMessage;
+import com.multiforge.master.ChunkGenerationManager;
 import com.multiforge.master.ChunkStatusTracker;
 import com.multiforge.master.ChunkSubscriptionManager;
 import com.multiforge.master.ServerConnection;
@@ -26,6 +27,13 @@ public class ChunkChangedStatusHandler {
     public static void handle(ServerConnection connection, ChunkChangedStatusMessage message) {
         ChunkStatusTracker.update(message.world, message.cx, message.cz,
                 connection.getBungeeCordName(), message.status);
+        if (ChunkStatusTracker.STATUS_LOADED.equals(message.status)
+                || ChunkStatusTracker.STATUS_UNLOADED.equals(message.status)) {
+            // Loaded: the generator's copy can now serve waiting readers. Unloaded:
+            // the generator dropped its copy without saving, so waiters must be
+            // released and generate themselves instead of waiting for the timeout.
+            ChunkGenerationManager.complete(message.world, message.cx, message.cz, connection);
+        }
         for (ServerConnection subscriber : ChunkSubscriptionManager.getSubscribers(message.world, message.cx, message.cz)) {
             subscriber.send(new ServerChangedChunkStatusMessage(message.world, message.cx, message.cz, message.status, connection.getBungeeCordName()));
         }

@@ -99,6 +99,8 @@ class MasterIntegrationTest {
             client.close();
         }
         clients.clear();
+        ChunkGenerationManager.clear();
+        ChunkGenerationManager.configure(15_000L, 2_000L);
     }
 
     @AfterAll
@@ -279,6 +281,115 @@ class MasterIntegrationTest {
         assertTrue(reply instanceof ChunkLoadedOnAnotherServerMessage);
         assertEquals("holder-a", ((ChunkLoadedOnAnotherServerMessage) reply).server);
     }
+    @Test
+    void secondReaderWaitsForGenerationInsteadOfDuplicatingIt() throws Exception {
+        ChunkGenerationManager.configure(10_000L, 5_000L);
+        TestServerClient a = client("generator-a");
+        TestServerClient b = client("generator-b");
+        String world = "generation_world";
+
+        // The first reader gets the empty payload, which is vanilla's signal to
+        // generate the chunk, and becomes the generation lease owner.
+        DataMessageReply first = a.request(new ReadChunkMessage(world, "region", 20, 20)).get();
+        assertEquals(0, first.data.length);
+        assertEquals(1, ChunkGenerationManager.activeLeaseCount());
+
+        // A second server that needs the same chunk must not get an empty payload
+        // (which would start a second, duplicated generation) while a is working.
+        TestServerClient.Reply waiting = b.request(new ReadChunkMessage(world, "region", 20, 20));
+        Thread.sleep(300L);
+        assertFalse(waiting.done(), "second reader must wait for the generator's copy");
+
+        // a finished generating; its in-memory copy is now servable to peers.
+        a.send(new SubscribeChunkMessage(world, 20, 20));
+
+        ServerBoundMessage reply = waiting.get();
+        assertTrue(reply instanceof ChunkLoadedOnAnotherServerMessage,
+                "expected a redirect to the generator, got " + reply.getClass().getSimpleName());
+        assertEquals("generator-a", ((ChunkLoadedOnAnotherServerMessage) reply).server);
+        assertEquals(0, ChunkGenerationManager.activeLeaseCount(), "lease must be finished");
+    }
+
+    @Test
+    void generationLeaseTimeoutLetsTheWaiterGenerateItself() throws Exception {
+        ChunkGenerationManager.configure(10_000L, 200L);
+        TestServerClient a = client("slow-generator");
+        TestServerClient b = client("impatient-reader");
+        String world = "generation_timeout_world";
+
+        DataMessageReply first = a.request(new ReadChunkMessage(world, "region", 21, 21)).get();
+        assertEquals(0, first.data.length);
+
+        long started = System.currentTimeMillis();
+        ServerBoundMessage reply = b.request(new ReadChunkMessage(world, "region", 21, 21)).get();
+        long elapsed = System.currentTimeMillis() - started;
+
+        // A stalled generator must not block a chunk load: after the wait budget
+        // the reader is answered with the empty payload and generates locally.
+        assertTrue(reply instanceof DataMessageReply,
+                "expected the empty payload, got " + reply.getClass().getSimpleName());
+        assertEquals(0, ((DataMessageReply) reply).data.length);
+        assertTrue(elapsed >= 150L, "reader gave up too early (" + elapsed + "ms)");
+        assertTrue(elapsed < 3_000L, "reader waited too long (" + elapsed + "ms)");
+    }
+
+    @Test
+    void generatorDisconnectReleasesWaitingReader() throws Exception {
+        ChunkGenerationManager.configure(10_000L, 5_000L);
+        TestServerClient a = client("crashing-generator");
+        TestServerClient b = client("waiting-reader");
+        String world = "generation_crash_world";
+
+        DataMessageReply first = a.request(new ReadChunkMessage(world, "region", 22, 22)).get();
+        assertEquals(0, first.data.length);
+
+        TestServerClient.Reply waiting = b.request(new ReadChunkMessage(world, "region", 22, 22));
+        Thread.sleep(200L);
+        assertFalse(waiting.done(), "second reader must wait for the generator");
+
+        // The generator dies without subscribing or saving the chunk. Waiters must
+        // be released immediately instead of waiting for the lease timeout.
+        a.close();
+
+        ServerBoundMessage reply = waiting.get();
+        assertTrue(reply instanceof DataMessageReply,
+                "expected the empty payload after the generator vanished, got "
+                        + reply.getClass().getSimpleName());
+        assertEquals(0, ((DataMessageReply) reply).data.length);
+    }
+
+    @Test
+    void forcedReadAlsoWaitsForTheGenerator() throws Exception {
+        ChunkGenerationManager.configure(10_000L, 5_000L);
+        TestServerClient a = client("forced-generator");
+        TestServerClient b = client("forced-reader");
+        String world = "generation_forced_world";
+
+        DataMessageReply first = a.request(new ReadChunkMessage(world, "region", 23, 23)).get();
+        assertEquals(0, first.data.length);
+
+        // The mod uses ForceRead after a peer reported "not loaded yet". While that
+        // peer generates the chunk, forcing the (empty) master copy must not make
+        // the requester generate a duplicate.
+        TestServerClient.Reply waiting = b.request(new ForceReadChunkMessage(world, "region", 23, 23));
+        Thread.sleep(300L);
+        assertFalse(waiting.done(), "forced read must also wait for the generator");
+
+        // The generator saves the chunk instead of subscribing it.
+        byte[] payload = new byte[]{1, 2, 3, 4};
+        BooleanMessageReply write = a.request(new WriteChunkMessage(world, "region", 23, 23, payload)).get();
+        assertTrue(write.result);
+
+        ServerBoundMessage reply = waiting.get();
+        assertTrue(reply instanceof ChunkLoadedOnAnotherServerMessage,
+                "expected the generator's in-memory copy, got " + reply.getClass().getSimpleName());
+        assertEquals("forced-generator", ((ChunkLoadedOnAnotherServerMessage) reply).server);
+
+        // Now that no lease is active, a forced read returns the stored payload.
+        DataMessageReply stored = b.request(new ForceReadChunkMessage(world, "region", 23, 23)).get();
+        assertArrayEquals(payload, stored.data);
+    }
+
     @Test
     void subscriberSnapshotsAreImmutableAcrossChanges() throws Exception {
         TestServerClient a = client("snap-a");

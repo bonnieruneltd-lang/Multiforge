@@ -163,7 +163,8 @@ it unchanged except for package names and logging.
 ## 5. Configuration reference
 
 Master: `multiforge-master.properties` (`address`, `port`, `proxy-port`,
-`allow-multiple-connections`, `ping-timeout-millis`) plus `-Dmultiforge.master.storage` for
+`allow-multiple-connections`, `ping-timeout-millis`, `generation-lease-millis`,
+`generation-wait-millis`) plus `-Dmultiforge.master.storage` for
 the storage root.
 
 Server: `config/multiforge-server.toml` (see `MultiForgeConfig`):

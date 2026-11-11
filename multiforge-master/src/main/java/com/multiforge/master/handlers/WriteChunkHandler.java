@@ -2,6 +2,7 @@ package com.multiforge.master.handlers;
 
 import com.multiforge.protocol.messages.masterbound.WriteChunkMessage;
 import com.multiforge.protocol.messages.serverbound.BooleanMessageReply;
+import com.multiforge.master.ChunkGenerationManager;
 import com.multiforge.master.ChunkLockManager;
 import com.multiforge.master.EntitiesLockManager;
 import com.multiforge.master.ServerConnection;
@@ -30,6 +31,9 @@ public class WriteChunkHandler {
         RegionFileCache.putChunkDeflatedDataAsync(ReadChunkHandler.getWorldDir(message.world, message.path), message.cx, message.cz, data).thenRun(() -> {
             if (message.path.equals("region")) {
                 ChunkLockManager.writtenChunk(message.world, message.cx, message.cz);
+                // A never-seen chunk is now stored: every reader that waited for
+                // generation can repeat its read and get the authoritative copy.
+                ChunkGenerationManager.complete(message.world, message.cx, message.cz, connection);
             }
 
             if (message.path.equals("entities")) {

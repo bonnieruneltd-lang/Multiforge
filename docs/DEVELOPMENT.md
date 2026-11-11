@@ -27,7 +27,7 @@ Artifacts:
 
 ```bash
 ./gradlew :multiforge-protocol:test   # 17 tests: wire format, message round-trips, data streams
-./gradlew :multiforge-master:test     # 20 tests: real TCP integration against a master
+./gradlew :multiforge-master:test     # 24 tests: real TCP integration against a master
 ```
 
 The master tests start a master on an ephemeral port with a temporary storage root and a
@@ -104,6 +104,8 @@ otherwise lazy class loading can throw `ClassNotFoundException` from the replace
 
 * Master: `multiforge-master.properties` next to the process (created on first start).
   `-Dmultiforge.master.storage=<dir>` sets the world/file root.
+  `generation-lease-millis` / `generation-wait-millis` control the chunk generation
+  lease (see [CHUNK_MANAGEMENT.md](CHUNK_MANAGEMENT.md)); `0` disables it.
 * Server: `config/multiforge-server.toml` (Forge `SERVER` config). Values are read at
   start-up and re-baked on `/reload` (`ModConfigEvent`).
 

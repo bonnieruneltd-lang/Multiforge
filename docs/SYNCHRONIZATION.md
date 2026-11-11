@@ -23,6 +23,11 @@ invariants behind it, and the failure behaviour. Read it together with
 7. **Reads never target a peer that is unloading.** The master records the status each server
    reports per chunk and serves its own stored copy when the only candidate peer reported
    `unloaded`/`unloading`; a peer that reported `loaded` is redirected to as before.
+8. **At most one server generates a never-seen chunk.** The master grants a generation lease
+   on the first empty read (`ChunkGenerationManager`); other readers are answered from the
+   generator's copy after it reports the chunk loaded, saved or subscribed. The lease is
+   bounded (`generation-lease-millis`) and a waiter stops waiting after
+   `generation-wait-millis`, so no chunk load can hang on a dead generator.
 
 ## Chunk data
 

@@ -33,6 +33,7 @@ integration tests and by running two real Forge servers against a master:
 | Master process (storage, ownership, subscriptions, proxy, CLI) | implemented |
 | Master protocol (86 message types, data streams, compression) | implemented, unit tested |
 | Chunk data plane through the master (region, entities, poi) | implemented, verified live (previous session) |
+| Chunk generation lease (one generator per never-seen chunk) | implemented, integration tested |
 | Chunk ownership and tick gating | implemented, verified live (previous session) |
 | Chunk unload status respected when redirecting reads | implemented, integration tested |
 | Block and block entity broadcasts | implemented |

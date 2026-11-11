@@ -32,9 +32,14 @@ coding.
 
 ## Compatibility and reliability (session 3 additions)
 
-* **Chunk generation lease** (high): two servers can generate the same never-seen chunk
-  concurrently; last write wins. Add a master-side "generating" lease so only one server
-  generates and the other waits/reads. Needs a timeout and crash recovery.
+* **Chunk generation lease** (done): the master grants exactly one server the right to
+  generate a never-seen chunk; other readers wait (bounded) and then read the generator's
+  copy. `ChunkGenerationManager`, tested by
+  `secondReaderWaitsForGenerationInsteadOfDuplicatingIt`,
+  `generationLeaseTimeoutLetsTheWaiterGenerateItself` and
+  `generatorDisconnectReleasesWaitingReader`. Remaining: the lease is still demand driven
+  (the server whose player needs the chunk generates it); choosing an idle server to
+  generate on behalf of a busy one is a separate feature.
 * **Ownership epochs + packet sequence numbers** (high, before dynamic ownership): delayed
   block/block-entity packets from a previous owner can overwrite newer state. Append an
   epoch to `BlockChangePacket`/`BlockEntityUpdatePacket` and drop stale epochs. See

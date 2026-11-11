@@ -60,7 +60,7 @@ touching code, then read the architecture document of the subsystem you change.
 ```bash
 ./gradlew build                        # compiles protocol, api, master, mod
 ./gradlew :multiforge-protocol:test    # 17 tests
-./gradlew :multiforge-master:test      # 20 integration tests
+./gradlew :multiforge-master:test      # 24 integration tests
 ```
 
 For changes to chunk IO, ownership or player handling also run a live cluster (DEVELOPMENT.md)
@@ -75,7 +75,7 @@ and confirm:
 ## 5. Current state and next best steps
 
 * Verified this session: clean build on Forge 47.4.29 (bumped for Structure Layout
-  Optimizer 1.0.11), 17 protocol tests and 20 master integration tests pass.
+  Optimizer 1.0.11), 17 protocol tests and 24 master integration tests pass.
 * Verified live: master + two Forge 47.4.29 servers with the pinned compatibility set.
   `tools/compat/cluster_check.py` passed 13/13 checks (blocks both directions, chest
   inventory, time, gamerule, single owner, 20 TPS, save-all) with 18/19 server mods loaded.
@@ -85,7 +85,10 @@ and confirm:
   10 LOADING, 15 client targets NOT TESTED (no GPU). Do not inflate this; the matrix and
   evidence are in `docs/REQUIRED_MOD_COMPATIBILITY.md`.
 * Biggest functional gap: entity/player mirroring (TODO 1-2). Then inventory/experience
-  sync (TODO 3), live user-list reload, chunk generation lease, ownership epochs.
+  sync (TODO 3), live user-list reload, ownership epochs.
+* Chunk generation leases are implemented and integration tested; the lease is demand
+  driven (the server whose player needs the chunk generates it). Choosing an idle server
+  to generate for a busy one is not implemented.
 * Highest-value next work for compatibility: a player-driven harness/client, because most
   server rows are waiting on gameplay interaction, not code.
 * Do not restart or rewrite working subsystems. Read `DEVELOPMENT_HANDOFF.md` for the

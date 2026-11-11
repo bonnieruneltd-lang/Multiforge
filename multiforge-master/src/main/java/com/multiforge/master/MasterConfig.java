@@ -34,6 +34,8 @@ public final class MasterConfig {
     private int proxyPort = -1;
     private boolean allowMultipleConnections = false;
     private long pingTimeoutMillis = 60_000L;
+    private long generationLeaseMillis = 15_000L;
+    private long generationWaitMillis = 2_000L;
 
     private MasterConfig() {
     }
@@ -62,6 +64,10 @@ public final class MasterConfig {
                 "multiforge.master.allowMultipleConnections",
                 Boolean.toString(config.allowMultipleConnections)));
         config.pingTimeoutMillis = Long.getLong("multiforge.master.pingTimeoutMillis", config.pingTimeoutMillis);
+        config.generationLeaseMillis = Long.getLong("multiforge.master.generationLeaseMillis",
+                config.generationLeaseMillis);
+        config.generationWaitMillis = Long.getLong("multiforge.master.generationWaitMillis",
+                config.generationWaitMillis);
         return config;
     }
 
@@ -83,6 +89,8 @@ public final class MasterConfig {
         allowMultipleConnections = Boolean.parseBoolean(properties.getProperty(
                 "allow-multiple-connections", Boolean.toString(allowMultipleConnections)));
         pingTimeoutMillis = longValue(properties, "ping-timeout-millis", pingTimeoutMillis);
+        generationLeaseMillis = longValue(properties, "generation-lease-millis", generationLeaseMillis);
+        generationWaitMillis = longValue(properties, "generation-wait-millis", generationWaitMillis);
     }
 
     /**
@@ -105,6 +113,13 @@ public final class MasterConfig {
                 allow-multiple-connections=false
                 # A server that has not pinged for this long is considered dead.
                 ping-timeout-millis=60000
+                # Only one server may generate a never-seen chunk; this is how long
+                # the lease may stay incomplete before another server may take over.
+                # 0 disables generation leases.
+                generation-lease-millis=15000
+                # How long a second server waits for the generator's copy before it
+                # generates the chunk itself. 0 means "never wait".
+                generation-wait-millis=2000
                 """;
         Path parent = file.toAbsolutePath().getParent();
         if (parent != null) {
@@ -156,10 +171,22 @@ public final class MasterConfig {
         return pingTimeoutMillis;
     }
 
+    /** @return how long a chunk generation lease may stay incomplete, {@code 0} disables it */
+    public long getGenerationLeaseMillis() {
+        return generationLeaseMillis;
+    }
+
+    /** @return how long a second server waits for another server's chunk generation */
+    public long getGenerationWaitMillis() {
+        return generationWaitMillis;
+    }
+
     @Override
     public String toString() {
         return String.format(Locale.ROOT,
-                "MasterConfig[address=%s, port=%d, proxyPort=%d, allowMultipleConnections=%s, pingTimeout=%dms]",
-                address.isEmpty() ? "0.0.0.0" : address, port, proxyPort, allowMultipleConnections, pingTimeoutMillis);
+                "MasterConfig[address=%s, port=%d, proxyPort=%d, allowMultipleConnections=%s, "
+                        + "pingTimeout=%dms, generationLease=%dms, generationWait=%dms]",
+                address.isEmpty() ? "0.0.0.0" : address, port, proxyPort, allowMultipleConnections,
+                pingTimeoutMillis, generationLeaseMillis, generationWaitMillis);
     }
 }
