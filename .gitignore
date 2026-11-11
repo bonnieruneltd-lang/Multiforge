@@ -1,0 +1,42 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+out/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+bin/
+
+# Forge / Minecraft runtime output
+run/
+runs/
+logs/
+*.log
+crash-reports/
+world/
+world_nether/
+world_the_end/
+
+# Local research / tooling (never committed)
+.research/
+.tools/
+.forspike/
+.gradle-cache/
+multiforge-master-storage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+*.env
+secrets.properties

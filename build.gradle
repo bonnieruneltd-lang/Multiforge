@@ -1,0 +1,61 @@
+/*
+ * MultiForge root build script.
+ *
+ * MultiForge is a Forge 1.20.1 port of MultiPaper. The build is split into
+ * independent Gradle modules so that the coordination server (master) and the
+ * wire protocol can be compiled and unit-tested without a Minecraft runtime:
+ *
+ *  - :multiforge-protocol  pure-Java Netty protocol shared by master and mod
+ *  - :multiforge-api       stable, Minecraft-free API surface for mods/plugins
+ *  - :multiforge-master    standalone coordination server (no Minecraft code)
+ *  - :multiforge-forge     the Forge 1.20.1 mod that runs inside the game
+ *
+ * Only :multiforge-forge applies ForgeGradle; see that module's build script.
+ */
+
+plugins {
+    id 'java'
+}
+
+def javaVersion = 17
+
+allprojects {
+    group = 'com.multiforge'
+    version = '1.0.0-alpha.1'
+}
+
+subprojects {
+    apply plugin: 'java-library'
+
+    repositories {
+        mavenCentral()
+        maven { name = 'MinecraftForge'; url = 'https://maven.minecraftforge.net/' }
+        maven { name = 'Sponge'; url = 'https://repo.spongepowered.org/repository/maven-public/' }
+    }
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(javaVersion)
+        }
+        withSourcesJar()
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+        options.release = javaVersion
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+        maxHeapSize = '1g'
+        testLogging {
+            events 'passed', 'skipped', 'failed'
+            exceptionFormat = 'full'
+        }
+    }
+
+    dependencies {
+        testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+}

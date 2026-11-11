@@ -1,0 +1,13 @@
+/*
+ * MultiForge protocol module.
+ *
+ * Contains the Netty based message framing, message registry, data-stream
+ * support and the complete master <-> server message set. The code is
+ * intentionally free of Minecraft classes so that it can be shared by the
+ * master process, the Forge mod and the unit tests.
+ */
+dependencies {
+    // Same Netty line that Minecraft/Forge 1.20.1 ships, so the classes we
+    // compile against are guaranteed to exist at runtime inside the game.
+    api 'io.netty:netty-all:4.1.82.Final'
+}

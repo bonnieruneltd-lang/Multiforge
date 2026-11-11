@@ -1,0 +1,123 @@
+/*
+ * MultiForge Forge module: the in-game half of the port.
+ *
+ * Applies ForgeGradle 6 for Minecraft 1.20.1 / Forge 47.x and MixinGradle so
+ * that the deep hooks MultiPaper implemented with Paper patches (chunk IO,
+ * tick ownership, block/entity updates) can be expressed as Mixins instead.
+ */
+plugins {
+    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
+    id 'org.spongepowered.mixin' version '0.7.+'
+}
+
+base {
+    archivesName = mod_id
+}
+
+minecraft {
+    mappings channel: mapping_channel, version: mapping_version
+    copyIdeResources = true
+
+    runs {
+        // Two servers are configured out of the box so the cluster behaviour can
+        // be verified locally: ./gradlew :multiforge-forge:runServer and runServer2
+        server {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+        }
+        server2 {
+            workingDirectory project.file('run2')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+            args '--nogui'
+        }
+    }
+}
+
+repositories {
+    maven { name = 'Sponge'; url = 'https://repo.spongepowered.org/repository/maven-public/' }
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${forge_version}"
+
+    implementation project(':multiforge-protocol')
+    implementation project(':multiforge-api')
+
+    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+}
+
+mixin {
+    add sourceSets.main, 'multiforge.refmap.json'
+    config 'multiforge.mixins.json'
+}
+
+tasks.named('processResources', ProcessResources).configure {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            forge_version          : forge_version,
+            forge_version_range    : forge_version_range,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_description        : mod_description
+    ]
+    inputs.properties replaceProperties
+    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties + [project: project]
+    }
+}
+
+tasks.named('jar', Jar).configure {
+    manifest {
+        attributes([
+                'Specification-Title'     : mod_id,
+                'Specification-Vendor'    : mod_authors,
+                'Specification-Version'   : '1',
+                'Implementation-Title'    : project.name,
+                'Implementation-Version'  : project.jar.archiveVersion,
+                'Implementation-Vendor'   : mod_authors,
+                'MixinConfigs'            : 'multiforge.mixins.json'
+        ])
+    }
+    finalizedBy 'reobfJar'
+}
+
+// ---------------------------------------------------------------------------
+// Release jar: reobfuscated mod classes plus the protocol and API modules.
+// Both extra modules are pure Java, so they need no reobfuscation and can be
+// merged into the mod jar directly (Forge already ships Netty and Gson).
+// ---------------------------------------------------------------------------
+configurations {
+    bundled
+}
+
+dependencies {
+    bundled project(':multiforge-protocol')
+    bundled project(':multiforge-api')
+}
+
+tasks.register('bundledJar', Jar) {
+    dependsOn tasks.named('reobfJar')
+    archiveClassifier = 'all'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes([
+                'MixinConfigs': 'multiforge.mixins.json',
+                'Implementation-Title': 'MultiForge',
+                'Implementation-Version': project.version
+        ])
+    }
+    from(tasks.named('reobfJar').flatMap { it.output })
+    from { configurations.bundled.collect { zipTree(it) } }
+    exclude 'META-INF/MANIFEST.MF', 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
+}

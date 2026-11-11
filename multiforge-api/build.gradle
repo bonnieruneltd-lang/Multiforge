@@ -1,0 +1,9 @@
+/*
+ * MultiForge public API module.
+ *
+ * Deliberately free of Minecraft/Forge classes: the same API is used by the
+ * master, by the mod internals and by third party integrations that only care
+ * about cluster state (which server owns a chunk, who is online, ...).
+ * Forge-specific helpers live in com.multiforge.forge.api and extend this
+ * surface with Minecraft types.
+ */

@@ -1,0 +1,21 @@
+{
+  "required": true,
+  "minVersion": "0.8.5",
+  "package": "com.multiforge.forge.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "multiforge.refmap.json",
+  "mixins": [
+    "BlockEntityMixin",
+    "ChunkStorageMixin",
+    "LevelChunkMixin",
+    "LevelTicksMixin",
+    "MinecraftServerMixin",
+    "PlayerAdvancementsMixin",
+    "PlayerListMixin",
+    "ServerLevelMixin",
+    "ServerPlayerMixin",
+    "ServerStatsCounterMixin"
+  ],
+  "injectors": { "defaultRequire": 1 },
+  "client": []
+}

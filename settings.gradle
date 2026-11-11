@@ -1,0 +1,19 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        maven { name = 'MinecraftForge'; url = 'https://maven.minecraftforge.net/' }
+        maven { name = 'Sponge Snapshots'; url = 'https://repo.spongepowered.org/repository/maven-public/' }
+    }
+}
+
+plugins {
+    // Allows Gradle to download a Java 17 toolchain when the build is launched with a newer JDK.
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.8.0'
+}
+
+rootProject.name = 'multiforge'
+
+include 'multiforge-protocol'
+include 'multiforge-api'
+include 'multiforge-master'
+include 'multiforge-forge'
