@@ -48,8 +48,15 @@ public final class MultiForgeApiImpl implements MultiForgeApi {
         // the locally known address; that keeps /multiforge servers and the API
         // consistent on the server that is being queried.
         servers.removeIf(info -> info.name().equals(server.serverName()));
+        String host = server.config().advertiseHost();
+        if (host == null || host.isBlank()) {
+            host = server.server().getLocalIp();
+        }
+        if (host == null || host.isBlank()) {
+            host = "127.0.0.1";
+        }
         servers.add(new ServerInfo(server.serverName(),
-                server.server().getLocalIp(), server.peerServer().getBoundPort(),
+                host, server.peerServer().getBoundPort(),
                 server.tps(), server.server().getPlayerList().getPlayerCount(),
                 server.master().isConnected()));
         return List.copyOf(servers);
