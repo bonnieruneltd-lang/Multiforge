@@ -237,7 +237,24 @@ public class ChunkSubscriptionManager {
         }
     }
 
+    /**
+     * Returns a snapshot of the chunk's subscribers.
+     *
+     * <p>The returned list must be a copy: handlers iterate it while other
+     * connections subscribe or unsubscribe on their own Netty threads. Returning
+     * the live {@code ArrayList} caused a {@code ConcurrentModificationException}
+     * when a reconnecting cluster exchanged chunk status messages.</p>
+     *
+     * @param world logical world name
+     * @param cx    chunk X
+     * @param cz    chunk Z
+     * @return immutable snapshot of the subscribers (possibly empty)
+     */
     public static List<ServerConnection> getSubscribers(String world, int cx, int cz) {
-        return chunkSubscribers.getOrDefault(new ChunkKey(world, cx, cz), Collections.emptyList());
+        ChunkKey key = new ChunkKey(world, cx, cz);
+        synchronized (ChunkLock.getChunkLock(key)) {
+            List<ServerConnection> subscribers = chunkSubscribers.get(key);
+            return subscribers == null ? List.of() : List.copyOf(subscribers);
+        }
     }
 }

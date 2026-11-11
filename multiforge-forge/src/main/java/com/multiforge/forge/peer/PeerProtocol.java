@@ -11,6 +11,7 @@ import com.multiforge.forge.peer.packet.LevelDataUpdatePacket;
 import com.multiforge.forge.peer.packet.RequestChunkPacket;
 import com.multiforge.forge.peer.packet.SendChunkPacket;
 import com.multiforge.forge.peer.packet.SetCompressionPacket;
+import com.multiforge.forge.peer.packet.TimeSyncPacket;
 import com.multiforge.forge.peer.packet.TimeUpdatePacket;
 import com.multiforge.forge.peer.packet.WeatherUpdatePacket;
 import com.multiforge.forge.peer.packet.WorldBorderUpdatePacket;
@@ -50,6 +51,7 @@ public final class PeerProtocol {
         add(WorldBorderUpdatePacket.class, WorldBorderUpdatePacket::new);
         add(EntityChunkChangedPacket.class, EntityChunkChangedPacket::new);
         add(LevelDataUpdatePacket.class, LevelDataUpdatePacket::new);
+        add(TimeSyncPacket.class, TimeSyncPacket::new);
     }
 
     private PeerProtocol() {

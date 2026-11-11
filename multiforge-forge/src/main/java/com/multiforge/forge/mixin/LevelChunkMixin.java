@@ -39,9 +39,11 @@ public abstract class LevelChunkMixin {
             return;
         }
         MultiForgeServer server = MultiForgeServer.instanceOrNull();
-        if (server == null || !server.master().isConnected()) {
+        if (server == null) {
             return;
         }
+        // Peer connections are independent of the master: do not gate block
+        // propagation on the master link (a master outage must not desync blocks).
         LevelChunk self = (LevelChunk) (Object) this;
         if (!(self.getLevel() instanceof ServerLevel level)) {
             return;

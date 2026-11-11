@@ -91,7 +91,7 @@ on servers that do not own the chunk) and the entity-specific peer packets of Mu
 
 | Value | Packet | Conflict policy |
 | --- | --- | --- |
-| day time | `TimeUpdatePacket` | last writer wins |
+| day time | `TimeSyncPacket` | forced changes always win; periodic updates only fix a server >1s behind |
 | rain/thunder + timers | `WeatherUpdatePacket` | last writer wins |
 | world border | `WorldBorderUpdatePacket` | last writer wins |
 | gamerules | `GameRuleUpdatePacket` | applied with a validated `/gamerule` command |
@@ -102,9 +102,12 @@ loaded and uploaded when its content changes and on shutdown. `uid.dat` is handl
 so all servers share one world UUID (scoreboard/stats identity). The peer level-data packet is
 deliberately a subset (difficulty and spawn); it is not a second `level.dat` channel.
 
-Time is broadcast every second (upstream MultiPaper behaviour). Weather is broadcast only when
-the rain/thunder state flips or a timer jumps upwards; comparing decrementing timers every
-second would make every server rebroadcast forever.
+Time is broadcast every second. A packet carries game time and a force flag: a periodic
+update is only applied by a server that is more than a second behind, while a forced update
+(command, sleep) is always applied. This mirrors upstream and prevents another server's
+periodic broadcast from overwriting a `/time set`. Weather is broadcast only when the
+rain/thunder state flips or a timer jumps upwards; comparing decrementing timers every second
+would make every server rebroadcast forever.
 
 ## Files
 

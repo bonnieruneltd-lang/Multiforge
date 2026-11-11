@@ -43,7 +43,7 @@ the repository itself needs only JDK 17 and network access to Maven/Forge.
 ```bash
 ./gradlew build
 # :multiforge-protocol:test  -> 17 tests
-# :multiforge-master:test    -> 19 tests (17 inherited + 2 added this session)
+# :multiforge-master:test    -> 20 tests (17 inherited + 3 added this session)
 # BUILD SUCCESSFUL
 ```
 
@@ -54,10 +54,11 @@ Artifacts produced by `build`:
 * `multiforge-master/build/libs/multiforge-master-1.0.0-alpha.1.jar`;
 * `:multiforge-master:fatJar` produces the runnable `-all.jar`.
 
-The new tests are `unloadingPeerIsNotChosenForChunkRead` and
-`entityIdBlocksAreDisjointAndPersisted` on the master side, and
-`truncatedFrameWaitsForTheRestOfTheBytes` / `oversizedFrameIsRejectedBeforeBuffering`
-for the protocol; they fail without the fixes described in section 4 and pass with them.
+The new tests are `unloadingPeerIsNotChosenForChunkRead`,
+`entityIdBlocksAreDisjointAndPersisted` and `subscriberSnapshotsAreImmutableAcrossChanges`
+on the master side, and `truncatedFrameWaitsForTheRestOfTheBytes` /
+`oversizedFrameIsRejectedBeforeBuffering` for the protocol; they fail without the fixes
+described in section 4 and pass with them.
 
 **Live verification performed in this session:** a master plus two real Forge 1.20.1
 dedicated servers (`runServer` and `runServer2`) were started against one storage root:
@@ -74,11 +75,23 @@ dedicated servers (`runServer` and `runServer2`) were started against one storag
   uploaded its final `level.dat` (36884 and 36880 bytes) before closing the master channel;
 * no `ERROR` entries appeared in either server log or the master log.
 
-The live run also exposed a bug in the *new* download path: attaching `copyToAsync` after
-`createInboundDataStream` lost frames that were buffered before handlers were installed, so a
-downloaded file stayed at 0 bytes. The code now uses the handler-accepting factory; the live
-run above is the regression evidence. A unit test for this needs a Forge runtime and is tracked
-in TODO item 22 (automated live check).
+The live run also exposed and verified several fixes beyond the restored classes:
+
+* `/time set` was immediately overwritten by the other server's periodic broadcast. Time now
+  uses `TimeSyncPacket` with game time and a force flag, matching upstream; verified by RCON
+  (`/time set 1000` on one server, both report ~1061 three seconds later).
+* A master crash stopped block propagation because the `LevelChunkMixin` and
+  `ChunkManager.broadcastBlock*` gated on the master connection. Peer broadcasts are now
+  independent of the master; verified by killing the master with `SIGKILL`, changing a block
+  on server 1 and reading the new block on server 2.
+* Reconnecting both servers produced a `ConcurrentModificationException` in
+  `ChunkChangedStatusHandler` because `ChunkSubscriptionManager.getSubscribers` returned the
+  live list. It now returns a locked snapshot; verified by a master restart with no exception
+  and a regression test (`subscriberSnapshotsAreImmutableAcrossChanges`).
+* Gamerules and weather were verified across the two servers with RCON
+  (`randomTickSpeed=9` applied on all three levels; `weather clear` applied on both).
+
+RCON was enabled only in the local run directories (not committed).
 
 ## 3. What is implemented and wired
 
@@ -178,6 +191,31 @@ which installs the handlers before replaying buffered frames.
 buffering them, so a corrupted or hostile length prefix cannot allocate an
 unbounded cumulation buffer. Partial frames are still buffered until complete;
 both behaviours have unit tests.
+
+### 4.9 Forced time synchronization
+
+`TimeSyncPacket` (peer id 14, append-only) adds `gameTime` and `force` to the old
+time packet. Receivers apply a forced update unconditionally and a periodic update
+only when more than a second behind, matching upstream MultiPaper. The sender
+detects a force by comparing the day-time delta with the game-time delta. Without
+this, `/time set` on one server was immediately overwritten by the other server's
+next periodic broadcast (observed live). `TimeUpdatePacket` (id 8) remains
+registered but is no longer broadcast.
+
+### 4.10 Block propagation during a master outage
+
+`LevelChunkMixin` and `ChunkManager.broadcastBlockChange/broadcastBlockEntity`
+gated peer traffic on `master().isConnected()`. The master and the peer network are
+independent; a master crash therefore stopped block sync between servers whose
+peer links were healthy. The gates are removed. Verified live by `SIGKILL`-ing the
+master and reading a block changed on the other server.
+
+### 4.11 Subscriber snapshots
+
+`ChunkSubscriptionManager.getSubscribers` returned the live `ArrayList`. Status
+handlers iterate it while other Netty threads subscribe/unsubscribe, which threw
+`ConcurrentModificationException` during a two-server reconnect. It now returns an
+immutable copy under the chunk lock, with a regression test.
 
 
 ## 5. Known bugs and limitations (see KNOWN_ISSUES.md for symptoms)

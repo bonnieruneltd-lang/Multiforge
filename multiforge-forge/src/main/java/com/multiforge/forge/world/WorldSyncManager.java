@@ -4,6 +4,7 @@ import com.multiforge.forge.MultiForgeServer;
 import com.multiforge.forge.peer.PeerConnection;
 import com.multiforge.forge.peer.packet.GameRuleUpdatePacket;
 import com.multiforge.forge.peer.packet.LevelDataUpdatePacket;
+import com.multiforge.forge.peer.packet.TimeSyncPacket;
 import com.multiforge.forge.peer.packet.TimeUpdatePacket;
 import com.multiforge.forge.peer.packet.WeatherUpdatePacket;
 import com.multiforge.forge.peer.packet.WorldBorderUpdatePacket;
@@ -80,6 +81,8 @@ public final class WorldSyncManager {
     private static final String TAG_SPAWN_ANGLE = "SpawnAngle";
     /** Floating point tolerance for world border comparisons. */
     private static final double EPSILON = 1.0e-6D;
+    /** Day/game-time divergence that counts as a command or sleep jump. */
+    private static final long JUMP_TOLERANCE_TICKS = 40L;
 
     private final MultiForgeServer server;
     private final Object lock = new Object();
@@ -105,6 +108,7 @@ public final class WorldSyncManager {
      */
     private static final class LevelState {
         private boolean initialized;
+        private long gameTime;
         private long dayTime;
         private boolean raining;
         private int rainTime;
@@ -187,9 +191,7 @@ public final class WorldSyncManager {
     private void pollLevel(ServerLevel level, String world, LevelState state) {
         ServerLevelData data = (ServerLevelData) level.getLevelData();
         if (server.config().syncTime()) {
-            // Upstream broadcasts time unconditionally every 20 ticks.
-            server.peers().broadcast(new TimeUpdatePacket(world, level.getDayTime()));
-            state.dayTime = level.getDayTime();
+            pollTime(level, world, state);
         }
         if (server.config().syncWeather()) {
             pollWeather(world, state, data);
@@ -204,6 +206,38 @@ public final class WorldSyncManager {
         state.initialized = true;
     }
 
+
+    /**
+     * Broadcasts time once per poll and marks command/sleep jumps so receivers
+     * apply them even when their own clock is not behind.
+     *
+     * <p>A jump is detected by comparing the change in day time with the change in
+     * game time since the last poll. Normal ticking advances both by the same
+     * amount; with {@code doDaylightCycle=false} only game time advances (a fixed
+     * negative difference, below the tolerance); sleep and {@code /time set} move
+     * day time by thousands of ticks or backwards.</p>
+     *
+     * @param level level to inspect
+     * @param world logical world name
+     * @param state snapshot
+     */
+    private void pollTime(ServerLevel level, String world, LevelState state) {
+        long gameTime = level.getGameTime();
+        long dayTime = level.getDayTime();
+        boolean force = false;
+        if (state.initialized) {
+            long gameDelta = gameTime - state.gameTime;
+            long dayDelta = dayTime - state.dayTime;
+            force = dayDelta < 0 || Math.abs(dayDelta - gameDelta) > JUMP_TOLERANCE_TICKS;
+        }
+        server.peers().broadcast(new TimeSyncPacket(world, gameTime, dayTime, force));
+        if (force && server.config().debugLogging()) {
+            LOGGER.info("Broadcasting forced time update for {}: dayTime={} (was {})",
+                    world, dayTime, state.dayTime);
+        }
+        state.gameTime = gameTime;
+        state.dayTime = dayTime;
+    }
 
     /**
      * Detects weather transitions and {@code /weather} timer resets.
@@ -380,11 +414,49 @@ public final class WorldSyncManager {
                 return;
             }
             synchronized (lock) {
-                if (level.getDayTime() != packet.dayTime) {
+                // Legacy packet (id 8): it has no game time or force flag, so it can
+                // only correct a server that is clearly behind. It is no longer sent
+                // by this version; kept registered for rolling upgrades.
+                if (packet.dayTime > level.getDayTime() + JUMP_TOLERANCE_TICKS) {
                     level.setDayTime(packet.dayTime);
+                    LevelState state = states.computeIfAbsent(packet.world, ignored -> new LevelState());
+                    state.dayTime = packet.dayTime;
                 }
-                LevelState state = states.computeIfAbsent(packet.world, ignored -> new LevelState());
-                state.dayTime = packet.dayTime;
+            }
+        });
+    }
+
+    /**
+     * Applies a time update from another server.
+     *
+     * <p>Mirrors MultiPaper: a forced update (command or sleep) is always applied;
+     * a periodic update is applied only when this server is more than a second
+     * behind, which corrects drift after a lag spike without fighting a
+     * {@code /time set} issued on another server.</p>
+     *
+     * @param packet time packet
+     */
+    public void onRemoteTimeSync(TimeSyncPacket packet) {
+        if (!server.config().syncTime() || !server.config().worldSync()) {
+            return;
+        }
+        server.execute(() -> {
+            ServerLevel level = server.level(packet.world);
+            if (level == null) {
+                return;
+            }
+            synchronized (lock) {
+                long gameTime = level.getGameTime();
+                if (packet.force || gameTime < packet.gameTime - 20L) {
+                    level.setDayTime(packet.dayTime);
+                    ((ServerLevelData) level.getLevelData()).setGameTime(packet.gameTime);
+                    LevelState state = states.computeIfAbsent(packet.world, ignored -> new LevelState());
+                    state.gameTime = packet.gameTime;
+                    state.dayTime = packet.dayTime;
+                    if (packet.force && server.config().debugLogging()) {
+                        LOGGER.info("Applied forced time update for {}: dayTime={}", packet.world, packet.dayTime);
+                    }
+                }
             }
         });
     }

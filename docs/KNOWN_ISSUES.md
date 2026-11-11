@@ -122,3 +122,9 @@ it (see TODO.md item 16).
 * Entity id blocks were persisted in the process working directory and could wrap negative;
   they now live in the master storage root with serialized, overflow-checked allocation
   (`entityIdBlocksAreDisjointAndPersisted`).
+* `/time set` was overwritten by the other server's periodic time broadcast; `TimeSyncPacket`
+  now carries game time and a force flag (`onRemoteTimeSync`).
+* Block propagation stopped when the master was down even though peer links were up; the
+  master-connection gates were removed from `LevelChunkMixin` and `ChunkManager`.
+* A two-server reconnect threw `ConcurrentModificationException` in the chunk status handler;
+  `getSubscribers` returns an immutable snapshot (`subscriberSnapshotsAreImmutableAcrossChanges`).

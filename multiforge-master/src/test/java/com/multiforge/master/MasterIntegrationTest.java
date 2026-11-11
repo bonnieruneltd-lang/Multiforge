@@ -21,6 +21,7 @@ import com.multiforge.protocol.messages.masterbound.RequestEntityIdBlock;
 import com.multiforge.protocol.messages.masterbound.RequestFilesToSyncMessage;
 import com.multiforge.protocol.messages.masterbound.SubscribeChunkMessage;
 import com.multiforge.protocol.messages.masterbound.UnlockChunkMessage;
+import com.multiforge.protocol.messages.masterbound.UnsubscribeChunkMessage;
 import com.multiforge.protocol.messages.masterbound.UploadFileMessage;
 import com.multiforge.protocol.messages.masterbound.WriteChunkMessage;
 import com.multiforge.protocol.messages.masterbound.WriteJsonMessage;
@@ -278,6 +279,31 @@ class MasterIntegrationTest {
         assertTrue(reply instanceof ChunkLoadedOnAnotherServerMessage);
         assertEquals("holder-a", ((ChunkLoadedOnAnotherServerMessage) reply).server);
     }
+    @Test
+    void subscriberSnapshotsAreImmutableAcrossChanges() throws Exception {
+        TestServerClient a = client("snap-a");
+        TestServerClient b = client("snap-b");
+        String world = "snapshot_world";
+
+        a.send(new SubscribeChunkMessage(world, 12, 12));
+        b.send(new SubscribeChunkMessage(world, 12, 12));
+        a.send(new com.multiforge.protocol.messages.masterbound.SyncChunkSubscribersMessage(world, 12, 12));
+        a.await(ChunkSubscribersSyncMessage.class, message -> message.world.equals(world)
+                && java.util.Arrays.asList(message.subscribers).contains("snap-b"), 5000L);
+
+        java.util.List<ServerConnection> snapshot =
+                ChunkSubscriptionManager.getSubscribers(world, 12, 12);
+        assertEquals(2, snapshot.size());
+
+        b.send(new UnsubscribeChunkMessage(world, 12, 12));
+        a.await(RemoveChunkSubscriberMessage.class, message -> message.server.equals("snap-b"), 5000L);
+
+        // The snapshot a handler is iterating must not be mutated by the unsubscribe
+        // (this used to throw ConcurrentModificationException on a live cluster).
+        assertEquals(2, snapshot.size(), "existing snapshot must not change");
+        assertEquals(1, ChunkSubscriptionManager.getSubscribers(world, 12, 12).size());
+    }
+
     @Test
     void unloadingPeerIsNotChosenForChunkRead() throws Exception {
         TestServerClient a = client("unload-a");

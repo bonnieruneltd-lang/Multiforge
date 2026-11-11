@@ -138,6 +138,16 @@ varint frameLength, varint uncompressedLength, varint packetId, payload
 | 11 | `WorldBorderUpdatePacket` | border state |
 | 12 | `EntityChunkChangedPacket` | entity data of a chunk changed |
 | 13 | `LevelDataUpdatePacket` | level data changes |
+| 14 | `TimeSyncPacket` | time with game time + force flag (see below) |
+
+### Time synchronization
+
+`TimeSyncPacket` carries `gameTime`, `dayTime` and a `force` flag. Periodic updates are
+applied only when the receiver's game time is more than one second behind; a forced update
+(command, sleep skip, clock change) is always applied. This is the upstream MultiPaper
+semantics and prevents another server's periodic broadcast from immediately overwriting a
+`/time set`. The older `TimeUpdatePacket` (id 8) remains registered for rolling upgrades but
+is no longer broadcast.
 
 MultiPaper's peer protocol has ~80 packet types (inventory, ender chest, dragon fight,
 raids, mob navigation, ...). MultiForge implements the subset needed by the ported systems;
