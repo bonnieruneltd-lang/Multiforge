@@ -4,6 +4,11 @@ import com.multiforge.forge.peer.packet.BlockChangePacket;
 import com.multiforge.forge.peer.packet.BlockEntityUpdatePacket;
 import com.multiforge.forge.peer.packet.ChatMessagePacket;
 import com.multiforge.forge.peer.packet.EntityChunkChangedPacket;
+import com.multiforge.forge.peer.packet.EntityHurtPacket;
+import com.multiforge.forge.peer.packet.EntityRemovePacket;
+import com.multiforge.forge.peer.packet.EntityUpdateNBTPacket;
+import com.multiforge.forge.peer.packet.EntityUpdatePacket;
+import com.multiforge.forge.peer.packet.EntityUpdateWithDependenciesPacket;
 import com.multiforge.forge.peer.packet.GameRuleUpdatePacket;
 import com.multiforge.forge.peer.packet.HelloPacket;
 import com.multiforge.forge.peer.packet.KeepAlivePacket;
@@ -52,6 +57,12 @@ public final class PeerProtocol {
         add(EntityChunkChangedPacket.class, EntityChunkChangedPacket::new);
         add(LevelDataUpdatePacket.class, LevelDataUpdatePacket::new);
         add(TimeSyncPacket.class, TimeSyncPacket::new);
+        // Entity mirroring (M1). Appended after every earlier id; never reorder.
+        add(EntityUpdateNBTPacket.class, EntityUpdateNBTPacket::new);
+        add(EntityUpdatePacket.class, EntityUpdatePacket::new);
+        add(EntityRemovePacket.class, EntityRemovePacket::new);
+        add(EntityUpdateWithDependenciesPacket.class, EntityUpdateWithDependenciesPacket::new);
+        add(EntityHurtPacket.class, EntityHurtPacket::new);
     }
 
     private PeerProtocol() {

@@ -134,6 +134,7 @@ public final class ForgeEventHandlers {
             return;
         }
         event.getEntity().setId(runtime.entityIds().nextId());
+        runtime.entities().onEntityJoined(event.getEntity());
     }
 
     /**

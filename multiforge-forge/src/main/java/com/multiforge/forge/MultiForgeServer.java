@@ -7,6 +7,7 @@ import com.multiforge.forge.chunk.ChunkStorageRegistry;
 import com.multiforge.forge.chunk.ChunkSyncIo;
 import com.multiforge.forge.compat.ModCompatibilityManager;
 import com.multiforge.forge.config.MultiForgeConfig;
+import com.multiforge.forge.entity.EntitySyncManager;
 import com.multiforge.forge.network.MasterConnection;
 import com.multiforge.forge.peer.PeerManager;
 import com.multiforge.forge.peer.PeerServer;
@@ -83,6 +84,7 @@ public final class MultiForgeServer {
     private final WorldSyncManager world;
     private final PlayerSyncManager players;
     private final FileSyncer files;
+    private final EntitySyncManager entities;
     private final EntityIdAllocator entityIds;
     private final ModCompatibilityManager compat;
     private final MultiForgeApiImpl api;
@@ -107,6 +109,7 @@ public final class MultiForgeServer {
         this.world = new WorldSyncManager(this);
         this.players = new PlayerSyncManager(this);
         this.files = new FileSyncer(this);
+        this.entities = new EntitySyncManager(this);
         this.compat = new ModCompatibilityManager(this);
         this.api = new MultiForgeApiImpl(this);
         this.entityIds = new EntityIdAllocator(
@@ -278,6 +281,7 @@ public final class MultiForgeServer {
         }
         tickCounter++;
         chunks.tick();
+        entities.tick();
         world.tick();
         files.tick();
     }
@@ -493,6 +497,11 @@ public final class MultiForgeServer {
     /** @return file synchronization */
     public FileSyncer files() {
         return files;
+    }
+
+    /** @return live entity mirroring between servers */
+    public EntitySyncManager entities() {
+        return entities;
     }
 
     /** @return cluster-unique entity id allocator backed by the master */

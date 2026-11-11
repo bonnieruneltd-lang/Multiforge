@@ -5,20 +5,33 @@ the mitigation.
 
 ## Functional gaps
 
-### 1. Players cannot see players/entities on other servers
+### 1. Players cannot see players on other servers
 
-**Symptom:** a player on server A does not see a player or a mob that is standing in a chunk
-owned by server B, even though both servers have the chunk loaded and block changes are in
-sync.
+**Symptom:** a player on server A does not see a player connected to server B, even though
+both servers have the chunk loaded and mobs in it are mirrored.
 
-**Cause:** MultiForge does not yet mirror entities and players between servers (MultiPaper's
-`ExternalPlayer` and external entity system). The owning server simulates them; other servers
-keep the chunk loaded but do not tick the entities (`ServerLevel.tickNonPassenger` is gated),
-so nothing moves and no packets are forwarded.
+**Cause:** MultiForge mirrors ordinary entities (M1, see
+[SYNCHRONIZATION.md](SYNCHRONIZATION.md#entities)) but not player entities yet. MultiPaper's
+`ExternalPlayer`/`PlayerCreatePacket` representation and per-player packet forwarding are
+TODO 2. Mobs, items and vehicles are visible, moving and damageable on every server that has
+the chunk.
 
-**Mitigation:** keep players of one area on the same server (the master gives ownership to the
-server that needs to tick the chunk, so the area a player is in is normally owned by their
-server). Tracked in TODO.md items 1 and 2.
+**Mitigation:** keep players of one area on the same server (the master gives ownership to
+the server that needs to tick the chunk, so the area a player is in is normally owned by
+their server). Tracked in TODO.md item 2.
+
+### 1a. Entity mirroring edge cases
+
+* **Cross-server damage attribution:** `EntityHurtPacket` carries the damage type and amount,
+  not the attacking entity. Damage applies correctly on the owner, but death messages and
+  kill credit do not name a player who hit the mob from another server. Full
+  `DamageSource` serialization is tracked in TODO item 5.
+* **Ownership boundary crossings:** an entity that walks from a chunk owned by A into one
+  owned by B can freeze for a moment. A stops broadcasting when its chunk is no longer the
+  entity's chunk, and B starts once it ticks and owns the new chunk; there is no full NBT
+  resync on the crossing yet.
+* **Players are skipped** by every mirroring path (`ServerPlayer`), so a player entity is
+  never spawned twice. This is deliberate until TODO 2 lands.
 
 ### 2. Live inventory/experience changes are not synchronized
 

@@ -88,11 +88,12 @@ public final class MultiForgeCommands {
             return 0;
         }
         String line = String.format(
-                "%s | master=%s | tps=%.1f | chunks owned=%d loaded=%d | peers=%d | io reads=%d writes=%d failures=%d",
+                "%s | master=%s | tps=%.1f | chunks owned=%d loaded=%d | peers=%d | mirrored=%d "
+                        + "| io reads=%d writes=%d failures=%d",
                 runtime.serverName(),
                 runtime.master().isConnected() ? "connected" : "disconnected",
                 runtime.tps(), runtime.chunks().ownedChunkCount(), runtime.chunks().loadedChunkCount(),
-                runtime.peers().connections().size(),
+                runtime.peers().connections().size(), runtime.entities().mirroredEntityCount(),
                 runtime.chunkIo().readCount(), runtime.chunkIo().writeCount(), runtime.chunkIo().failureCount());
         source.sendSuccess(() -> Component.literal(line), false);
         return 1;

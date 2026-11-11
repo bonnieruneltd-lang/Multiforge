@@ -38,8 +38,8 @@ not depend on those local paths.
 
 ```bash
 ./gradlew build :multiforge-master:fatJar
-# :multiforge-protocol:test  -> 17 tests
-# :multiforge-master:test    -> 24 tests
+# :multiforge-protocol:test  -> 21 tests
+# :multiforge-master:test    -> 25 tests
 # BUILD SUCCESSFUL
 ```
 
@@ -141,11 +141,12 @@ mod-mod interaction, not a MultiForge ownership failure, and is recorded in
 7. **`/forceload` is not a reliable way to create a shared chunk while Ksyxis is loaded**
    (see above). Use the harness's spawn-chunk discovery instead.
 
-## 6. Still missing (unchanged priorities)
+## 6. Still missing (updated session 4)
 
-1. **Live entity mirroring** (TODO 1) — players on other servers still do not see mobs or
-   players owned elsewhere. Start from the entity id blocks that exist; port
-   `EntityUpdatePacket`, `EntityRemovePacket` and spawn/despawn with tests.
+1. **Live entity mirroring** (TODO 1) - **done** in session 4. The owner forwards movement,
+   metadata, equipment, passenger/leash/pickup and removal packets; mirrors create copies
+   from NBT; damage is forwarded to the owner. Evidence:
+   `compat/evidence/entity-mirroring-20261111T212200Z.md`. Players are still excluded.
 2. **External player mirroring** (TODO 2), including tab list presence and packet
    forwarding; depends on the entity representation.
 3. **Inventory / ender chest / experience / hunger / effects live sync** (TODO 3). Player
@@ -164,7 +165,8 @@ mod-mod interaction, not a MultiForge ownership failure, and is recorded in
 1. **Player-driven compatibility tests.** A real client (or a fake-player harness) unlocks
    most LOADING rows: minecarts, tree felling, leaf decay, head drops, item merging, combat
    log, TPA, chat, xray, anti-seed datapack, and MultiForge's own player transfer.
-2. **Entity mirroring** — the largest functional gap in the port.
+2. **Player mirroring** (`ExternalPlayer`), the natural next step after entity mirroring;
+   mobs are already mirrored.
 3. **Inventory/experience sync** — second largest.
 4. **Client matrix** for the 15 client targets on a GPU machine, using the pinned manifest
    and the plan in `REQUIRED_MOD_COMPATIBILITY.md`.

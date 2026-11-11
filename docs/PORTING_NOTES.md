@@ -118,11 +118,11 @@ Purpur fork whose functionality lives in three places:
 
 ## 6. Verification performed
 
-* 17 protocol unit tests: framing, varints, representative message round-trips, transaction
+* 21 protocol unit tests: framing, varints, representative message round-trips, transaction
   ids, large payloads, unknown id rejection, truncated frames, oversized frame rejection and
   data streams (300 KB multi-frame transfer, buffering of frames that arrive before the stream
   is registered).
-* 24 master integration tests against a real master over TCP: ownership arbitration,
+* 25 master integration tests against a real master over TCP: ownership arbitration,
   handover, generation leases,
   concurrent locks, disconnect recovery, subscriber sync, chunk read/write, read redirection to
   a peer, forced ownership, duplicate login, player broadcasts, player data, file
@@ -139,7 +139,7 @@ Purpur fork whose functionality lives in three places:
 * Master restart while both servers ran (previous session): both detected the disconnect,
   reconnected, the master replayed peer addresses and the servers resumed.
 * Clean-checkout build after this session's fixes: `./gradlew build` with Gradle 8.10.2, 17
-  protocol + 24 master tests green. See DEVELOPMENT_HANDOFF.md.
+  protocol + 25 master tests green. See DEVELOPMENT_HANDOFF.md.
 * Session 3: Forge bumped to 47.4.29 for Structure Layout Optimizer 1.0.11. Two real Forge
   dedicated servers with the pinned compatibility set; `tools/compat/cluster_check.py`
   recorded 13/13 checks (bidirectional blocks, chest inventory, time, gamerule, single owner,

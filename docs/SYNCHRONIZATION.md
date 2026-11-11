@@ -69,10 +69,24 @@ Implemented:
   entities; the master keeps the subscriber sets consistent on join/leave/crash.
 * Entity simulation is gated by chunk ownership (`ServerLevel.tickNonPassenger`), so only
   one server runs AI/physics for a given entity.
+* **Live mirroring (M1).** Every entity that joins a level gets an id from the block the
+  master reserved for this server, so ids are unique cluster-wide. The owner forwards the
+  clientbound packets it broadcasts for an entity (`ChunkMap.TrackedEntity.broadcast`) to
+  the servers subscribed to that chunk's entities: movement/teleport/head rotation/velocity,
+  metadata, attributes, equipment, animations, entity events and damage events
+  (`EntityUpdatePacket`), passenger/leash/pickup links
+  (`EntityUpdateWithDependenciesPacket`) and removals (`EntityRemovePacket`). A server that
+  has the chunk but not the entity gets an NBT snapshot (`EntityUpdateNBTPacket`) when the
+  entity spawns or when a new server subscribes; the copy is added to the level but is not
+  ticked because the chunk belongs to another server. Position and synched data are applied
+  on the mirror, so its tracker sends the changes to its own players.
+* Damage on a mirrored entity is forwarded to the owner (`EntityHurtPacket`), so a mob can
+  be hit from any server and its health stays authoritative on the owner.
 
-Not implemented yet: live entity packet mirroring (spawning "external" copies of entities
-on servers that do not own the chunk) and the entity-specific peer packets of MultiPaper
-(teleport, hurt, equipment, mob navigation, raids, ...). See [TODO.md](TODO.md).
+Not implemented yet: player entities (`ExternalPlayer`/`PlayerCreatePacket`, TODO 2), full
+`DamageSource` serialization (attacker attribution in death messages is lost for
+cross-server hits), and a full NBT resync when an entity crosses an ownership boundary.
+See [TODO.md](TODO.md) and [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## Players
 

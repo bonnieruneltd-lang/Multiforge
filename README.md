@@ -46,7 +46,8 @@ integration tests and by running two real Forge servers against a master:
 | Cluster-wide chat | implemented |
 | Entity id block allocation | implemented, integration tested |
 | Recovery after master or server disconnects | implemented (see KNOWN_ISSUES) |
-| Live entity/player packet mirroring between servers | partial (see [docs/TODO.md](docs/TODO.md)) |
+| Live entity mirroring (mobs, items, vehicles; movement/metadata/removals/damage) | implemented, verified on a two-server cluster (see [compat/evidence/entity-mirroring-20261111T212200Z.md](compat/evidence/entity-mirroring-20261111T212200Z.md)) |
+| Player mirroring across servers | not yet ported (TODO 2) |
 | Inventory/ender chest/experience sync | not yet ported |
 | Required-target detection and `/multiforge compat` | implemented |
 | Pinned compatibility manifest and two-server RCON harness | implemented; 35 targets pinned, server set tested together |

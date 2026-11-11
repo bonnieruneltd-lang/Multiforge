@@ -178,7 +178,7 @@ change the support matrix and must not be hidden:
 | --- | --- |
 | Client mods (15) | Run the manual client matrix on a machine with a GPU. Automate launch + log checks if a headless client with software GL is available; shader compilation still needs a real GL context. |
 | Server gameplay | Player-driven tests for minecarts, tree felling, leaf decay, head drops, item merging, combat log, TPA, chat, xray and the anti-seed datapack. These all need at least one real client or a fake-player harness. |
-| Cross-server gameplay | Chunk ownership transfer while a player walks, entity mirroring (not implemented yet, see TODO 1-2), inventory sync (TODO 3), server switch and reconnect. |
+| Cross-server gameplay | Chunk ownership transfer while a player walks, player mirroring (mobs are mirrored, see TODO 2), inventory sync (TODO 3), server switch and reconnect. |
 | Radium/ServerCore | Decide on a supported combination and add a documented config profile; do not claim both optimisations active. |
 | Evidence | Append the client results and the player-driven results to this file with the exact `latest.log` snippets and dates. |
 

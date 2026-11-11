@@ -84,8 +84,9 @@ and confirm:
 * Compatibility score: 0/35 FULLY COMPATIBLE. 2 server targets FUNCTIONAL, 8 PARTIAL,
   10 LOADING, 15 client targets NOT TESTED (no GPU). Do not inflate this; the matrix and
   evidence are in `docs/REQUIRED_MOD_COMPATIBILITY.md`.
-* Biggest functional gap: entity/player mirroring (TODO 1-2). Then inventory/experience
-  sync (TODO 3), live user-list reload, ownership epochs.
+* Entity mirroring is implemented and verified (TODO item 1, done). Biggest remaining
+  functional gap: player mirroring (TODO 2). Then inventory/experience sync (TODO 3),
+  live user-list reload, ownership epochs.
 * Chunk generation leases are implemented and integration tested; the lease is demand
   driven (the server whose player needs the chunk generates it). Choosing an idle server
   to generate for a busy one is not implemented.

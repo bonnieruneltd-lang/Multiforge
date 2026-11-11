@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -53,6 +54,7 @@ public final class PeerManager {
 
     private EventLoopGroup clientGroup;
     private ScheduledExecutorService scheduler;
+    private ExecutorService connector;
 
     /**
      * @param server owning server
@@ -74,10 +76,21 @@ public final class PeerManager {
             return thread;
         });
         scheduler.scheduleAtFixedRate(this::tickAll, 10, 10, TimeUnit.SECONDS);
+        // Entity updates are produced on the server thread; opening a connection
+        // blocks in Bootstrap.connect(...).sync(), so it must not run there.
+        connector = Executors.newSingleThreadExecutor(runnable -> {
+            Thread thread = new Thread(runnable, "MultiForge-PeerConnector");
+            thread.setDaemon(true);
+            return thread;
+        });
     }
 
     /** Closes every connection and releases the threads. */
     public void shutdown() {
+        if (connector != null) {
+            connector.shutdownNow();
+            connector = null;
+        }
         if (scheduler != null) {
             scheduler.shutdownNow();
             scheduler = null;
@@ -267,6 +280,50 @@ public final class PeerManager {
                     LOGGER.debug("Peer chunk request to {} for {},{},{} failed: {}", peer, world, x, z, error.toString());
                     return new byte[0];
                 });
+    }
+
+    /**
+     * Sends a packet to specific peers, connecting on demand.
+     *
+     * <p>Entity updates are only useful to servers that have the chunk's
+     * entities loaded, so they are addressed by name instead of broadcast. A
+     * peer connection is opened lazily (the same path a chunk request uses) when
+     * no live connection exists. Failures are logged at debug level: the mirror
+     * server reads the entity data again the next time the chunk loads, so a
+     * missed live update is not data loss.</p>
+     *
+     * @param names  target server names; this server is ignored
+     * @param packet packet to send
+     * @return {@code true} when at least one delivery was attempted, {@code false}
+     *         when there was no usable peer
+     */
+    public boolean sendTo(Collection<String> names, PeerPacket packet) {
+        boolean queued = false;
+        for (String name : names) {
+            if (name == null || name.equals(server.serverName())) {
+                continue;
+            }
+            queued = true;
+            PeerConnection connection = peers.get(name);
+            if (connection != null && connection.isActive()) {
+                connection.send(packet);
+                continue;
+            }
+            ExecutorService executor = connector;
+            Runnable delivery = () -> connect(name)
+                    .thenAccept(target -> target.send(packet))
+                    .exceptionally(error -> {
+                        LOGGER.debug("Could not deliver {} to peer {}: {}",
+                                packet.getClass().getSimpleName(), name, error.toString());
+                        return null;
+                    });
+            if (executor == null) {
+                delivery.run();
+            } else {
+                executor.execute(delivery);
+            }
+        }
+        return queued;
     }
 
     /**

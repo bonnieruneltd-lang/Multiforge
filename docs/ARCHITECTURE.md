@@ -31,6 +31,7 @@ com.multiforge.forge
 │   └── LocalChunkStorage      fallback/backup access to vanilla region files
 ├── network/MasterConnection   control plane connection, replies, reconnect, cluster view
 ├── peer/                      peer-to-peer protocol, connections, server and manager
+├── entity/EntitySyncManager   live entity mirroring (owner packets, mirror copies, damage)
 ├── player/PlayerSyncManager   data files, duplicate login prevention, chat, registry
 ├── world/
 │   ├── WorldSyncManager       time, weather, gamerules, world border, level data
@@ -40,7 +41,7 @@ com.multiforge.forge
 ├── compat/ModCompatibilityManager  required-target detection and `/multiforge compat`
 ├── api/MultiForgeApiImpl      public API implementation
 ├── common/                    small value types and path helpers
-└── mixin/                     nine Mixins (see below)
+└── mixin/                     fourteen Mixins (see below)
 ```
 
 ## 2. Processes and connections
@@ -126,6 +127,9 @@ MultiPaper changed Paper with patches; the equivalent Forge hooks are Mixins:
 | Mixin | Target | Purpose |
 | --- | --- | --- |
 | `ChunkStorageMixin` | `ChunkStorage.<init>/read/write` | capture storage paths, redirect chunk IO to the cluster |
+| `ChunkMapTrackedEntityMixin` | `ChunkMap.TrackedEntity.broadcast` | forward the owner's entity packets to mirror servers |
+| `EntityMixin` | `Entity.setRemoved` | announce entity removals to mirror servers |
+| `LivingEntityHurtMixin` | `LivingEntity.hurt` | forward damage on a mirrored entity to its owner |
 | `ServerLevelMixin` | `ServerLevel.tick/tickChunk/tickNonPassenger` | publish ticking level, gate chunk and entity simulation by ownership |
 | `LevelTicksMixin` | `LevelTicks.runCollectedTicks` | run scheduled block/fluid ticks only on the owner |
 | `LevelChunkMixin` | `LevelChunk.setBlockState/setBlockEntity` | broadcast block and block entity changes |
@@ -134,6 +138,8 @@ MultiPaper changed Paper with patches; the equivalent Forge hooks are Mixins:
 | `PlayerListMixin` | `PlayerList.placeNewPlayer/load/save/getPlayerForLogin` | duplicate login prevention, player data and file prefetch |
 | `ServerStatsCounterMixin` | `ServerStatsCounter.save` | upload statistics |
 | `PlayerAdvancementsMixin` | `PlayerAdvancements.save` | upload advancements |
+| `LivingEntityAccessor` | `LivingEntity.DATA_HEALTH_ID` | update server-side health from mirrored metadata |
+| `MobAccessor` | `Mob.restoreLeashFromSave` | restore a leash on a mirrored mob |
 
 All Mixin members live in `multiforge.mixins.json`; the annotation processor generates
 `multiforge.refmap.json` (official -> SRG) which is embedded in the jar.

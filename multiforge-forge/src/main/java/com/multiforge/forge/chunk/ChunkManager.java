@@ -322,6 +322,16 @@ public final class ChunkManager {
         return state == null ? List.of() : List.copyOf(state.subscribers());
     }
 
+    /**
+     * @param key chunk
+     * @return servers that currently have the chunk's entities loaded, excluding
+     *         this server (the master never reports the local subscriber)
+     */
+    public Collection<String> entitySubscribersOf(ChunkKey key) {
+        ChunkState state = states.get(key);
+        return state == null ? List.of() : List.copyOf(state.entitySubscribers());
+    }
+
     // ------------------------------------------------------------------
     // Master notifications
     // ------------------------------------------------------------------
@@ -371,6 +381,9 @@ public final class ChunkManager {
         for (String subscriber : subscribers) {
             state.entitySubscribers().add(subscriber);
         }
+        for (String subscriber : subscribers) {
+            server.entities().onEntitySubscriberAdded(key, subscriber);
+        }
     }
 
     /**
@@ -379,6 +392,7 @@ public final class ChunkManager {
      */
     public void onEntitySubscriberAdded(ChunkKey key, String serverName) {
         state(key).entitySubscribers().add(serverName);
+        server.entities().onEntitySubscriberAdded(key, serverName);
     }
 
     /**

@@ -5,14 +5,10 @@ coding.
 
 ## High priority
 
-1. **Live entity mirroring between servers** (blocked on design). Servers that do not own a
-   chunk should spawn lightweight copies of entities owned elsewhere and apply position /
-   rotation / metadata updates received from the owner. This is MultiPaper's
-   `EntityUpdatePacket`, `EntityRemovePacket`, `EntityUpdateWithDependenciesPacket` family.
-   Without it players only see stale entities while another server owns their chunk.
 2. **External player mirroring** (`ExternalPlayer` in MultiPaper). Needed so that players see
    each other across servers (tab list is already cluster-wide, world presence is not).
-   Requires a fake `ServerPlayer` per remote player with packet forwarding.
+   Requires a fake `ServerPlayer` per remote player with packet forwarding. Entity
+   mirroring (item 1, done) already excludes players for this reason.
 3. **Inventory / ender chest / experience / hunger / effects syncing**
    (`MultiPaperInventoryHandler`, `MultiPaperEnderChestHandler`, `MultiPaperEffectsHandler`).
    Player data files are already synchronized; live changes while a player is online on
@@ -24,9 +20,10 @@ coding.
    `EntityJoinLevelEvent`). `twoServersAllocateDisjointEntityIdsThroughTheirAllocators`
    proves two live server connections never overlap. During a master outage the allocator
    falls back to a high local range and logs once (see KNOWN_ISSUES).
-5. **Peer packet coverage**: port the remaining MultiPaper packets (teleport, hurt, equipment,
-   mob navigation handover, raids, dragon fight, projectile hits, container interactions,
-   sign editing, pistons, statistics/advancement live updates).
+5. **Peer packet coverage**: entity movement/teleport/rotation/metadata/equipment/attributes
+   and hurt forwarding are ported (M1). Still missing: full `DamageSource`/attacker
+   attribution, mob navigation handover, raids, dragon fight, projectile hits, container
+   interactions, sign editing, pistons, statistics/advancement live updates.
 6. **Chunk status protocol** - done: the master records load/unload status
    (`ChunkStatusTracker`) and does not redirect a read to a peer that is unloading; covered by
    `unloadingPeerIsNotChosenForChunkRead`. The client-side status view is still informational.
@@ -98,6 +95,16 @@ coding.
 22. Automate the live two-server check (container recipe) so it can run in CI.
 
 ## Done (for reference)
+
+* **Live entity mirroring (M1)** - done and verified on a two-server cluster. The owner
+  forwards `ChunkMap.TrackedEntity.broadcast` packets (`EntityUpdatePacket`), spawns are
+  mirrored from NBT (`EntityUpdateNBTPacket`), removals use `EntityRemovePacket`,
+  passenger/leash/pickup links use `EntityUpdateWithDependenciesPacket`, and damage on a
+  mirror is forwarded with `EntityHurtPacket`. Evidence: a cow spawned in a chunk owned by
+  live1 had the same position and health on live2, followed teleports and delta movement,
+  lost health when damaged from either server, and disappeared on both when killed.
+  Remaining (tracked above or in KNOWN_ISSUES): players (item 2), attacker attribution for
+  cross-server hits, and a full resync when an entity crosses an ownership boundary.
 
 * Master protocol, master process, proxy, CLI.
 * Master storage refactor (`MasterStorage`) and startup TOML reader.

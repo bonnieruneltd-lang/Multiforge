@@ -139,6 +139,15 @@ varint frameLength, varint uncompressedLength, varint packetId, payload
 | 12 | `EntityChunkChangedPacket` | entity data of a chunk changed |
 | 13 | `LevelDataUpdatePacket` | level data changes |
 | 14 | `TimeSyncPacket` | time with game time + force flag (see below) |
+| 15 | `EntityUpdateNBTPacket` | spawn/refresh a mirror copy from entity NBT |
+| 16 | `EntityUpdatePacket` | one serialized clientbound entity packet (movement, metadata, ...) |
+| 17 | `EntityRemovePacket` | a mirrored entity was removed |
+| 18 | `EntityUpdateWithDependenciesPacket` | an entity packet that references other entities (passengers, leash, pickups) |
+| 19 | `EntityHurtPacket` | damage taken on a mirror, forwarded to the owner |
+
+The entity family (15-19) is the M1 mirroring protocol. It is described in
+[SYNCHRONIZATION.md](SYNCHRONIZATION.md#entities); ids were appended, so older peers keep
+their ids.
 
 ### Time synchronization
 

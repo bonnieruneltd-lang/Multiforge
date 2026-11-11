@@ -1,0 +1,87 @@
+{
+  "generated_at": "20261111T212200Z",
+  "milestone": "M1 live entity mirroring",
+  "servers": {
+    "live1": 25575,
+    "live2": 25576
+  },
+  "chunk": {
+    "world": "world",
+    "x": 6,
+    "z": -2,
+    "owner": "live1",
+    "loaded_on": ["live1", "live2"],
+    "entity_subscribers": ["live1", "live2"]
+  },
+  "results": {
+    "spawn_mirrored": {
+      "uuid_tag": "m1final2",
+      "position_live1": [110.5, 200.0, -23.5],
+      "position_live2": [110.5, 200.0, -23.5],
+      "health_live1": 10.0,
+      "health_live2": 10.0
+    },
+    "teleport_mirrored": {
+      "position_live1": [108.5, 210.0, -25.5],
+      "position_live2": [108.5, 210.0, -25.5]
+    },
+    "delta_movement_observed_in_intermediate_run": {
+      "owner_x": 116.13213792706979,
+      "mirror_x": 116.152099609375,
+      "note": "no player online in the final run, so the force-loaded chunk was not entity-ticking"
+    },
+    "damage_on_mirror_forwarded": {
+      "amount": 4.0,
+      "health_live1": 6.0,
+      "health_live2": 6.0
+    },
+    "damage_on_owner_mirrored": {
+      "amount": 4.0,
+      "health_live1": 6.0,
+      "health_live2": 6.0
+    },
+    "removal_mirrored": {
+      "tag": "m1final2",
+      "live1_found": false,
+      "live2_found": false
+    }
+  },
+  "status": {
+    "live1": "live1 | master=connected | tps=20.0 | chunks owned=93 loaded=529 | peers=1 | mirrored=79",
+    "live2": "live2 | master=connected | tps=20.0 | chunks owned=0 loaded=529 | peers=1 | mirrored=341"
+  },
+  "storage": "14M",
+  "final_rerun": {
+    "tag": "m1verify",
+    "position_live1": [110.5, 200.0, -23.5],
+    "position_live2": [110.5, 200.0, -23.5],
+    "health_before": 10.0,
+    "damage_on_mirror": 4.0,
+    "health_after_live1": 6.0,
+    "health_after_live2": 6.0,
+    "removed_on_both": true
+  },
+  "final_rerun_peer_connector": {
+    "tag": "m1peer",
+    "health_before": 10.0,
+    "damage_on_mirror": 4.0,
+    "health_after_live1": 6.0,
+    "health_after_live2": 6.0,
+    "removed_on_both": true
+  },
+  "cluster_regression": {
+    "evidence": "cluster-20261111T212137Z.md",
+    "passed": 13,
+    "total": 13,
+    "required_targets": "18/19"
+  },
+  "shutdown": {
+    "live1": "Stopping MultiForge (server stopped)",
+    "live2": "Stopping MultiForge (server stopped)"
+  },
+  "limitations": [
+    "player entities are not mirrored yet (TODO 2)",
+    "cross-server hits carry damage type and amount but not attacker attribution",
+    "entities crossing an ownership boundary can pause until the new owner ticks them"
+  ]
+}
