@@ -421,9 +421,8 @@ public final class ChunkManager {
         if (Boolean.TRUE.equals(applyingRemote.get())) {
             return;
         }
-        if (!server.master().isConnected()) {
-            return;
-        }
+        // Peer connections are independent of the master: a master outage must not
+        // stop block propagation between servers that still have a peer link.
         server.peers().broadcast(new BlockChangePacket(
                 worldName(level), pos.getX(), pos.getY(), pos.getZ(), Block.getId(state)));
     }
@@ -475,9 +474,7 @@ public final class ChunkManager {
         if (blockEntity.getLevel() == null || blockEntity.getLevel().isClientSide()) {
             return;
         }
-        if (!server.master().isConnected()) {
-            return;
-        }
+        // As with block changes, peer traffic does not depend on the master link.
         BlockPos pos = blockEntity.getBlockPos();
         server.peers().broadcast(new BlockEntityUpdatePacket(
                 worldName((ServerLevel) blockEntity.getLevel()), pos.getX(), pos.getY(), pos.getZ(),

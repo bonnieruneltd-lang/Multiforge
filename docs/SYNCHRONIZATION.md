@@ -44,6 +44,9 @@ See [CHUNK_MANAGEMENT.md](CHUNK_MANAGEMENT.md) for the full flow. Summary:
   cluster when it loads).
 * Only changes made after a chunk is registered with the level are broadcast, so chunk
   deserialization and world generation do not spam the network.
+* Peer broadcasts do not depend on the master connection. If the master goes down, servers
+  with a live peer link keep exchanging block and block entity changes; only ownership and
+  subscription changes wait for the reconnect.
 
 ## Block entities
 
