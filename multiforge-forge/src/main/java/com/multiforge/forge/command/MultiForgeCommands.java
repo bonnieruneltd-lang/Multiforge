@@ -44,8 +44,15 @@ public final class MultiForgeCommands {
                 .then(Commands.literal("servers").executes(context -> servers(context.getSource())))
                 .then(Commands.literal("status").executes(context -> status(context.getSource())))
                 .then(Commands.literal("players").executes(context -> players(context.getSource())))
-                .then(Commands.literal("chunk").executes(context -> chunk(context.getSource())))
+                .then(Commands.literal("chunk")
+                        .executes(context -> chunk(context.getSource()))
+                        .then(Commands.argument("x", com.mojang.brigadier.arguments.IntegerArgumentType.integer())
+                                .then(Commands.argument("z", com.mojang.brigadier.arguments.IntegerArgumentType.integer())
+                                        .executes(context -> chunkAt(context.getSource(),
+                                                com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "x"),
+                                                com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "z"))))))
                 .then(Commands.literal("chunks").executes(context -> chunks(context.getSource())))
+                .then(Commands.literal("compat").executes(context -> compat(context.getSource())))
                 .then(Commands.literal("download")
                         .then(Commands.argument("path", StringArgumentType.greedyString())
                                 .executes(context -> download(context.getSource(),
@@ -111,19 +118,40 @@ public final class MultiForgeCommands {
         if (runtime == null) {
             return 0;
         }
-        ServerLevel level = source.getLevel();
         ChunkPos pos;
         try {
             pos = new ChunkPos(source.getPlayerOrException().blockPosition());
         } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
-            source.sendFailure(Component.literal("Run this command as a player, or from a position"));
+            source.sendFailure(Component.literal("Run this command as a player, or use /multiforge chunk <x> <z>"));
             return 0;
         }
+        return chunkAt(source, pos.x, pos.z);
+    }
+
+    /**
+     * Prints the cluster view of one chunk without requiring a player. The
+     * coordinates are chunk coordinates, which makes the command usable from the
+     * server console and from the compatibility harness.
+     *
+     * @param source command source
+     * @param cx     chunk x
+     * @param cz     chunk z
+     * @return 1 when the chunk state was printed
+     */
+    private static int chunkAt(CommandSourceStack source, int cx, int cz) {
+        MultiForgeServer runtime = runtime(source);
+        if (runtime == null) {
+            return 0;
+        }
+        ServerLevel level = source.getLevel();
+        ChunkPos pos = new ChunkPos(cx, cz);
         ChunkKey key = runtime.chunks().keyOf(level, pos);
         String owner = runtime.chunks().ownerOf(key).orElse("unowned");
         boolean local = runtime.chunks().isLocal(key);
-        String line = String.format("Chunk %s owner=%s local=%s subscribers=%s",
-                key, owner, local, runtime.chunks().subscribersOf(key));
+        var state = runtime.chunks().snapshot().get(key);
+        boolean loaded = state != null && state.loaded();
+        String line = String.format("Chunk %s owner=%s local=%s loaded=%s subscribers=%s",
+                key, owner, local, loaded, runtime.chunks().subscribersOf(key));
         source.sendSuccess(() -> Component.literal(line), false);
         return 1;
     }
@@ -143,7 +171,44 @@ public final class MultiForgeCommands {
             }
             source.sendSuccess(() -> Component.literal(" - " + key), false);
         }
-        return shown;
+        // The loaded list is always printed: ownership only exists while a chunk
+        // ticks, so without a player the owned list alone is not enough to know
+        // which chunks this server currently holds and could serve to peers.
+        source.sendSuccess(() -> Component.literal("Loaded chunks on this server:"), false);
+        int loadedShown = 0;
+        for (Map.Entry<ChunkKey, com.multiforge.forge.chunk.ChunkState> entry
+                : runtime.chunks().snapshot().entrySet()) {
+            if (!entry.getValue().loaded()) {
+                continue;
+            }
+            if (loadedShown++ >= 50) {
+                source.sendSuccess(() -> Component.literal("... (truncated)"), false);
+                break;
+            }
+            String line = " - " + entry.getKey() + " owner="
+                    + (entry.getValue().owner() == null ? "unowned" : entry.getValue().owner());
+            source.sendSuccess(() -> Component.literal(line), false);
+        }
+        return shown + loadedShown;
+    }
+
+    /**
+     * Prints the required-target report (loaded/missing versions and any
+     * deployment conflicts) generated by the compatibility manager.
+     *
+     * @param source command source
+     * @return number of report lines sent
+     */
+    private static int compat(CommandSourceStack source) {
+        MultiForgeServer runtime = runtime(source);
+        if (runtime == null) {
+            return 0;
+        }
+        var lines = runtime.compat().report();
+        for (String line : lines) {
+            source.sendSuccess(() -> Component.literal(line), false);
+        }
+        return lines.size();
     }
 
     private static int download(CommandSourceStack source, String path) {

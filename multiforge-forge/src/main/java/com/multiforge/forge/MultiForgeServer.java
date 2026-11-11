@@ -5,6 +5,7 @@ import com.multiforge.forge.api.MultiForgeApiImpl;
 import com.multiforge.forge.chunk.ChunkManager;
 import com.multiforge.forge.chunk.ChunkStorageRegistry;
 import com.multiforge.forge.chunk.ChunkSyncIo;
+import com.multiforge.forge.compat.ModCompatibilityManager;
 import com.multiforge.forge.config.MultiForgeConfig;
 import com.multiforge.forge.network.MasterConnection;
 import com.multiforge.forge.peer.PeerManager;
@@ -79,6 +80,7 @@ public final class MultiForgeServer {
     private final WorldSyncManager world;
     private final PlayerSyncManager players;
     private final FileSyncer files;
+    private final ModCompatibilityManager compat;
     private final MultiForgeApiImpl api;
 
     private final Map<String, ServerLevel> levels = new ConcurrentHashMap<>();
@@ -101,6 +103,7 @@ public final class MultiForgeServer {
         this.world = new WorldSyncManager(this);
         this.players = new PlayerSyncManager(this);
         this.files = new FileSyncer(this);
+        this.compat = new ModCompatibilityManager(this);
         this.api = new MultiForgeApiImpl(this);
     }
 
@@ -155,6 +158,7 @@ public final class MultiForgeServer {
             files.reconcileJsonFilesAtStartup();
         }
 
+        compat.initialize();
         announce();
     }
 
@@ -480,6 +484,11 @@ public final class MultiForgeServer {
     /** @return file synchronization */
     public FileSyncer files() {
         return files;
+    }
+
+    /** @return required-target detection and compatibility reporting */
+    public ModCompatibilityManager compat() {
+        return compat;
     }
 
     /** @return public API implementation */

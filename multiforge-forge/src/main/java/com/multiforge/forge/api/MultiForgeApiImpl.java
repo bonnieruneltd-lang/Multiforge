@@ -43,12 +43,15 @@ public final class MultiForgeApiImpl implements MultiForgeApi {
     @Override
     public Collection<ServerInfo> getServers() {
         List<ServerInfo> servers = new ArrayList<>(server.master().getServers());
-        boolean hasLocal = servers.stream().anyMatch(info -> info.name().equals(server.serverName()));
-        if (!hasLocal) {
-            servers.add(new ServerInfo(server.serverName(),
-                    server.server().getLocalIp(), server.peerServer().getBoundPort(),
-                    server.tps(), server.server().getPlayerList().getPlayerCount(), true));
-        }
+        // The master broadcasts ServerStartedMessage to the *other* servers only, so
+        // this server's own entry can carry an empty peer address. Replace it with
+        // the locally known address; that keeps /multiforge servers and the API
+        // consistent on the server that is being queried.
+        servers.removeIf(info -> info.name().equals(server.serverName()));
+        servers.add(new ServerInfo(server.serverName(),
+                server.server().getLocalIp(), server.peerServer().getBoundPort(),
+                server.tps(), server.server().getPlayerList().getPlayerCount(),
+                server.master().isConnected()));
         return List.copyOf(servers);
     }
 
