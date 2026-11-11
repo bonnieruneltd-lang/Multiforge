@@ -1,5 +1,7 @@
 package com.multiforge.master.handlers;
 
+import com.multiforge.master.util.MasterStorage;
+
 import com.multiforge.protocol.messages.masterbound.ReadUidMessage;
 import com.multiforge.protocol.messages.serverbound.DataMessageReply;
 import com.multiforge.master.ServerConnection;
@@ -15,7 +17,7 @@ public class ReadUidHandler {
         CompletableFuture.runAsync(() -> {
             try {
                 try {
-                    byte[] b = Files.readAllBytes(new File(message.world, "uid.dat").toPath());
+                    byte[] b = Files.readAllBytes(MasterStorage.worldFile(message.world, "uid.dat").toPath());
                     connection.sendReply(new DataMessageReply(b), message);
                 } catch (NoSuchFileException e) {
                     connection.sendReply(new DataMessageReply(new byte[0]), message);

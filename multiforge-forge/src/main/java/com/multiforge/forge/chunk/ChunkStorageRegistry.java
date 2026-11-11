@@ -89,12 +89,12 @@ public final class ChunkStorageRegistry {
         // Fall back to classifying by directory name. This covers storages that
         // are created before the level finished registering (rare) and custom
         // dimensions with a non standard path.
-        String type = WorldDirectories.storageTypeOf(path);
-        if (type == null) {
+        ChunkStore derived = WorldDirectories.inferStore(path);
+        if (derived == null) {
             return null;
         }
-        ChunkStore derived = new ChunkStore("unknown", type, path);
-        LOGGER.debug("Unregistered chunk storage {} classified as {}", path, type);
+        LOGGER.debug("Unregistered chunk storage {} resolved to {}", path, derived);
+        BY_PATH.putIfAbsent(path, derived);
         return derived;
     }
 

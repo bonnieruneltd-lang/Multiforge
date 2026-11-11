@@ -50,6 +50,10 @@ public abstract class MessageHandler<T extends Message> extends SimpleChannelInb
         if (!onMessage(message)) {
             try {
                 message.handle(this);
+            } catch (UnsupportedOperationException e) {
+                // Reply-only message without a matching callback: the request was
+                // retransmitted after a reconnect and the duplicate reply arrived
+                // after the first one was consumed. Safe to ignore.
             } catch (Exception e) {
                 e.printStackTrace();
             }

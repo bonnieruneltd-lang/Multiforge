@@ -1,5 +1,7 @@
 package com.multiforge.master.handlers;
 
+import com.multiforge.master.util.MasterStorage;
+
 import com.multiforge.protocol.messages.masterbound.ReadJsonMessage;
 import com.multiforge.protocol.messages.serverbound.DataMessageReply;
 import com.multiforge.master.ServerConnection;
@@ -23,7 +25,7 @@ public class ReadJsonHandler {
                 }
 
                 try {
-                    byte[] b = Files.readAllBytes(new File(message.file).toPath());
+                    byte[] b = Files.readAllBytes(MasterStorage.file(message.file).toPath());
                     connection.sendReply(new DataMessageReply(b), message);
                 } catch (NoSuchFileException e) {
                     connection.sendReply(new DataMessageReply(new byte[0]), message);

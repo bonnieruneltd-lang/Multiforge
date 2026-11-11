@@ -1,5 +1,7 @@
 package com.multiforge.master.handlers;
 
+import com.multiforge.master.util.MasterStorage;
+
 import com.multiforge.protocol.datastream.OutboundDataStream;
 import com.multiforge.protocol.messages.masterbound.DownloadFileMessage;
 import com.multiforge.protocol.messages.serverbound.FileContentMessage;
@@ -14,7 +16,7 @@ import java.util.concurrent.CompletableFuture;
 public class DownloadFileHandler {
     public static void handle(ServerConnection connection, DownloadFileMessage message) {
         OutboundDataStream dataStream = connection.getDataStreamManager().createOutboundDataStream(connection.getChannel());
-        File file = new File("synced-server-files", message.path);
+        File file = MasterStorage.sharedFile(message.path);
         FileLocker.createLockAsync(file).thenAcceptAsync(lock -> {
             try {
                 connection.sendReply(new FileContentMessage(message.path, file.lastModified(), dataStream.getStreamId()), message);

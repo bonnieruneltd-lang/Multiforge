@@ -2,7 +2,6 @@ package com.multiforge.forge.mixin;
 
 import com.multiforge.forge.MultiForgeServer;
 import net.minecraft.server.PlayerAdvancements;
-import net.minecraft.server.level.ServerPlayer;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -16,11 +15,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Uploads advancements after vanilla flushed them to disk.
+ * Keeps player advancements on the master.
  *
- * <p>{@code PlayerAdvancements.save()} writes {@code advancements/<uuid>.json}; the
- * file is then uploaded to the master so the player keeps progress when joining
- * another server.</p>
+ * <p>Same two-hook pattern as {@link ServerStatsCounterMixin}: prefetch before the
+ * constructor reads the file, upload after {@code save()} wrote it. The player UUID
+ * comes from the constructor argument, so no shadow of the mutable player field is
+ * needed.</p>
  */
 @Mixin(PlayerAdvancements.class)
 public abstract class PlayerAdvancementsMixin {
@@ -28,9 +28,6 @@ public abstract class PlayerAdvancementsMixin {
     @Shadow
     @Final
     private Path playerSavePath;
-
-    @Shadow
-    private ServerPlayer player;
 
     /**
      * Uploads the freshly written advancements file.
@@ -40,16 +37,16 @@ public abstract class PlayerAdvancementsMixin {
     @Inject(method = "save", at = @At("RETURN"))
     private void multiforge$uploadAdvancements(CallbackInfo callbackInfo) {
         MultiForgeServer server = MultiForgeServer.instanceOrNull();
-        if (server == null || player == null || playerSavePath == null) {
+        if (server == null || playerSavePath == null || !Files.isRegularFile(playerSavePath)) {
             return;
         }
         try {
-            if (!Files.isRegularFile(playerSavePath)) {
-                return;
-            }
             String json = Files.readString(playerSavePath, StandardCharsets.UTF_8);
-            server.players().uploadAdvancements(player.getUUID(), json);
-        } catch (IOException e) {
+            // The file name is <uuid>.json; reuse it to avoid a second player field.
+            String name = playerSavePath.getFileName().toString();
+            java.util.UUID uuid = java.util.UUID.fromString(name.substring(0, name.length() - ".json".length()));
+            server.players().uploadAdvancements(uuid, json);
+        } catch (IOException | IllegalArgumentException e) {
             // Advancements are best effort; vanilla already has the local copy.
         }
     }

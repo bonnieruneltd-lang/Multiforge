@@ -1,5 +1,7 @@
 package com.multiforge.master.handlers;
 
+import com.multiforge.master.util.MasterStorage;
+
 import com.multiforge.master.util.Log;
 
 import org.yaml.snakeyaml.DumperOptions;
@@ -132,11 +134,11 @@ public class CallDataStorageHandler {
 
     private static synchronized void loadYaml() {
         if (yaml == null) {
-            File file = new File("datastorage.yml");
+            File file = MasterStorage.file("datastorage.yml");
 
             // Who called it .yaml... (backwards compatibility)
             if (!file.isFile()) {
-                file = new File("datastorage.yaml");
+                file = MasterStorage.file("datastorage.yaml");
             }
 
             if (file.isFile()) {

@@ -3,6 +3,7 @@ package com.multiforge.protocol;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
+import io.netty.channel.Channel;
 import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
@@ -26,13 +27,16 @@ public class MessageBootstrap<I extends Message<?>, O extends Message<?>> extend
 
         @Override
         public Thread newThread(Runnable r) {
-            Thread thread = new Thread(r, "MultiPaper-Netty-" + (++counter));
+            Thread thread = new Thread(r, "MultiForge-Netty-" + (++counter));
             thread.setDaemon(DAEMON);
             return thread;
         }
     };
 
     public static EventLoopGroup eventLoopGroup;
+
+    /** Channel of the most recent {@code listenOn} call; {@code null} for clients. */
+    private volatile Channel serverChannel;
     private static Class<? extends SocketChannel> socketChannelClass;
     private static Class<? extends ServerSocketChannel> serverSocketChannelClass;
 
@@ -82,11 +86,31 @@ public class MessageBootstrap<I extends Message<?>, O extends Message<?>> extend
     }
 
     public ChannelFuture listenOn(String address, int port) {
-        return createServerBootstrap().bind(address, port);
+        ChannelFuture future = createServerBootstrap().bind(address, port);
+        future.addListener(f -> {
+            if (f.isSuccess()) {
+                serverChannel = future.channel();
+            }
+        });
+        return future;
     }
 
     public ChannelFuture listenOn(int port) {
-        return createServerBootstrap().bind(port);
+        ChannelFuture future = createServerBootstrap().bind(port);
+        future.addListener(f -> {
+            if (f.isSuccess()) {
+                serverChannel = future.channel();
+            }
+        });
+        return future;
+    }
+
+    /**
+     * @return the channel returned by the most recent {@code listenOn} call, or
+     *         {@code null} when this bootstrap never listened
+     */
+    public Channel getServerChannel() {
+        return serverChannel;
     }
 
     @Override

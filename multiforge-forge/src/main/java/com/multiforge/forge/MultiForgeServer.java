@@ -87,6 +87,7 @@ public final class MultiForgeServer {
     private final AtomicBoolean started = new AtomicBoolean();
 
     private volatile int tickCounter;
+    private volatile boolean announced;
 
     private MultiForgeServer(MinecraftServer server, MultiForgeConfig.Snapshot config, String serverName) {
         this.server = server;
@@ -114,7 +115,8 @@ public final class MultiForgeServer {
             return;
         }
         MultiForgeConfig.bake();
-        MultiForgeConfig.Snapshot snapshot = MultiForgeConfig.snapshot();
+        MultiForgeConfig.Snapshot snapshot = MultiForgeConfig.snapshotForStartup(
+                server.getServerDirectory().toPath());
         String name = snapshot.serverName();
         if (name == null || name.isBlank()) {
             name = "server" + ThreadLocalRandom.current().nextInt(10000, 100000);
@@ -155,9 +157,10 @@ public final class MultiForgeServer {
      * reconnect because the master forgets the port when the connection drops.
      */
     private void announce() {
-        if (!master.isConnected()) {
+        if (!master.isConnected() || announced) {
             return;
         }
+        announced = true;
         int port = peerServer.getBoundPort();
         if (port > 0) {
             master.send(new SetPortMessage(port));
@@ -285,6 +288,7 @@ public final class MultiForgeServer {
 
     /** Called when the master connection dropped. */
     public void onMasterDisconnected() {
+        announced = false;
         LOGGER.warn("Master connection lost; chunk synchronization paused until reconnect");
     }
 

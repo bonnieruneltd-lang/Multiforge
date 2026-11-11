@@ -1,5 +1,7 @@
 package com.multiforge.master.handlers;
 
+import com.multiforge.master.util.MasterStorage;
+
 import com.multiforge.protocol.messages.masterbound.WriteAdvancementsMessage;
 import com.multiforge.protocol.messages.serverbound.BooleanMessageReply;
 import com.multiforge.master.FileLocker;
@@ -13,7 +15,7 @@ public class WriteAdvancementsHandler {
     public static void handle(ServerConnection connection, WriteAdvancementsMessage message) {
         CompletableFuture.runAsync(() -> {
             try {
-                FileLocker.writeBytes(new File(new File(message.world, "advancements"), message.uuid + ".json"), message.data);
+                FileLocker.writeBytes(MasterStorage.worldFile(message.world, "advancements", message.uuid + ".json"), message.data);
 
                 connection.sendReply(new BooleanMessageReply(true), message);
             } catch (IOException e) {

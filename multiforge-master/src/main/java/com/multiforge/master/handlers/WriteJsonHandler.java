@@ -1,5 +1,7 @@
 package com.multiforge.master.handlers;
 
+import com.multiforge.master.util.MasterStorage;
+
 import com.multiforge.protocol.messages.masterbound.WriteJsonMessage;
 import com.multiforge.protocol.messages.serverbound.BooleanMessageReply;
 import com.multiforge.master.ServerConnection;
@@ -22,7 +24,7 @@ public class WriteJsonHandler {
                         writesInProgress.put(message.file, message.data);
                     }
 
-                    Files.write(new File(message.file).toPath(), message.data);
+                    Files.write(MasterStorage.file(message.file).toPath(), message.data);
 
                     synchronized (writesInProgress) {
                         writesInProgress.remove(message.file);

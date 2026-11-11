@@ -1,5 +1,7 @@
 package com.multiforge.master.handlers;
 
+import com.multiforge.master.util.MasterStorage;
+
 import com.multiforge.protocol.messages.masterbound.ReadChunkMessage;
 import com.multiforge.protocol.messages.serverbound.ChunkLoadedOnAnotherServerMessage;
 import com.multiforge.protocol.messages.serverbound.DataMessageReply;
@@ -54,17 +56,17 @@ public class ReadChunkHandler {
         return false;
     }
 
+    /**
+     * Resolves the storage directory of a chunk file.
+     *
+     * <p>Kept next to the chunk handlers because both the normal and the forced
+     * read path need the same world-to-directory mapping.</p>
+     *
+     * @param world logical world name
+     * @param path  storage type ({@code region}, {@code entities}, {@code poi})
+     * @return directory that contains the region files
+     */
     static File getWorldDir(String world, String path) {
-        File file = new File(world);
-
-        if (world.endsWith("_nether")) {
-            file = new File(file, "DIM-1");
-        }
-
-        if (world.endsWith("_the_end")) {
-            file = new File(file, "DIM1");
-        }
-
-        return new File(file, path);
+        return MasterStorage.worldDir(world, path);
     }
 }

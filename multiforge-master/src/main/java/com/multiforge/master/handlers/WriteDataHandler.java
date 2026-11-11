@@ -1,5 +1,7 @@
 package com.multiforge.master.handlers;
 
+import com.multiforge.master.util.MasterStorage;
+
 import com.multiforge.protocol.messages.masterbound.WriteDataMessage;
 import com.multiforge.protocol.messages.serverbound.BooleanMessageReply;
 import com.multiforge.protocol.messages.serverbound.DataUpdateMessage;
@@ -14,7 +16,7 @@ public class WriteDataHandler {
     public static void handle(ServerConnection connection, WriteDataMessage message) {
         CompletableFuture.runAsync(() -> {
             try {
-                FileLocker.writeBytes(new File(message.path), message.data);
+                FileLocker.writeBytes(MasterStorage.file(message.path), message.data);
                 connection.sendReply(new BooleanMessageReply(true), message);
 
                 if (message.path.contains("scoreboard")) {

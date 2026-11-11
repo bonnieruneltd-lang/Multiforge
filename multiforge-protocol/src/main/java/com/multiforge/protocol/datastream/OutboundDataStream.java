@@ -26,8 +26,12 @@ public class OutboundDataStream {
     }
 
     public ChannelFuture send(byte[] bytes, int offset, int length) {
-        if (bytes.length > 0) {
-            return channel.writeAndFlush(manager.createDataStreamMessage(streamId, bytes, offset, length));
+        if (length > 0) {
+            // Copy the slice: callers stream from a reusable buffer and Netty may
+            // encode the message on another thread after the next read overwrote it.
+            byte[] slice = new byte[length];
+            System.arraycopy(bytes, offset, slice, 0, length);
+            return channel.writeAndFlush(manager.createDataStreamMessage(streamId, slice, 0, length));
         } else {
             return new DefaultChannelPromise(channel).setSuccess();
         }

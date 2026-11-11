@@ -27,13 +27,16 @@ public final class MultiForgeMod {
     /** Mod id used by Forge, the mixin config and the config file name. */
     public static final String MOD_ID = "multiforge";
 
+    /** Human readable version, kept in sync with gradle.properties. */
+    public static final String VERSION = "1.0.0-alpha.1";
+
     private static final Logger LOGGER = LoggerFactory.getLogger("MultiForge");
 
     /** Registers configuration and event handlers. */
     public MultiForgeMod() {
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, MultiForgeConfig.SPEC, "multiforge-server.toml");
         MinecraftForge.EVENT_BUS.register(ForgeEventHandlers.class);
-        LOGGER.info("MultiForge {} loaded", MultiForgeMod.class.getPackage().getImplementationVersion());
+        LOGGER.info("MultiForge {} loaded", VERSION);
     }
 
     /**

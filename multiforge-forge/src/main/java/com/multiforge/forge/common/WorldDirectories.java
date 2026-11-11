@@ -107,6 +107,50 @@ public final class WorldDirectories {
     }
 
     /**
+     * Best-effort reconstruction of the logical world name from a storage directory.
+     *
+     * <p>Point-of-interest storages are created by {@code PoiManager} while the level
+     * is still being constructed, before {@code LevelEvent.Load} registers the
+     * dimension directories. Resolving by path keeps POI data attached to the right
+     * world instead of a placeholder.</p>
+     *
+     * @param directory storage directory such as {@code world/DIM-1/region}
+     * @return derived store, or {@code null} when the layout is not recognised
+     */
+    public static ChunkStore inferStore(Path directory) {
+        Path normalized = directory.toAbsolutePath().normalize();
+        String type = storageTypeOf(normalized);
+        if (type == null) {
+            return null;
+        }
+        Path dimensionDir = normalized.getParent();
+        if (dimensionDir == null) {
+            return null;
+        }
+        String suffix = "";
+        Path worldRoot = dimensionDir;
+        String dimensionName = dimensionDir.getFileName() == null ? "" : dimensionDir.getFileName().toString();
+        if ("DIM-1".equals(dimensionName)) {
+            suffix = "_nether";
+            worldRoot = dimensionDir.getParent();
+        } else if ("DIM1".equals(dimensionName)) {
+            suffix = "_the_end";
+            worldRoot = dimensionDir.getParent();
+        } else if (dimensionDir.getParent() != null && "dimensions".equals(dimensionDir.getParent().getFileName() == null
+                ? null : dimensionDir.getParent().getFileName().toString())) {
+            // world/dimensions/<namespace>/<path>/<type>
+            String namespace = dimensionDir.getParent().getParent() == null ? "unknown"
+                    : String.valueOf(dimensionDir.getParent().getParent().getFileName());
+            suffix = "_" + namespace + "_" + dimensionName;
+            worldRoot = dimensionDir.getParent().getParent() == null ? null : dimensionDir.getParent().getParent().getParent();
+        }
+        if (worldRoot == null || worldRoot.getFileName() == null) {
+            return null;
+        }
+        return new ChunkStore(worldRoot.getFileName() + suffix, type, normalized);
+    }
+
+    /**
      * Best-effort classification of a chunk storage directory.
      *
      * @param directory directory passed to the {@code ChunkStorage} constructor

@@ -35,6 +35,22 @@ import java.util.Optional;
 public abstract class PlayerListMixin {
 
     /**
+     * Prefetches the player's statistics and advancement files before vanilla
+     * constructs the {@code ServerPlayer}.
+     *
+     * @param profile      profile of the logging in player
+     * @param callbackInfo mixin callback
+     */
+    @Inject(method = "getPlayerForLogin", at = @At("HEAD"))
+    private void multiforge$prefetchFiles(com.mojang.authlib.GameProfile profile,
+                                          CallbackInfoReturnable<ServerPlayer> callbackInfo) {
+        MultiForgeServer server = MultiForgeServer.instanceOrNull();
+        if (server != null && profile != null) {
+            server.players().prefetchPlayerFiles(profile.getId(), profile.getName());
+        }
+    }
+
+    /**
      * Prevents a second login of the same player elsewhere in the cluster.
      *
      * @param connection   player connection

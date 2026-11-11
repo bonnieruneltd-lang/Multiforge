@@ -125,6 +125,18 @@ public class MultiForgeMaster extends MessageBootstrap<MasterBoundMessage, Serve
         });
     }
 
+    /**
+     * @return port the master is listening on, or {@code -1} when the bind did not
+     *         finish yet. Used by tests that bind to an ephemeral port.
+     */
+    public int getBoundPort() {
+        io.netty.channel.Channel channel = getServerChannel();
+        if (channel == null || !(channel.localAddress() instanceof java.net.InetSocketAddress address)) {
+            return -1;
+        }
+        return address.getPort();
+    }
+
     /** @return the running master, or {@code null} before {@link #main(String[])} started it */
     public static MultiForgeMaster getInstance() {
         return instance;
@@ -142,8 +154,10 @@ public class MultiForgeMaster extends MessageBootstrap<MasterBoundMessage, Serve
     private static void awaitAsyncTasks() {
         Log.info("Waiting for async tasks...");
         if (!ForkJoinPool.commonPool().awaitQuiescence(10, TimeUnit.SECONDS)) {
-            Log.warn("Some tasks are taking a long time to complete, waiting up to an hour");
-            ForkJoinPool.commonPool().awaitQuiescence(1, TimeUnit.HOURS);
+            // Bound the wait: a lingering file task must not keep the process (and
+            // the port) alive forever. Chunk data was already flushed by the
+            // server-side shutdown protocol.
+            Log.warn("Some file tasks are still running after 10s, continuing with shutdown");
         }
     }
 

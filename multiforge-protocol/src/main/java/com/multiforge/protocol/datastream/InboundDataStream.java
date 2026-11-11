@@ -22,7 +22,6 @@ public class InboundDataStream {
         this.manager = manager;
         this.channel = channel;
         this.streamId = streamId;
-        manager.inboundDataStreams.put(streamId, this);
     }
 
     public int getStreamId() {
@@ -81,7 +80,7 @@ public class InboundDataStream {
         return promise;
     }
 
-    void doData(byte[] data) {
+    synchronized void doData(byte[] data) {
         if (data.length == 0) {
             doClose();
         } else {
@@ -89,7 +88,7 @@ public class InboundDataStream {
         }
     }
 
-    void doClose() {
+    synchronized void doClose() {
         closeHandlers.forEach(Runnable::run);
         manager.inboundDataStreams.remove(streamId, this);
     }

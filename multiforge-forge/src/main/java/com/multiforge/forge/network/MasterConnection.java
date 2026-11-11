@@ -27,6 +27,7 @@ import com.multiforge.protocol.messages.serverbound.SetChunkOwnerMessage;
 import com.multiforge.protocol.messages.serverbound.SetSecretMessage;
 import com.multiforge.protocol.messages.serverbound.ShutdownMessage;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,6 +62,7 @@ import java.util.concurrent.TimeUnit;
  * before any world state is modified. {@link #request} returns a future and never
  * blocks; callers that must block (chunk IO workers) do so on their own thread.</p>
  */
+@ChannelHandler.Sharable
 public final class MasterConnection extends ServerBoundMessageHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("MultiForge/Master");

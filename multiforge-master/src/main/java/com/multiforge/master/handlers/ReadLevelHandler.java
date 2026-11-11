@@ -1,5 +1,7 @@
 package com.multiforge.master.handlers;
 
+import com.multiforge.master.util.MasterStorage;
+
 import com.multiforge.master.util.Log;
 
 import com.multiforge.protocol.messages.masterbound.ReadLevelMessage;
@@ -22,7 +24,7 @@ public class ReadLevelHandler {
         CompletableFuture.runAsync(() -> {
             try {
                 try {
-                    byte[] b = Files.readAllBytes(new File(message.world, "level.dat").toPath());
+                    byte[] b = Files.readAllBytes(MasterStorage.worldFile(message.world, "level.dat").toPath());
                     connection.sendReply(new DataMessageReply(b), message);
                 } catch (NoSuchFileException e) {
                     synchronized (emptyLevelDatLockTimes) {

@@ -40,3 +40,9 @@ Thumbs.db
 .env
 *.env
 secrets.properties
+
+# Local verification runs
+.runtime/
+run2/
+dev-server-args.json
+*.pid

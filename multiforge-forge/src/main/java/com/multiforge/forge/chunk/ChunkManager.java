@@ -9,6 +9,7 @@ import com.multiforge.forge.peer.packet.EntityChunkChangedPacket;
 import com.multiforge.forge.peer.packet.SendChunkPacket;
 import com.multiforge.protocol.ChunkKey;
 import com.multiforge.protocol.messages.masterbound.ChunkChangedStatusMessage;
+import com.multiforge.protocol.messages.masterbound.LockChunkMessage;
 import com.multiforge.protocol.messages.masterbound.RequestChunkOwnershipMessage;
 import com.multiforge.protocol.messages.masterbound.SubscribeChunkMessage;
 import com.multiforge.protocol.messages.masterbound.SubscribeEntitiesMessage;
@@ -247,7 +248,25 @@ public final class ChunkManager {
         if (server.config().debugLogging()) {
             LOGGER.info("Requesting ownership of {}", key);
         }
-        server.master().send(new RequestChunkOwnershipMessage(key.getName(), new ChunkKey[] { key }));
+        // MultiPaper grants ownership with a lock request (first come, first
+        // served); the master answers with SetChunkOwnerMessage which flips the
+        // local flag through onOwnerChanged.
+        server.master().send(new LockChunkMessage(key.getName(), key.getX(), key.getZ()));
+    }
+
+    /**
+     * Forcefully takes ownership of chunks that another server holds. MultiPaper
+     * does this before running redstone that reaches into a foreign chunk; the
+     * master moves the requester to the front of the lock queue.
+     *
+     * @param keys chunks to take over
+     */
+    public void forceTakeOwnership(java.util.Collection<ChunkKey> keys) {
+        if (keys.isEmpty()) {
+            return;
+        }
+        ChunkKey first = keys.iterator().next();
+        server.master().send(new RequestChunkOwnershipMessage(first.getName(), keys.toArray(new ChunkKey[0])));
     }
 
     /**
@@ -260,6 +279,11 @@ public final class ChunkManager {
         ChunkState state = state(key);
         String previous = state.owner();
         String normalized = owner == null || owner.isEmpty() ? null : owner;
+        if (java.util.Objects.equals(previous, normalized)) {
+            // The master announces the owner to the requester and to subscribers,
+            // so the same value can arrive twice.
+            return;
+        }
         state.owner(normalized);
         if (server.serverName().equals(normalized)) {
             ownedLocally.add(key);

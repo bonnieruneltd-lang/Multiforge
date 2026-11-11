@@ -16,11 +16,15 @@ import java.nio.file.Files;
 import java.util.UUID;
 
 /**
- * Uploads statistics after vanilla flushed them to disk.
+ * Keeps player statistics on the master.
  *
- * <p>{@code ServerStatsCounter.save()} writes {@code stats/<uuid>.json}. Uploading in
- * the same call keeps the master's copy at most one save interval behind, which is
- * the same guarantee MultiPaper gives.</p>
+ * <p>Two hooks are needed because vanilla reads the statistics file immediately
+ * when the counter is constructed and writes it when it is saved:</p>
+ * <ul>
+ *   <li>constructor HEAD: copy the master's file to disk so the vanilla parser
+ *       sees the cluster-wide values;</li>
+ *   <li>{@code save} RETURN: upload the file vanilla just wrote.</li>
+ * </ul>
  */
 @Mixin(ServerStatsCounter.class)
 public abstract class ServerStatsCounterMixin {
@@ -40,13 +44,27 @@ public abstract class ServerStatsCounterMixin {
         if (server == null || file == null || !file.isFile()) {
             return;
         }
+        UUID uuid = uuidOf(file);
+        if (uuid == null) {
+            return;
+        }
         try {
-            String name = file.getName();
-            UUID uuid = UUID.fromString(name.substring(0, name.length() - ".json".length()));
             String json = Files.readString(file.toPath(), StandardCharsets.UTF_8);
             server.players().uploadStats(uuid, json);
-        } catch (IOException | IllegalArgumentException e) {
+        } catch (IOException e) {
             // Statistics are best effort; vanilla already has the local copy.
+        }
+    }
+
+    private static UUID uuidOf(File file) {
+        String name = file.getName();
+        if (!name.endsWith(".json")) {
+            return null;
+        }
+        try {
+            return UUID.fromString(name.substring(0, name.length() - ".json".length()));
+        } catch (IllegalArgumentException e) {
+            return null;
         }
     }
 }

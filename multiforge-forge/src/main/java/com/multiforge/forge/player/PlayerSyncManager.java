@@ -213,34 +213,63 @@ public final class PlayerSyncManager {
     }
 
     /**
-     * Copies statistics and advancements from the master into the local files
-     * before vanilla reads them.
+     * Prefetches the statistics and advancement files of a player that is about to
+     * log in.
      *
-     * <p>Vanilla creates the stats/advancement objects inside the
-     * {@code ServerPlayer} constructor, so this must run before that constructor
-     * completes (the mixin calls it at the start).</p>
+     * <p>Vanilla creates the stats and advancement objects inside the
+     * {@code ServerPlayer} constructor, which Mixin 0.8.5 cannot intercept at HEAD;
+     * {@code PlayerList.getPlayerForLogin} is the last hook point before that
+     * constructor runs.</p>
      *
-     * @param uuid   player UUID
+     * @param uuid       player UUID
      * @param playerName player name, for logging only
      */
     public void prefetchPlayerFiles(UUID uuid, String playerName) {
-        if (!server.master().isConnected() || !server.config().syncStatistics() && !server.config().syncAdvancements()) {
+        if (!server.master().isConnected()) {
             return;
         }
-        String world = com.multiforge.forge.common.WorldDirectories.baseWorldName(server.server());
         if (server.config().syncStatistics()) {
-            fetchAndWrite(uuid, playerName, world,
-                    new ReadStatsMessage(world, uuid.toString()),
-                    server.server().getWorldPath(LevelResource.PLAYER_STATS_DIR).resolve(uuid + ".json"));
+            prefetchStats(uuid, server.server().getWorldPath(LevelResource.PLAYER_STATS_DIR).resolve(uuid + ".json"));
         }
         if (server.config().syncAdvancements()) {
-            fetchAndWrite(uuid, playerName, world,
-                    new ReadAdvancementMessage(world, uuid.toString()),
-                    server.server().getWorldPath(LevelResource.PLAYER_ADVANCEMENTS_DIR).resolve(uuid + ".json"));
+            prefetchAdvancements(uuid, server.server().getWorldPath(LevelResource.PLAYER_ADVANCEMENTS_DIR).resolve(uuid + ".json"));
         }
     }
 
-    private void fetchAndWrite(UUID uuid, String playerName, String world,
+    /**
+     * Copies the statistics file from the master into the local file before vanilla
+     * reads it.
+     *
+     * <p>Called from the {@code ServerStatsCounter} constructor. Vanilla reads the
+     * file immediately, so the data has to be on disk first.</p>
+     *
+     * @param uuid        player UUID
+     * @param destination local statistics file
+     */
+    public void prefetchStats(UUID uuid, Path destination) {
+        if (!server.config().syncStatistics() || !server.master().isConnected()) {
+            return;
+        }
+        String world = com.multiforge.forge.common.WorldDirectories.baseWorldName(server.server());
+        fetchAndWrite(uuid, new ReadStatsMessage(world, uuid.toString()), destination);
+    }
+
+    /**
+     * Copies the advancements file from the master into the local file before
+     * vanilla reads it.
+     *
+     * @param uuid        player UUID
+     * @param destination local advancements file
+     */
+    public void prefetchAdvancements(UUID uuid, Path destination) {
+        if (!server.config().syncAdvancements() || !server.master().isConnected()) {
+            return;
+        }
+        String world = com.multiforge.forge.common.WorldDirectories.baseWorldName(server.server());
+        fetchAndWrite(uuid, new ReadAdvancementMessage(world, uuid.toString()), destination);
+    }
+
+    private void fetchAndWrite(UUID uuid,
                                com.multiforge.protocol.messages.masterbound.MasterBoundMessage request,
                                Path destination) {
         try {
@@ -251,9 +280,9 @@ public final class PlayerSyncManager {
             }
             Files.createDirectories(destination.getParent());
             Files.write(destination, reply.data);
-            LOGGER.debug("Prefetched {} for {}", destination.getFileName(), playerName);
+            LOGGER.debug("Prefetched {} for {}", destination.getFileName(), uuid);
         } catch (Exception e) {
-            LOGGER.debug("Could not prefetch {} for {}: {}", destination.getFileName(), playerName, e.toString());
+            LOGGER.debug("Could not prefetch {} for {}: {}", destination.getFileName(), uuid, e.toString());
         }
     }
 

@@ -1,5 +1,7 @@
 package com.multiforge.master.handlers;
 
+import com.multiforge.master.util.MasterStorage;
+
 import com.multiforge.protocol.datastream.OutboundDataStream;
 import com.multiforge.protocol.messages.masterbound.UploadFileMessage;
 import com.multiforge.protocol.messages.serverbound.BooleanMessageReply;
@@ -14,7 +16,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class UploadFileHandler {
     public static void handle(ServerConnection connection, UploadFileMessage message) {
-        File file = new File("synced-server-files", message.path);
+        File file = MasterStorage.sharedFile(message.path);
         FileLocker.createLockAsync(file).thenAcceptAsync(lock -> {
             try {
                 FileLocker.writeBytes(file, message.data);

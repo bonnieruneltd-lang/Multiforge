@@ -2,7 +2,14 @@ package com.multiforge.forge.config;
 
 import net.minecraftforge.common.ForgeConfigSpec;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * MultiForge server configuration, expressed as a Forge {@code SERVER} config.
@@ -152,8 +159,18 @@ public final class MultiForgeConfig {
      * reload event, on the thread that fires the event.
      */
     public static void bake() {
-        Snapshot defaults = Snapshot.defaults();
-        snapshot = new Snapshot(
+        try {
+            snapshot = readValues();
+        } catch (IllegalStateException e) {
+            // Called before Forge loaded the SERVER config (the world-data sync runs
+            // earlier than the config event). Defaults keep the server bootable and
+            // the config is baked again on ModConfigEvent.Loading.
+            snapshot = Snapshot.defaults();
+        }
+    }
+
+    private static Snapshot readValues() {
+        return new Snapshot(
                 MASTER_ADDRESS.get(),
                 SERVER_NAME.get(),
                 PEER_PORT.get(),
@@ -184,15 +201,152 @@ public final class MultiForgeConfig {
                 List.copyOf(FILES_TO_NOT_SYNC.get()),
                 DEBUG_LOGGING.get(),
                 DEBUG_CHUNK_BORDERS.get());
-        if (snapshot.equals(defaults)) {
-            // No-op branch kept explicit: it documents that defaults are valid.
-            snapshot = snapshot;
-        }
     }
 
     /** @return the last baked snapshot */
     public static Snapshot snapshot() {
         return snapshot;
+    }
+
+    /**
+     * Returns the configuration for start-up code that runs before Forge loads the
+     * {@code SERVER} config.
+     *
+     * <p>{@link #bake()} can only read values after the config event fired, but
+     * MultiForge connects to the master inside {@code loadLevel}, which happens
+     * earlier. Rather than hard-coding defaults (which would ignore the operator's
+     * server name and master address), the TOML file is parsed directly with a small
+     * reader for the keys this mod defines. Forge parses the same file later and
+     * {@link #bake()} replaces this snapshot with the authoritative one.</p>
+     *
+     * @param serverDirectory server working directory (contains {@code config})
+     * @return startup snapshot, or the current snapshot when no file exists
+     */
+    public static Snapshot snapshotForStartup(Path serverDirectory) {
+        Path file = serverDirectory.resolve("config").resolve("multiforge-server.toml");
+        if (!Files.isRegularFile(file)) {
+            return snapshot;
+        }
+        try {
+            return parseToml(Files.readString(file, StandardCharsets.UTF_8));
+        } catch (IOException | RuntimeException e) {
+            return snapshot;
+        }
+    }
+
+    /**
+     * Parses the subset of TOML used by the MultiForge config.
+     *
+     * <p>Supports sections, quoted strings, integers, booleans and single line string
+     * arrays. Unknown keys are ignored. This is intentionally not a general TOML
+     * parser: it exists so start-up does not depend on Forge's config lifecycle.</p>
+     *
+     * @param toml file contents
+     * @return snapshot built from the file, with defaults for missing keys
+     */
+    static Snapshot parseToml(String toml) {
+        Snapshot defaults = Snapshot.defaults();
+        Map<String, String> values = new HashMap<>();
+        String section = "";
+        for (String rawLine : toml.split("\n")) {
+            String line = rawLine;
+            int comment = line.indexOf('#');
+            if (comment >= 0) {
+                line = line.substring(0, comment);
+            }
+            line = line.trim();
+            if (line.isEmpty()) {
+                continue;
+            }
+            if (line.startsWith("[") && line.endsWith("]")) {
+                section = line.substring(1, line.length() - 1).trim();
+                continue;
+            }
+            int equals = line.indexOf('=');
+            if (equals < 0) {
+                continue;
+            }
+            values.put(section + "." + line.substring(0, equals).trim(), line.substring(equals + 1).trim());
+        }
+
+        return new Snapshot(
+                string(values, "master.address", defaults.masterAddress()),
+                string(values, "server.name", defaults.serverName()),
+                integer(values, "server.peerPort", defaults.peerPort()),
+                string(values, "server.advertiseHost", defaults.advertiseHost()),
+                integer(values, "server.compressionThreshold", defaults.compressionThreshold()),
+                integer(values, "master.pingIntervalSeconds", defaults.pingIntervalSeconds()),
+                integer(values, "master.reconnectDelaySeconds", defaults.reconnectDelaySeconds()),
+                integer(values, "master.ioTimeoutSeconds", defaults.ioTimeoutSeconds()),
+                integer(values, "master.tpsSyncIntervalTicks", defaults.tpsSyncIntervalTicks()),
+                bool(values, "synchronization.chunks", defaults.chunkSync()),
+                bool(values, "synchronization.entities", defaults.entitySync()),
+                bool(values, "synchronization.players", defaults.playerSync()),
+                bool(values, "synchronization.world", defaults.worldSync()),
+                bool(values, "synchronization.keepLocalChunkBackup", defaults.keepLocalChunkBackup()),
+                integer(values, "synchronization.chunkOwnershipRequestIntervalTicks",
+                        defaults.chunkOwnershipRequestIntervalTicks()),
+                integer(values, "synchronization.chunkUnloadGraceTicks", defaults.chunkUnloadGraceTicks()),
+                bool(values, "synchronization.levelDat", defaults.syncLevelDat()),
+                bool(values, "synchronization.gameRules", defaults.syncGameRules()),
+                bool(values, "synchronization.time", defaults.syncTime()),
+                bool(values, "synchronization.weather", defaults.syncWeather()),
+                bool(values, "synchronization.worldBorder", defaults.syncWorldBorder()),
+                bool(values, "synchronization.jsonFiles", defaults.syncJsonFiles()),
+                bool(values, "synchronization.playerData", defaults.syncPlayerData()),
+                bool(values, "synchronization.statistics", defaults.syncStatistics()),
+                bool(values, "synchronization.advancements", defaults.syncAdvancements()),
+                list(values, "synchronization.filesToSyncOnStartup", defaults.filesToSyncOnStartup()),
+                list(values, "synchronization.filesToSyncInRealTime", defaults.filesToSyncInRealTime()),
+                list(values, "synchronization.filesToNotSync", defaults.filesToNotSync()),
+                bool(values, "debug.logging", defaults.debugLogging()),
+                bool(values, "debug.chunkBorders", defaults.debugChunkBorders()));
+    }
+
+    private static String string(Map<String, String> values, String key, String fallback) {
+        String value = values.get(key);
+        return value == null ? fallback : unquote(value);
+    }
+
+    private static int integer(Map<String, String> values, String key, int fallback) {
+        String value = values.get(key);
+        if (value == null) {
+            return fallback;
+        }
+        try {
+            return Integer.parseInt(unquote(value));
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
+    private static boolean bool(Map<String, String> values, String key, boolean fallback) {
+        String value = values.get(key);
+        return value == null ? fallback : Boolean.parseBoolean(unquote(value));
+    }
+
+    private static List<String> list(Map<String, String> values, String key, List<String> fallback) {
+        String value = values.get(key);
+        if (value == null || !value.startsWith("[") || !value.endsWith("]")) {
+            return fallback;
+        }
+        String body = value.substring(1, value.length() - 1).trim();
+        if (body.isEmpty()) {
+            return List.of();
+        }
+        List<String> result = new ArrayList<>();
+        for (String element : body.split(",")) {
+            result.add(unquote(element.trim()));
+        }
+        return List.copyOf(result);
+    }
+
+    private static String unquote(String value) {
+        String trimmed = value.trim();
+        if (trimmed.length() >= 2 && trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
+            return trimmed.substring(1, trimmed.length() - 1);
+        }
+        return trimmed;
     }
 
     /**

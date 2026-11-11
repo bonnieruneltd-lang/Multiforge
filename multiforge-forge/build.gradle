@@ -14,6 +14,17 @@ base {
     archivesName = mod_id
 }
 
+// The protocol and API modules are pure Java and are compiled into the mod jar.
+// Forge's module layer only sees the mod jar in production and in dev runs, so
+// merging the sources is the most reliable packaging strategy (see
+// docs/ARCHITECTURE.md, "Why the protocol sources are compiled into the mod").
+sourceSets {
+    main {
+        java.srcDir project(':multiforge-protocol').file('src/main/java')
+        java.srcDir project(':multiforge-api').file('src/main/java')
+    }
+}
+
 minecraft {
     mappings channel: mapping_channel, version: mapping_version
     copyIdeResources = true
@@ -27,13 +38,19 @@ minecraft {
             property 'forge.logging.console.level', 'debug'
             property 'mixin.env.remapRefMap', 'true'
             property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+            jvmArg '-Xmx2G'
+            jvmArg '-Djava.awt.headless=true'
+            args '--nogui'
         }
         server2 {
+            client = false
             workingDirectory project.file('run2')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
             property 'mixin.env.remapRefMap', 'true'
             property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+            jvmArg '-Xmx2G'
+            jvmArg '-Djava.awt.headless=true'
             args '--nogui'
         }
     }
@@ -45,9 +62,6 @@ repositories {
 
 dependencies {
     minecraft "net.minecraftforge:forge:${forge_version}"
-
-    implementation project(':multiforge-protocol')
-    implementation project(':multiforge-api')
 
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }
@@ -90,34 +104,4 @@ tasks.named('jar', Jar).configure {
         ])
     }
     finalizedBy 'reobfJar'
-}
-
-// ---------------------------------------------------------------------------
-// Release jar: reobfuscated mod classes plus the protocol and API modules.
-// Both extra modules are pure Java, so they need no reobfuscation and can be
-// merged into the mod jar directly (Forge already ships Netty and Gson).
-// ---------------------------------------------------------------------------
-configurations {
-    bundled
-}
-
-dependencies {
-    bundled project(':multiforge-protocol')
-    bundled project(':multiforge-api')
-}
-
-tasks.register('bundledJar', Jar) {
-    dependsOn tasks.named('reobfJar')
-    archiveClassifier = 'all'
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    manifest {
-        attributes([
-                'MixinConfigs': 'multiforge.mixins.json',
-                'Implementation-Title': 'MultiForge',
-                'Implementation-Version': project.version
-        ])
-    }
-    from(tasks.named('reobfJar').flatMap { it.output })
-    from { configurations.bundled.collect { zipTree(it) } }
-    exclude 'META-INF/MANIFEST.MF', 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
 }

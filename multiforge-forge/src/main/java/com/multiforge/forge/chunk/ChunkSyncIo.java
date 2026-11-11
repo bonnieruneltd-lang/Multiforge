@@ -151,6 +151,8 @@ public final class ChunkSyncIo {
         return server.peers().requestChunk(peer, store.world(), pos.x, pos.z)
                 .thenCompose(data -> {
                     if (data.length > 0) {
+                        LOGGER.debug("Chunk {} {},{},{} received from peer {} ({} bytes)",
+                                store.world(), pos.x, pos.z, peer, data.length);
                         return CompletableFuture.completedFuture(data);
                     }
                     // The peer no longer has the chunk loaded: read the master's

@@ -5,9 +5,9 @@ import com.multiforge.master.util.Log;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.socket.SocketChannel;
 import com.multiforge.protocol.messages.masterbound.*;
-import com.multiforge.protocol.messages.serverbound.PlayerUpdateMessage;
 import com.multiforge.protocol.messages.serverbound.ServerBoundMessage;
 import com.multiforge.protocol.messages.serverbound.SetSecretMessage;
+import com.multiforge.protocol.messages.serverbound.ServerStartedMessage;
 import com.multiforge.protocol.messages.serverbound.ShutdownMessage;
 import com.multiforge.master.handlers.*;
 
@@ -129,6 +129,16 @@ public class ServerConnection extends MasterBoundMessageHandler {
         Log.info("Connection from " + getAddress() + " (" + name + ")");
 
         send(new SetSecretMessage(MultiForgeMaster.SECRET));
+
+        // A server that just connected does not know the addresses of peers that
+        // started earlier (the master only broadcasts Start messages when a server
+        // announces itself). Replay them so peer-to-peer chunk transfers work
+        // immediately instead of waiting for the next start announcement.
+        for (ServerConnection other : connections) {
+            if (other != this && other.name != null && other.port > 0 && other.host != null) {
+                send(new ServerStartedMessage(other.name, other.host, other.port));
+            }
+        }
     }
 
     @Override
@@ -160,6 +170,13 @@ public class ServerConnection extends MasterBoundMessageHandler {
     public boolean hasPlayer(UUID uuid) {
         synchronized (playerUUIDs) {
             return playerUUIDs.contains(uuid);
+        }
+    }
+
+    /** @return number of players currently registered on this server */
+    public int getPlayerCount() {
+        synchronized (playerUUIDs) {
+            return playerUUIDs.size();
         }
     }
 
