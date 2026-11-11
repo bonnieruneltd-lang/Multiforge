@@ -89,7 +89,7 @@ Purpur fork whose functionality lives in three places:
    advancement prefetch therefore happens in `PlayerList.getPlayerForLogin`, before the
    `ServerPlayer` constructor.
 6. **Peer protocol scope.** MultiPaper's 81 peer packets encode Paper-specific object graphs
-   (raids, dragon fight, mob navigation). MultiForge implements the 14 packets needed by the
+   (raids, dragon fight, mob navigation). MultiForge implements the 15 packets needed by the
    ported systems; the rest is additive (ids are append-only).
 7. **Explicit fallbacks.** MultiPaper assumes the master is always available. MultiForge adds
    local-file fallbacks so a cluster degrades instead of corrupting data.

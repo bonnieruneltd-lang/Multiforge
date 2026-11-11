@@ -40,8 +40,9 @@ coding.
     op changes are not broadcast as packets (see item 7).
 11. **Advancement/stat live updates**: files are uploaded on save; MultiPaper also sends
     incremental updates.
-12. **Weather/time conflict resolution**: currently last-writer-wins per broadcast. A logical
-    clock owned by the master would remove the one-tick jitter described in KNOWN_ISSUES.
+12. **Weather conflict resolution**: weather is last-writer-wins on a state transition; time already
+    follows upstream's forced/periodic semantics. A master-owned logical clock would remove the
+    remaining one-tick jitter after a lag spike.
 13. **Master high availability**: multiple masters sharing storage are supported by the file
     locks, but there is no leader election; the built-in proxy would also need it.
 14. **Built-in proxy player balancing**: the proxy currently picks a live server by load; the

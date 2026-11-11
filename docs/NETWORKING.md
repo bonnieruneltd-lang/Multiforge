@@ -132,7 +132,7 @@ varint frameLength, varint uncompressedLength, varint packetId, payload
 | 5 | `BlockChangePacket(world, pos, stateId)` | block update broadcast |
 | 6 | `BlockEntityUpdatePacket(world, pos, nbt)` | block entity update |
 | 7 | `ChatMessagePacket(json, sender, origin)` | cluster-wide chat |
-| 8 | `TimeUpdatePacket` | level time |
+| 8 | `TimeUpdatePacket` | legacy level time (no longer broadcast) |
 | 9 | `WeatherUpdatePacket` | rain/thunder + timers |
 | 10 | `GameRuleUpdatePacket` | single gamerule |
 | 11 | `WorldBorderUpdatePacket` | border state |
