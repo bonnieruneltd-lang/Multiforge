@@ -1,0 +1,1495 @@
+{
+  "generated_by": "tools/compat/resolve_required_mods.py",
+  "minecraft": "1.20.1",
+  "loader": "forge",
+  "forge": "47.3.0",
+  "java": 17,
+  "targets": [
+    {
+      "key": "anti-cords-leaker",
+      "name": "Anti Cords Leaker",
+      "role": "client",
+      "kind": "resourcepack",
+      "slug": "anti-cords-leaker",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "anti-cords-leaker",
+        "version": "v1.1.0",
+        "name": "v1.1.0",
+        "game_versions": [
+          "1.20",
+          "1.20.1"
+        ],
+        "loaders": [
+          "minecraft"
+        ],
+        "environment": "unknown",
+        "filename": "Anti Cords Leaker.zip",
+        "url": "https://cdn.modrinth.com/data/EqJJebCO/versions/RK5ygGjQ/Anti%20Cords%20Leaker.zip",
+        "size": 14270,
+        "sha512": "77f3fc8145c1a6613d63a9e6f0014dc01298bbffcb0429c932a90fa84a299f3a629984741959748b2416d6fef435ab71e41abe3ed79f0c1a772a75e73c21b7d0",
+        "dependencies": [],
+        "date_published": "2026-03-31T13:58:35.758189Z"
+      }
+    },
+    {
+      "key": "badoptimizations",
+      "name": "BadOptimizations",
+      "role": "client",
+      "kind": "mod",
+      "slug": "badoptimizations",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "badoptimizations",
+        "version": "2.4.1",
+        "name": "2.4.1 (1.20.1)",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "fabric",
+          "forge"
+        ],
+        "environment": "client_only",
+        "filename": "BadOptimizations-2.4.1-1.20.1.jar",
+        "url": "https://cdn.modrinth.com/data/g96Z4WVZ/versions/DIugITgU/BadOptimizations-2.4.1-1.20.1.jar",
+        "size": 460234,
+        "sha512": "5e02d9c5a5bc3dccfccbfac4809cda4eb755c015060063b696e92568e0be3d8354a01f6ac5dae99bd27111b7e20bb680512287119459ad069dcf3e7d17cace0f",
+        "dependencies": [],
+        "date_published": "2025-12-15T22:43:02.538022Z"
+      }
+    },
+    {
+      "key": "bsl-shaders",
+      "name": "BSL Shaders",
+      "role": "client",
+      "kind": "shader",
+      "slug": "bsl-shaders",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "bsl-shaders",
+        "version": "10.1.8",
+        "name": "BSL v10.1.8",
+        "game_versions": [
+          "1.10",
+          "1.10.1",
+          "1.10.2",
+          "1.11",
+          "1.11.1",
+          "1.11.2",
+          "1.12",
+          "1.12.1",
+          "1.12.2",
+          "1.13",
+          "1.13.1",
+          "1.13.2",
+          "1.14",
+          "1.14.1",
+          "1.14.2",
+          "1.14.3",
+          "1.14.4",
+          "1.15",
+          "1.15.1",
+          "1.15.2",
+          "1.16",
+          "1.16.1",
+          "1.16.2",
+          "1.16.3",
+          "1.16.4",
+          "1.16.5",
+          "1.17",
+          "1.17.1",
+          "1.18",
+          "1.18.1",
+          "1.18.2",
+          "1.19",
+          "1.19.1",
+          "1.19.2",
+          "1.19.3",
+          "1.19.4",
+          "1.20",
+          "1.20.1",
+          "1.20.2",
+          "1.20.3",
+          "1.20.4",
+          "1.20.5",
+          "1.20.6",
+          "1.21",
+          "1.21.1",
+          "1.21.10",
+          "1.21.11",
+          "1.21.2",
+          "1.21.3",
+          "1.21.4",
+          "1.21.5",
+          "1.21.6",
+          "1.21.7",
+          "1.21.8",
+          "1.21.9",
+          "1.7.10",
+          "1.8",
+          "1.8.1",
+          "1.8.2",
+          "1.8.3",
+          "1.8.4",
+          "1.8.5",
+          "1.8.6",
+          "1.8.7",
+          "1.8.8",
+          "1.8.9",
+          "1.9",
+          "1.9.1",
+          "1.9.2",
+          "1.9.3",
+          "1.9.4",
+          "26.1",
+          "26.1.1",
+          "26.1.2",
+          "26.2",
+          "26.3"
+        ],
+        "loaders": [
+          "iris",
+          "optifine"
+        ],
+        "environment": "unknown",
+        "filename": "BSL_v10.1.8.zip",
+        "url": "https://cdn.modrinth.com/data/Q1vvjJYV/versions/Y68yiql9/BSL_v10.1.8.zip",
+        "size": 1134153,
+        "sha512": "94a3c25d6820868db624e11347873e6b572e7cd571967d9ac6f4690ca5d37ca302a7645d85eec800e0654541e3825fba14d37b5a25d3996aaf038178552be26f",
+        "dependencies": [],
+        "date_published": "2026-09-21T12:25:21.321877Z"
+      }
+    },
+    {
+      "key": "complementary-reimagined",
+      "name": "Complementary Shaders - Reimagined",
+      "role": "client",
+      "kind": "shader",
+      "slug": "complementary-reimagined",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "complementary-reimagined",
+        "version": "r5.9.3",
+        "name": "r5.9.3",
+        "game_versions": [
+          "1.10",
+          "1.10.1",
+          "1.10.2",
+          "1.11",
+          "1.11.1",
+          "1.11.2",
+          "1.12",
+          "1.12.1",
+          "1.12.2",
+          "1.13",
+          "1.13.1",
+          "1.13.2",
+          "1.14",
+          "1.14.1",
+          "1.14.2",
+          "1.14.3",
+          "1.14.4",
+          "1.15",
+          "1.15.1",
+          "1.15.2",
+          "1.16",
+          "1.16.1",
+          "1.16.2",
+          "1.16.3",
+          "1.16.4",
+          "1.16.5",
+          "1.17",
+          "1.17.1",
+          "1.18",
+          "1.18.1",
+          "1.18.2",
+          "1.19",
+          "1.19.1",
+          "1.19.2",
+          "1.19.3",
+          "1.19.4",
+          "1.20",
+          "1.20.1",
+          "1.20.2",
+          "1.20.3",
+          "1.20.4",
+          "1.20.5",
+          "1.20.6",
+          "1.21",
+          "1.21.1",
+          "1.21.10",
+          "1.21.11",
+          "1.21.2",
+          "1.21.3",
+          "1.21.4",
+          "1.21.5",
+          "1.21.6",
+          "1.21.7",
+          "1.21.8",
+          "1.21.9",
+          "1.7.10",
+          "1.8",
+          "1.8.1",
+          "1.8.2",
+          "1.8.3",
+          "1.8.4",
+          "1.8.5",
+          "1.8.6",
+          "1.8.7",
+          "1.8.8",
+          "1.8.9",
+          "1.9",
+          "1.9.1",
+          "1.9.2",
+          "1.9.3",
+          "1.9.4",
+          "26.1",
+          "26.1.1",
+          "26.1.2",
+          "26.2",
+          "26.3"
+        ],
+        "loaders": [
+          "iris",
+          "optifine"
+        ],
+        "environment": "unknown",
+        "filename": "ComplementaryReimagined_r5.9.3.zip",
+        "url": "https://cdn.modrinth.com/data/HVnmMxH1/versions/Bqen1mJX/ComplementaryReimagined_r5.9.3.zip",
+        "size": 553397,
+        "sha512": "45304b1d7862afdb2177b7e6226fc9c6737911d17a4ad46cc9c519ca4deb935f05072cd337cd8b19a15bb8062b57b54eceec7bdee4cd572d94858e2946d37d85",
+        "dependencies": [],
+        "date_published": "2026-09-15T06:35:41.918796Z"
+      }
+    },
+    {
+      "key": "cull-leaves",
+      "name": "Cull Leaves",
+      "role": "client",
+      "kind": "mod",
+      "slug": "cull-leaves",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "cull-leaves",
+        "version": "4.1.1+1.20.1-forge",
+        "name": "CullLeaves 4.1.1 - Forge 1.20.1",
+        "game_versions": [
+          "1.20",
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge"
+        ],
+        "environment": "client_only",
+        "filename": "cullleaves-forge-4.1.1+1.20.1.jar",
+        "url": "https://cdn.modrinth.com/data/GNxdLCoP/versions/yFZM1Bsc/cullleaves-forge-4.1.1%2B1.20.1.jar",
+        "size": 97480,
+        "sha512": "3c68a290b5b546a663d38a1353485aca6f02efbb80fbd1c0e10214d93c27fadd5145f4fb74a7c616a0ce34cb4ffa1a75a62ca386c7d1041bbdf411b29626753f",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "codAaoxh",
+            "file_name": null,
+            "dependency_type": "required"
+          }
+        ],
+        "date_published": "2025-12-12T12:36:27.190855Z"
+      }
+    },
+    {
+      "key": "dynamic-fps",
+      "name": "Dynamic FPS",
+      "role": "client",
+      "kind": "mod",
+      "slug": "dynamic-fps",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "dynamic-fps",
+        "version": "3.11.4",
+        "name": "v3.11.4",
+        "game_versions": [
+          "1.20",
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge"
+        ],
+        "environment": "client_only",
+        "filename": "dynamic-fps-3.11.4+minecraft-1.20.0-forge.jar",
+        "url": "https://cdn.modrinth.com/data/LQ3K71Q1/versions/EjdIWWqG/dynamic-fps-3.11.4%2Bminecraft-1.20.0-forge.jar",
+        "size": 402345,
+        "sha512": "a8234d0c1b4c7a75c7b05b280a5a120dc090be2c252bf4235e34f53751aa74ea2c23614913f1fd7b43d4a841e96e178c8fd935a7630634316821139a056b3237",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "9s6osm5g",
+            "file_name": null,
+            "dependency_type": "optional"
+          }
+        ],
+        "date_published": "2026-01-29T18:21:07.575954Z"
+      }
+    },
+    {
+      "key": "embeddium",
+      "name": "Embeddium",
+      "role": "client",
+      "kind": "mod",
+      "slug": "embeddium",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "embeddium",
+        "version": "0.3.31+mc1.20.1",
+        "name": "[1.20.1] Embeddium 0.3.31",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge",
+          "neoforge"
+        ],
+        "environment": "client_only",
+        "filename": "embeddium-0.3.31+mc1.20.1.jar",
+        "url": "https://cdn.modrinth.com/data/sk9rgfiA/versions/UTbfe5d1/embeddium-0.3.31%2Bmc1.20.1.jar",
+        "size": 1320675,
+        "sha512": "ffbf2da4685260a4d5c14c621708bd20722563f084f042d3dfb0a7b87f048e39299648c854a93939129da0d23a15a91ec628560d601e76074b08e275f6e132e9",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "S1tndFDa",
+            "file_name": null,
+            "dependency_type": "incompatible"
+          },
+          {
+            "version_id": null,
+            "project_id": "4ZqxOvjD",
+            "file_name": null,
+            "dependency_type": "incompatible"
+          }
+        ],
+        "date_published": "2024-08-31T23:11:49.184634Z"
+      }
+    },
+    {
+      "key": "entityculling",
+      "name": "Entity Culling",
+      "role": "client",
+      "kind": "mod",
+      "slug": "entityculling",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "entityculling",
+        "version": "1.11.3",
+        "name": "1.11.3-1.20.1 - Forge",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge"
+        ],
+        "environment": "client_only",
+        "filename": "entityculling-forge-1.11.3-mc1.20.1.jar",
+        "url": "https://cdn.modrinth.com/data/NNAgCjsB/versions/HUUJcFnt/entityculling-forge-1.11.3-mc1.20.1.jar",
+        "size": 1515076,
+        "sha512": "be5be53897ae7403a202e4b0b094701bcc4ecdb94afcf2ea144cd07d9a4553a1fc6a88917732a72c477d01c33583162cffb9c4a19d259089deb018878eec1da8",
+        "dependencies": [],
+        "date_published": "2026-10-08T16:51:39.600503Z"
+      }
+    },
+    {
+      "key": "immediatelyfast",
+      "name": "ImmediatelyFast",
+      "role": "client",
+      "kind": "mod",
+      "slug": "immediatelyfast",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "immediatelyfast",
+        "version": "1.5.5+1.20.4-forge",
+        "name": "ImmediatelyFast 1.5.5",
+        "game_versions": [
+          "1.20",
+          "1.20.1",
+          "1.20.2",
+          "1.20.3",
+          "1.20.4"
+        ],
+        "loaders": [
+          "forge"
+        ],
+        "environment": "client_only",
+        "filename": "ImmediatelyFast-Forge-1.5.5+1.20.4.jar",
+        "url": "https://cdn.modrinth.com/data/5ZwdcRci/versions/rvsLEEZU/ImmediatelyFast-Forge-1.5.5%2B1.20.4.jar",
+        "size": 532063,
+        "sha512": "8fab0605880f6b3875dc6d9d7bc8d69612a3e61a0bfc5adeac3240248715042f04885a09bc4d29383ab809cfc536dff84c6150af56ebd8f08128a1c42909c323",
+        "dependencies": [],
+        "date_published": "2026-06-30T21:36:34.225717Z"
+      }
+    },
+    {
+      "key": "kerria",
+      "name": "Kerria",
+      "role": "client",
+      "kind": "mod",
+      "slug": "kerria-opt",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "kerria-opt",
+        "version": "1.3.2+1.20.1-forge",
+        "name": "Kerria 1.3.2+1.20.1-forge",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge"
+        ],
+        "environment": "client_only",
+        "filename": "Kerria-1.3.2+1.20.1-forge.jar",
+        "url": "https://cdn.modrinth.com/data/f0ruQTF7/versions/SaAPsP1U/Kerria-1.3.2%2B1.20.1-forge.jar",
+        "size": 811090,
+        "sha512": "08180ff049658b661290d8999a3a488b1fbd2179f0a13cc1be2464e29c662a01f15d26855abac299b66b95645c2e94fbbfcb4bb3687bebc6602201b2886b1420",
+        "dependencies": [],
+        "date_published": "2026-07-03T04:04:20.705339Z"
+      }
+    },
+    {
+      "key": "obe",
+      "name": "Optimized Block Entities [OBE]",
+      "role": "client",
+      "kind": "mod",
+      "slug": "obe",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "obe",
+        "version": "1.2.1-patch.3",
+        "name": "Optimized Block Entities 1.2.1-patch.3",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge",
+          "neoforge"
+        ],
+        "environment": "client_only",
+        "filename": "obe+1.20.1-forge-1.2.1-patch.3-srg.jar",
+        "url": "https://cdn.modrinth.com/data/AtOSAunf/versions/GaDC0iZn/obe%2B1.20.1-forge-1.2.1-patch.3-srg.jar",
+        "size": 880726,
+        "sha512": "38403a82b5a9865187803430614a3ef73c7228d963bfed46f7937c51985099aff159a7d76e10ffa98e109ab0761dc5171c20bb34039738438da3eec9e9c14d95",
+        "dependencies": [],
+        "date_published": "2026-11-05T00:30:44.938116Z"
+      }
+    },
+    {
+      "key": "oculus",
+      "name": "Oculus",
+      "role": "client",
+      "kind": "mod",
+      "slug": "oculus",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "oculus",
+        "version": "1.20.1-1.8.0",
+        "name": "Oculus mc1.20.1-1.8.0",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge",
+          "neoforge"
+        ],
+        "environment": "client_only",
+        "filename": "oculus-mc1.20.1-1.8.0.jar",
+        "url": "https://cdn.modrinth.com/data/GchcoXML/versions/iQ1SwGc3/oculus-mc1.20.1-1.8.0.jar",
+        "size": 2851119,
+        "sha512": "1bb4ac77400d6684347988ed298a692c2cb15cf7923693607eb8739b171a20fef7412259e9e157111d9ce21779badab386029956f7d2283a9e611722a373e9d5",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "sk9rgfiA",
+            "file_name": null,
+            "dependency_type": "required"
+          }
+        ],
+        "date_published": "2024-12-24T23:33:42.216148Z"
+      }
+    },
+    {
+      "key": "rrls",
+      "name": "Remove Reloading Screen",
+      "role": "client",
+      "kind": "mod",
+      "slug": "rrls",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "rrls",
+        "version": "4.0.6.1+mc1.20.1-forge",
+        "name": "[NeoForge 1.20.1] v4.0.6.1",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge",
+          "neoforge"
+        ],
+        "environment": "client_only",
+        "filename": "rrls-4.0.6.1+mc1.20.1-forge.jar",
+        "url": "https://cdn.modrinth.com/data/ZP7xHXtw/versions/DMHJY7vL/rrls-4.0.6.1%2Bmc1.20.1-forge.jar",
+        "size": 277896,
+        "sha512": "825f037e40e904b11f2744e2b6fa2823b7cef41ec9e71c10cf71dd89233ed15a9c4687376af32d9e2ec50be92db3bb0ef818712eb88654489aedf35efd726079",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "VbyJLvvb",
+            "file_name": null,
+            "dependency_type": "optional"
+          }
+        ],
+        "date_published": "2024-06-13T10:01:29.612074Z"
+      }
+    },
+    {
+      "key": "embeddium-extra",
+      "name": "Embeddium (Rubidium) Extra",
+      "role": "client",
+      "kind": "mod",
+      "slug": "rubidium-extra",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "rubidium-extra",
+        "version": "0.5.4.4+mc1.20.1-build.131",
+        "name": "[(Neo)Forge 1.20.1] v0.5.4.4",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge",
+          "neoforge"
+        ],
+        "environment": "client_only",
+        "filename": "rubidium-extra-0.5.4.4+mc1.20.1-build.131.jar",
+        "url": "https://cdn.modrinth.com/data/oY2B1pjg/versions/F06DXCMX/rubidium-extra-0.5.4.4%2Bmc1.20.1-build.131.jar",
+        "size": 568608,
+        "sha512": "4067ef8d94fd4022a5f4feb02250d86c96ab10867f526c64e7e02a409ac6d46fbc32e87ffd735b1203f328d147c291e4a8dda1288c1deb3e232a1e5cb13701fb",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "sk9rgfiA",
+            "file_name": null,
+            "dependency_type": "required"
+          },
+          {
+            "version_id": null,
+            "project_id": "GchcoXML",
+            "file_name": null,
+            "dependency_type": "optional"
+          }
+        ],
+        "date_published": "2025-01-19T03:16:19.991940Z"
+      }
+    },
+    {
+      "key": "sildurs-vibrant-lite",
+      "name": "Sildur's Vibrant Shaders (Lite)",
+      "role": "client",
+      "kind": "shader",
+      "slug": "sildurs-vibrant-shaders",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "sildurs-vibrant-shaders",
+        "version": "2.02",
+        "name": "Sildur's Vibrant Shaders 2.02 Lite",
+        "game_versions": [
+          "1.10",
+          "1.10.1",
+          "1.10.2",
+          "1.11",
+          "1.11.1",
+          "1.11.2",
+          "1.12",
+          "1.12.1",
+          "1.12.2",
+          "1.13",
+          "1.13.1",
+          "1.13.2",
+          "1.14",
+          "1.14.1",
+          "1.14.2",
+          "1.14.3",
+          "1.14.4",
+          "1.15",
+          "1.15.1",
+          "1.15.2",
+          "1.16",
+          "1.16.1",
+          "1.16.2",
+          "1.16.3",
+          "1.16.4",
+          "1.16.5",
+          "1.17",
+          "1.17.1",
+          "1.18",
+          "1.18.1",
+          "1.18.2",
+          "1.19",
+          "1.19.1",
+          "1.19.2",
+          "1.19.3",
+          "1.19.4",
+          "1.20",
+          "1.20.1",
+          "1.20.2",
+          "1.20.3",
+          "1.20.4",
+          "1.20.5",
+          "1.20.6",
+          "1.21",
+          "1.21.1",
+          "1.21.10",
+          "1.21.11",
+          "1.21.2",
+          "1.21.3",
+          "1.21.4",
+          "1.21.5",
+          "1.21.6",
+          "1.21.7",
+          "1.21.8",
+          "1.21.9",
+          "1.7.10",
+          "1.8",
+          "1.8.1",
+          "1.8.2",
+          "1.8.3",
+          "1.8.4",
+          "1.8.5",
+          "1.8.6",
+          "1.8.7",
+          "1.8.8",
+          "1.8.9",
+          "1.9",
+          "1.9.1",
+          "1.9.2",
+          "1.9.3",
+          "1.9.4",
+          "26.1",
+          "26.1.1",
+          "26.1.2",
+          "26.2",
+          "26.3"
+        ],
+        "loaders": [
+          "iris",
+          "optifine"
+        ],
+        "environment": "unknown",
+        "filename": "Sildur's Vibrant Shaders v2.02 Lite.zip",
+        "url": "https://cdn.modrinth.com/data/z8EjLYqN/versions/cianYi38/Sildur%27s%20Vibrant%20Shaders%20v2.02%20Lite.zip",
+        "size": 251380,
+        "sha512": "6b92c668fce8dcf933b129ad4967cfc32fb88c47961d64b8dfac49fb4e060d46db2322eabe1196bf88e9d3e45cbdd141d79c42f0d0837d48736c0638e5155331",
+        "dependencies": [],
+        "date_published": "2026-09-15T19:18:19.836961Z"
+      }
+    },
+    {
+      "key": "darcenos-minecarts",
+      "name": "Darceno's Minecarts",
+      "role": "server",
+      "kind": "mod",
+      "slug": "darcenos-minecarts",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "darcenos-minecarts",
+        "version": "1.3+mod",
+        "name": "Darceno's Minecarts 1.3",
+        "game_versions": [
+          "1.20",
+          "1.20.1",
+          "1.20.2",
+          "1.20.3",
+          "1.20.4"
+        ],
+        "loaders": [
+          "fabric",
+          "forge",
+          "quilt"
+        ],
+        "environment": "unknown",
+        "filename": "darcenos-minecarts-1.3.jar",
+        "url": "https://cdn.modrinth.com/data/RZw0JtqY/versions/a4BYvZoy/darcenos-minecarts-1.3.jar",
+        "size": 157510,
+        "sha512": "fa35f07141868368bcafe194288c921e51994f77c4a57034df4889dcfab43b32a54e770be2618ed00359abc3f3eba13f2971911f82807a84fc2e792e5cc2ce88",
+        "dependencies": [],
+        "date_published": "2024-04-25T23:33:19.653610Z"
+      }
+    },
+    {
+      "key": "just-player-heads",
+      "name": "Just Player Heads",
+      "role": "server",
+      "kind": "mod",
+      "slug": "just-player-heads",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "just-player-heads",
+        "version": "1.20.1-4.5-fabric+forge+neo",
+        "name": "[Fabric/Forge/Neo] 1.20.1-4.5",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "fabric",
+          "forge",
+          "neoforge",
+          "quilt"
+        ],
+        "environment": "server_only",
+        "filename": "justplayerheads-1.20.1-4.5.jar",
+        "url": "https://cdn.modrinth.com/data/YdVBZMNR/versions/JpYMby3z/justplayerheads-1.20.1-4.5.jar",
+        "size": 33902,
+        "sha512": "b09143eb335992253b21a3177aacba365cda42719231d3c887cab415459e2e9165c0a760de2f4e353e780d1a1492c25ffa14786a4e1d65777c63f692707aa027",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "e0M1UDsY",
+            "file_name": null,
+            "dependency_type": "required"
+          }
+        ],
+        "date_published": "2026-10-02T02:47:21.047591Z"
+      }
+    },
+    {
+      "key": "timber-strike",
+      "name": "Timber Strike",
+      "role": "server",
+      "kind": "mod",
+      "slug": "timber-strike",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "timber-strike",
+        "version": "1.3+mod",
+        "name": "[MOD] 1.17 - 1.20.4 [1.3]",
+        "game_versions": [
+          "1.17",
+          "1.17.1",
+          "1.18",
+          "1.18.1",
+          "1.18.2",
+          "1.19",
+          "1.19.1",
+          "1.19.2",
+          "1.19.3",
+          "1.19.4",
+          "1.20",
+          "1.20.1",
+          "1.20.2",
+          "1.20.3",
+          "1.20.4"
+        ],
+        "loaders": [
+          "fabric",
+          "forge",
+          "neoforge",
+          "quilt"
+        ],
+        "environment": "unknown",
+        "filename": "timber-strike-1.3.jar",
+        "url": "https://cdn.modrinth.com/data/dLucfkDg/versions/kC5M2ORe/timber-strike-1.3.jar",
+        "size": 91968,
+        "sha512": "c919076bb695ff348e5a8ee677778bc5421818b408a24d661b62e7a0d846e911bba69224d2bf327e7c41754e3d0ceb75d5f37996411cd3504699a64c5d6adb69",
+        "dependencies": [],
+        "date_published": "2024-10-06T18:48:14.699018Z"
+      }
+    },
+    {
+      "key": "lithostitched",
+      "name": "Lithostitched",
+      "role": "server",
+      "kind": "mod",
+      "slug": "lithostitched",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "lithostitched",
+        "version": "1.4.12-forge-20.1",
+        "name": "v1.4.12 ~ Forge 1.20",
+        "game_versions": [
+          "1.20.1",
+          "1.20"
+        ],
+        "loaders": [
+          "forge"
+        ],
+        "environment": "server_only",
+        "filename": "lithostitched-forge-1.20.1-1.4.12.jar",
+        "url": "https://cdn.modrinth.com/data/XaDC71GB/versions/Uqt1Zm1l/lithostitched-forge-1.20.1-1.4.12.jar",
+        "size": 480788,
+        "sha512": "bb96c8518cf0ccfa1210fee4f01ff38cbee09c3b7f82df330cef8fe4d2c8cfca19a1c7d36136fdd3f23804cb814317de99f907cd5880a8bf1229397e0b2ffc25",
+        "dependencies": [],
+        "date_published": "2026-11-07T04:25:06.965118Z"
+      }
+    },
+    {
+      "key": "tectonic",
+      "name": "Tectonic",
+      "role": "server",
+      "kind": "mod",
+      "slug": "tectonic",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "tectonic",
+        "version": "3.0.17",
+        "name": "v3.0.17 ~ Forge 1.20.1",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge"
+        ],
+        "environment": "server_only_client_optional",
+        "filename": "tectonic-3.0.17-forge-1.20.1.jar",
+        "url": "https://cdn.modrinth.com/data/lWDHr9jE/versions/KLmvRxwh/tectonic-3.0.17-forge-1.20.1.jar",
+        "size": 322575,
+        "sha512": "96840393db8e50645d80ee1a04fdecf11b8e9ce5aa807fc1be626429d874fd5b7cb57a6ed8d7d7e2448a3e3f43ef3826f33abeafd430c6d852cb1b1af6c793b2",
+        "dependencies": [],
+        "date_published": "2025-11-08T05:23:39.023934Z"
+      }
+    },
+    {
+      "key": "fast-leaf-decay",
+      "name": "Fast Leaf Decay",
+      "role": "server",
+      "kind": "mod",
+      "slug": "fastleafdecay",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "fastleafdecay",
+        "version": "2.0.0",
+        "name": "FastLeafDecay 2.0.0",
+        "game_versions": [
+          "1.20",
+          "1.20.1",
+          "1.20.2",
+          "1.20.3",
+          "1.20.4",
+          "1.20.5",
+          "1.20.6",
+          "1.21",
+          "1.21.1",
+          "1.21.10",
+          "1.21.11",
+          "1.21.2",
+          "1.21.3",
+          "1.21.4",
+          "1.21.5",
+          "1.21.6",
+          "1.21.7",
+          "1.21.8",
+          "1.21.9",
+          "26.1",
+          "26.1.1",
+          "26.1.2",
+          "26.2",
+          "26.3"
+        ],
+        "loaders": [
+          "forge"
+        ],
+        "environment": "client_and_server",
+        "filename": "fastleafdecay-forge-1.20-26.3.jar",
+        "url": "https://cdn.modrinth.com/data/FnE6S0Zk/versions/Zl6rNgdD/fastleafdecay-forge-1.20-26.3.jar",
+        "size": 21012,
+        "sha512": "08afd68f829d6fc988f8c3d75081f4949d31e5c8581775a44d97ff8316f23fd24507bc56bf37b6184fc83ea3d1c553edd5a3239c99454f49c133012cb4b2d790",
+        "dependencies": [],
+        "date_published": "2026-10-03T15:46:15.495813Z"
+      }
+    },
+    {
+      "key": "ai-improvements",
+      "name": "AI Improvements",
+      "role": "server",
+      "kind": "mod",
+      "slug": "ai-improvements",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "ai-improvements",
+        "version": "0.5.2",
+        "name": "1.20.1-0.5.2",
+        "game_versions": [
+          "1.20",
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge"
+        ],
+        "environment": "server_only",
+        "filename": "AI-Improvements-1.20-0.5.2.jar",
+        "url": "https://cdn.modrinth.com/data/DSVgwcji/versions/eJihmpNQ/AI-Improvements-1.20-0.5.2.jar",
+        "size": 29553,
+        "sha512": "eb932308aceb30f5157e967f1bd4b57eb1a1b2093886cbfaef6524b780337b8b0e2bd41c5103694c3a275827ceb7d63e7c55637a7a46f8e21f0a6770346b757d",
+        "dependencies": [],
+        "date_published": "2023-06-10T14:33:24.693482Z"
+      }
+    },
+    {
+      "key": "async-locator",
+      "name": "Async Locator",
+      "role": "server",
+      "kind": "mod",
+      "slug": "async-locator",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "async-locator",
+        "version": "1.20-1.3.0",
+        "name": "[Forge 1.20] 1.3.0",
+        "game_versions": [
+          "1.20",
+          "1.20.1",
+          "1.20.2"
+        ],
+        "loaders": [
+          "forge"
+        ],
+        "environment": "server_only",
+        "filename": "async-locator-forge-1.20-1.3.0.jar",
+        "url": "https://cdn.modrinth.com/data/rkN8aqci/versions/Eip0qUwF/async-locator-forge-1.20-1.3.0.jar",
+        "size": 264951,
+        "sha512": "84cfbd80bf0a5a53ffa42f1c154e8f5991f27e5924df011849693e00310a2654962f9d9e1aaa237931d8fcc2fe13bd2908f1cd92261b1fed8d5fa2b685d83194",
+        "dependencies": [],
+        "date_published": "2023-06-22T18:23:11.502437Z"
+      }
+    },
+    {
+      "key": "get-it-together-drops",
+      "name": "Get It Together, Drops!",
+      "role": "server",
+      "kind": "mod",
+      "slug": "get-it-together-drops",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "get-it-together-drops",
+        "version": "v1.3",
+        "name": "1.20.1-forge-v1.3",
+        "game_versions": [
+          "1.20",
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge"
+        ],
+        "environment": "server_only",
+        "filename": "getittogetherdrops-forge-1.20-1.3.jar",
+        "url": "https://cdn.modrinth.com/data/T0OUgf8P/versions/csPzTtJp/getittogetherdrops-forge-1.20-1.3.jar",
+        "size": 7863,
+        "sha512": "65ccbff7c6726392e3767305cbab643dab9a8a7cbb4b11e5a8f19de32e7c4e7ac63ff707ca0ae39ed6e6c699832910362b74dbbacb403ef78b524156f29f2b14",
+        "dependencies": [],
+        "date_published": "2023-06-10T18:01:17.003071Z"
+      }
+    },
+    {
+      "key": "ksyxis",
+      "name": "Ksyxis",
+      "role": "server",
+      "kind": "mod",
+      "slug": "ksyxis",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "ksyxis",
+        "version": "1.4.6",
+        "name": "Ksyxis 1.4.6",
+        "game_versions": [
+          "1.10",
+          "1.10.1",
+          "1.10.2",
+          "1.11",
+          "1.11.1",
+          "1.11.2",
+          "1.12",
+          "1.12.1",
+          "1.12.2",
+          "1.13",
+          "1.13.1",
+          "1.13.2",
+          "1.14",
+          "1.14.1",
+          "1.14.2",
+          "1.14.3",
+          "1.14.4",
+          "1.15",
+          "1.15.1",
+          "1.15.2",
+          "1.16",
+          "1.16.1",
+          "1.16.2",
+          "1.16.3",
+          "1.16.4",
+          "1.16.5",
+          "1.17",
+          "1.17.1",
+          "1.18",
+          "1.18.1",
+          "1.18.2",
+          "1.19",
+          "1.19.1",
+          "1.19.2",
+          "1.19.3",
+          "1.19.4",
+          "1.20",
+          "1.20.1",
+          "1.20.2",
+          "1.20.3",
+          "1.20.4",
+          "1.20.5",
+          "1.20.6",
+          "1.21",
+          "1.21.1",
+          "1.21.10",
+          "1.21.11",
+          "1.21.2",
+          "1.21.3",
+          "1.21.4",
+          "1.21.5",
+          "1.21.6",
+          "1.21.7",
+          "1.21.8",
+          "1.21.9",
+          "1.8",
+          "1.8.1",
+          "1.8.2",
+          "1.8.3",
+          "1.8.4",
+          "1.8.5",
+          "1.8.6",
+          "1.8.7",
+          "1.8.8",
+          "1.8.9",
+          "1.9",
+          "1.9.1",
+          "1.9.2",
+          "1.9.3",
+          "1.9.4",
+          "26.1",
+          "26.1.1",
+          "26.1.2",
+          "26.2",
+          "26.3",
+          "26.4-snapshot-1",
+          "26.4-snapshot-2",
+          "26.4-snapshot-3",
+          "26.4-snapshot-4",
+          "26.4-snapshot-5",
+          "26.4-snapshot-6",
+          "26.4-snapshot-7"
+        ],
+        "loaders": [
+          "fabric",
+          "forge",
+          "legacy-fabric",
+          "neoforge",
+          "ornithe",
+          "quilt"
+        ],
+        "environment": "server_only",
+        "filename": "Ksyxis-1.4.6.jar",
+        "url": "https://cdn.modrinth.com/data/2ecVyZ49/versions/kzLBJQLn/Ksyxis-1.4.6.jar",
+        "size": 23873,
+        "sha512": "1571cd9b15b6733002dd164beab4ad1022fab2c904414b39db6fb609a41c48cca394f1751e5634ebc555795d9bd9dba48c2c280c152d9e0f570795d47a91c1d5",
+        "dependencies": [],
+        "date_published": "2026-10-08T21:00:44.344597Z"
+      }
+    },
+    {
+      "key": "noisium",
+      "name": "Noisium",
+      "role": "server",
+      "kind": "mod",
+      "slug": "noisium",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "noisium",
+        "version": "2.3.0+mc1.20-1.20.1",
+        "name": "2.3.0 (1.20-1.20.1)",
+        "game_versions": [
+          "1.20",
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge",
+          "neoforge"
+        ],
+        "environment": "server_only",
+        "filename": "noisium-forge-2.3.0+mc1.20-1.20.1.jar",
+        "url": "https://cdn.modrinth.com/data/KuNKN7d2/versions/gbYUKrDP/noisium-forge-2.3.0%2Bmc1.20-1.20.1.jar",
+        "size": 218152,
+        "sha512": "5bc43bc1b748edcd63d074a8bb14d393d986c51e1933e1f38cd7a2dd2fd70dba5a46a6415f46d4a52c68e7e1e9ce101e54376ad04273df958608e2fdb43db502",
+        "dependencies": [],
+        "date_published": "2024-08-21T17:24:14.967570Z"
+      }
+    },
+    {
+      "key": "radium",
+      "name": "Radium",
+      "role": "server",
+      "kind": "mod",
+      "slug": "radium",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "radium",
+        "version": "0.12.4",
+        "name": "Radium 0.12.4 for 1.20.1",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge",
+          "neoforge"
+        ],
+        "environment": "server_only",
+        "filename": "radium-mc1.20.1-0.12.4+git.26c9d8e.jar",
+        "url": "https://cdn.modrinth.com/data/2gvRmQXx/versions/n947JjJH/radium-mc1.20.1-0.12.4%2Bgit.26c9d8e.jar",
+        "size": 713454,
+        "sha512": "7b59c491d72801257c740626faab8c14ed580db28493c474147341531bca3de5ea822d4042d3786ae619449b6f6ffc1001a1cdc1b9276ec900e57ab17dd8989a",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "qa2H4BS9",
+            "file_name": null,
+            "dependency_type": "incompatible"
+          }
+        ],
+        "date_published": "2024-09-09T08:07:45.955294Z"
+      }
+    },
+    {
+      "key": "servercore",
+      "name": "ServerCore",
+      "role": "server",
+      "kind": "mod",
+      "slug": "servercore",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "servercore",
+        "version": "1.5.2+1.20.1",
+        "name": "ServerCore Forge 1.5.2+1.20.1",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge"
+        ],
+        "environment": "server_only",
+        "filename": "servercore-forge-1.5.2+1.20.1.jar",
+        "url": "https://cdn.modrinth.com/data/4WWQxlQP/versions/rx1c7m6q/servercore-forge-1.5.2%2B1.20.1.jar",
+        "size": 1508496,
+        "sha512": "650f54dcf6d44e26cbc180ca5779857574692f02ff2a55146ed085db1665dde7fb578c75d655e3de064ed56599bc6d38dd547f5f123381c0a54867b98f805b0c",
+        "dependencies": [],
+        "date_published": "2024-11-22T21:48:03.604148Z"
+      }
+    },
+    {
+      "key": "shinoyuki-betterautosave",
+      "name": "Shinoyuki-BetterAutoSave",
+      "role": "server",
+      "kind": "mod",
+      "slug": "shinoyuki-betterautosave",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "shinoyuki-betterautosave",
+        "version": "0.20.2-forge",
+        "name": "BetterAutoSave v0.20.2 (Forge 1.20.1)",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge"
+        ],
+        "environment": "client_and_server",
+        "filename": "shinoyuki_betterautosave-0.20.2-all.jar",
+        "url": "https://cdn.modrinth.com/data/WAXR3mM5/versions/O7TbKoLJ/shinoyuki_betterautosave-0.20.2-all.jar",
+        "size": 1236085,
+        "sha512": "f1699b4fdaa3954391e7e947413dfd5e619e16e75b990d6d2bfafe6168f0c7480b7501eac0326fdb113707ef6bc3afa4a5e88110e158a2ef8010648607e99b43",
+        "dependencies": [],
+        "date_published": "2026-09-21T21:37:30.820856Z"
+      }
+    },
+    {
+      "key": "structure-layout-optimizer",
+      "name": "Structure Layout Optimizer",
+      "role": "server",
+      "kind": "mod",
+      "slug": "structure-layout-optimizer",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "structure-layout-optimizer",
+        "version": "1.0.11+1.20.1-forge",
+        "name": "Structure Layout Optimizer v1.0.11 (forge 1.20.1)",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge"
+        ],
+        "environment": "server_only",
+        "filename": "structure_layout_optimizer-forge-1.0.11.jar",
+        "url": "https://cdn.modrinth.com/data/ayPU0OHc/versions/EazfspJH/structure_layout_optimizer-forge-1.0.11.jar",
+        "size": 246413,
+        "sha512": "e90a40a8a3b4f9a369d9a80bfb7dced3e42a400701d4cb76ace0db8a3eb84757ade10eaa6f9ec9e3dc78dcd4edc87173bdc19f64a4fb8fc047d24ae57ca4466d",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "M1953qlQ",
+            "file_name": null,
+            "dependency_type": "required"
+          }
+        ],
+        "date_published": "2025-10-22T22:53:09.993032Z"
+      }
+    },
+    {
+      "key": "antixray",
+      "name": "AntiXray",
+      "role": "server",
+      "kind": "mod",
+      "slug": "anti-xray",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "anti-xray",
+        "version": "1.4.6+1.20.1",
+        "name": "AntiXray Forge 1.4.6+1.20.1",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge"
+        ],
+        "environment": "server_only",
+        "filename": "antixray-forge-1.4.6+1.20.1.jar",
+        "url": "https://cdn.modrinth.com/data/sml2FMaA/versions/ruAUEszF/antixray-forge-1.4.6%2B1.20.1.jar",
+        "size": 304769,
+        "sha512": "91837b95ac75e6365813a9fdc76c1f9a5d83f26a277901f7268f9063b6b16bb15513bc5e9b135f2ab161bc0cee9f1e16f1ff4cd2d17f34f2b4c4cdc15a7ce601",
+        "dependencies": [],
+        "date_published": "2024-08-16T10:57:59.471955Z"
+      }
+    },
+    {
+      "key": "beautified-chat-server",
+      "name": "Beautified Chat [Server]",
+      "role": "server",
+      "kind": "mod",
+      "slug": "beautified-chat-server",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "beautified-chat-server",
+        "version": "1.20.1-4.0-fabric+forge+neo",
+        "name": "[Fabric/Forge/Neo] 1.20.1-4.0",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "fabric",
+          "forge",
+          "neoforge",
+          "quilt"
+        ],
+        "environment": "server_only",
+        "filename": "beautifiedchatserver-1.20.1-4.0.jar",
+        "url": "https://cdn.modrinth.com/data/C00Y5Ci9/versions/k28RmaLY/beautifiedchatserver-1.20.1-4.0.jar",
+        "size": 60327,
+        "sha512": "746d82f149c32cdb9d6b5dd34bc1f1dbc9b99cc5bfce34c90d0f860241c0fa2124f061590de4352244250c7498d8fc58fed147cc57b28164528f1555abe9937e",
+        "dependencies": [
+          {
+            "version_id": null,
+            "project_id": "e0M1UDsY",
+            "file_name": null,
+            "dependency_type": "required"
+          }
+        ],
+        "date_published": "2026-11-03T00:19:08.204587Z"
+      }
+    },
+    {
+      "key": "combatlog",
+      "name": "Combatlog",
+      "role": "server",
+      "kind": "mod",
+      "slug": "combatlog",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "combatlog",
+        "version": "2.8.5-forge+1.20.1",
+        "name": "CombatLog 2.8.5 Forge 1.20.1",
+        "game_versions": [
+          "1.20.1"
+        ],
+        "loaders": [
+          "forge"
+        ],
+        "environment": "server_only",
+        "filename": "combatlog-2.8.5-forge+1.20.1.jar",
+        "url": "https://cdn.modrinth.com/data/nNnLt4Jb/versions/Qx9hJ95L/combatlog-2.8.5-forge%2B1.20.1.jar",
+        "size": 78965,
+        "sha512": "b7479fda0b592001138e7db9ac265dc446b5e8b2f620b0f717d370a8ca3efac608c4943aae84476374d5ce385f2b2c33fbf0352d0a5a70863e30c57860cf35ba",
+        "dependencies": [],
+        "date_published": "2026-11-08T16:27:49.233846Z"
+      }
+    },
+    {
+      "key": "tpa-teleport",
+      "name": "TPA Teleport",
+      "role": "server",
+      "kind": "mod",
+      "slug": "tpa-teleport",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "tpa-teleport",
+        "version": "1.0.0",
+        "name": "/Tpa Teleport 1.0.0",
+        "game_versions": [
+          "1.20.1",
+          "1.20.2",
+          "1.20.3",
+          "1.20.4",
+          "1.20.5",
+          "1.20.6"
+        ],
+        "loaders": [
+          "forge"
+        ],
+        "environment": "server_only",
+        "filename": "tpateleport-1.0.0.jar",
+        "url": "https://cdn.modrinth.com/data/D6SzkjIt/versions/PDgQhaa6/tpateleport-1.0.0.jar",
+        "size": 11788,
+        "sha512": "317d4ec2d2a62f481a480ac1d3c1d7cd0eddd773f45f79cf543ad68a4777e290f0a839c5129e4fd32e68450c8309aa5040d4d38f7136447ce9b4260afb986dfd",
+        "dependencies": [],
+        "date_published": "2026-02-22T06:16:08.963650Z"
+      }
+    },
+    {
+      "key": "ultimateantiseedcracker",
+      "name": "UltimateAntiSeedCracker",
+      "role": "server",
+      "kind": "datapack",
+      "slug": "ultimateantiseedcracker",
+      "status": "PINNED",
+      "note": "",
+      "artifact": {
+        "project": "ultimateantiseedcracker",
+        "version": "1.0.0",
+        "name": "1.0.0",
+        "game_versions": [
+          "1.20.1",
+          "1.20.2",
+          "1.20.3",
+          "1.20.4"
+        ],
+        "loaders": [
+          "datapack"
+        ],
+        "environment": "unknown",
+        "filename": "UltimateAntiSeedCracker.zip",
+        "url": "https://cdn.modrinth.com/data/4PxXKlFu/versions/4lXrBPMP/UltimateAntiSeedCracker.zip",
+        "size": 7522,
+        "sha512": "865c6d9e876c56f811b83e7883988c857c9e2a7a4c5d50a6ab2e168633c54d0bfa566451f3a8e42fb5cb265d180f9160ae1427895bae422eab4df4bab5157163",
+        "dependencies": [],
+        "date_published": "2024-03-10T08:16:59.291130Z"
+      }
+    }
+  ],
+  "dependencies": {
+    "collective": {
+      "project": "collective",
+      "version": "1.20.1-8.86-fabric+forge+neo",
+      "name": "[Fabric/Forge/Neo] 1.20.1-8.86",
+      "game_versions": [
+        "1.20.1"
+      ],
+      "loaders": [
+        "fabric",
+        "forge",
+        "neoforge",
+        "quilt"
+      ],
+      "environment": "client_or_server_prefers_both",
+      "filename": "collective-1.20.1-8.86.jar",
+      "url": "https://cdn.modrinth.com/data/e0M1UDsY/versions/MCVhyqdJ/collective-1.20.1-8.86.jar",
+      "size": 1131568,
+      "sha512": "3a22ad442684904483449a81ac87afc677f1622d063e76e96e97948b4c80a9f916c615df6742f005a21754121bdf3e8a692ec2dba790de0bee39cffca6b6d76a",
+      "dependencies": [],
+      "date_published": "2026-11-10T21:22:30.185282Z"
+    },
+    "lithostitched": {
+      "project": "lithostitched",
+      "version": "1.4.12-forge-20.1",
+      "name": "v1.4.12 ~ Forge 1.20",
+      "game_versions": [
+        "1.20.1",
+        "1.20"
+      ],
+      "loaders": [
+        "forge"
+      ],
+      "environment": "server_only",
+      "filename": "lithostitched-forge-1.20.1-1.4.12.jar",
+      "url": "https://cdn.modrinth.com/data/XaDC71GB/versions/Uqt1Zm1l/lithostitched-forge-1.20.1-1.4.12.jar",
+      "size": 480788,
+      "sha512": "bb96c8518cf0ccfa1210fee4f01ff38cbee09c3b7f82df330cef8fe4d2c8cfca19a1c7d36136fdd3f23804cb814317de99f907cd5880a8bf1229397e0b2ffc25",
+      "dependencies": [],
+      "date_published": "2026-11-07T04:25:06.965118Z"
+    },
+    "resourceful-config": {
+      "project": "resourceful-config",
+      "version": "2.1.3",
+      "name": "[Forge] Resourceful Config 2.1.3",
+      "game_versions": [
+        "1.20.1"
+      ],
+      "loaders": [
+        "forge"
+      ],
+      "environment": "client_or_server_prefers_both",
+      "filename": "resourcefulconfig-forge-1.20.1-2.1.3.jar",
+      "url": "https://cdn.modrinth.com/data/M1953qlQ/versions/DERs8u7v/resourcefulconfig-forge-1.20.1-2.1.3.jar",
+      "size": 136923,
+      "sha512": "2e05fe27529d00d7808a83dbe0c475a0fb96a20ebfd5c9767f4cc8dcd9a865e20a18de41fb9ed710e5cd2e0211c30303b43c1f22702af1d50ee7212ad83a54d3",
+      "dependencies": [],
+      "date_published": "2025-02-24T20:12:39.956555Z"
+    }
+  },
+  "dependency_names": {
+    "collective": "Collective (required by Just Player Heads)",
+    "resourceful-config": "Resourceful Config (required by Structure Layout Optimizer)"
+  }
+}

@@ -1,0 +1,208 @@
+{
+  "generated_at": "20261111T045747Z",
+  "servers": {
+    "A": 25575,
+    "B": 25576
+  },
+  "passed": 11,
+  "total": 13,
+  "results": [
+    {
+      "check": "master-connected",
+      "passed": true,
+      "detail": "A=live1 | master=connected | tps=20.0 | chunks owned=19 loaded=529 | peers=1 | io reads=2025 writes=0 failures=0 B=live2 | master=connected | tps=20.0 | chunks owned=239 loaded=529 | peers=1 | io reads=2025 writes=0 failures=0"
+    },
+    {
+      "check": "cluster-membership",
+      "passed": true,
+      "detail": "both servers list live1 and live2"
+    },
+    {
+      "check": "required-targets-detected",
+      "passed": false,
+      "detail": "no summary line in /multiforge compat"
+    },
+    {
+      "check": "required-datapack-enabled",
+      "passed": true,
+      "detail": "UltimateAntiSeedCracker.zip enabled"
+    },
+    {
+      "check": "shared-loaded-chunk",
+      "passed": true,
+      "detail": "1 common chunks, using (-1, 16)"
+    },
+    {
+      "check": "block-a-to-b",
+      "passed": true,
+      "detail": "Test passed"
+    },
+    {
+      "check": "block-b-to-a",
+      "passed": true,
+      "detail": "Test passed"
+    },
+    {
+      "check": "block-entity-a-to-b",
+      "passed": true,
+      "detail": "-6, 64, 264 has the following block data: \"minecraft:diamond\""
+    },
+    {
+      "check": "time-sync",
+      "passed": false,
+      "detail": "The time is 6061"
+    },
+    {
+      "check": "gamerule-sync",
+      "passed": true,
+      "detail": "Gamerule doDaylightCycle is currently set to: false"
+    },
+    {
+      "check": "single-authoritative-owner",
+      "passed": true,
+      "detail": "no chunk claimed by both servers"
+    },
+    {
+      "check": "tick-health",
+      "passed": true,
+      "detail": "both servers at 20 TPS"
+    },
+    {
+      "check": "save-all",
+      "passed": true,
+      "detail": "save-all flush completed on both servers"
+    }
+  ],
+  "transcript": [
+    {
+      "server": "A",
+      "command": "multiforge status",
+      "response": "live1 | master=connected | tps=20.0 | chunks owned=19 loaded=529 | peers=1 | io reads=2025 writes=0 failures=0\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge status",
+      "response": "live2 | master=connected | tps=20.0 | chunks owned=239 loaded=529 | peers=1 | io reads=2025 writes=0 failures=0\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge servers",
+      "response": "Servers in this MultiForge cluster:\n - live2 127.0.0.1:44091 tps=20.0 players=0 alive\n - live1 :39167 tps=20.0 players=0 alive\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge servers",
+      "response": "Servers in this MultiForge cluster:\n - live1 127.0.0.1:39167 tps=20.0 players=0 alive\n - live2 :44091 tps=20.0 players=0 alive\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge compat",
+      "response": "MultiForge compatibility (Forge 47.4.29, tested 47.4.29)\nServer targets:\n  [loaded] Darceno's Minecarts 1.3\n  [loaded] Just Player Heads 4.5\n  [loaded] Timber Strike 1.3\n  [loaded] Lithostitched 1.4.12\n  [loaded] Tectonic 3.0.17\n  [loaded] Fast Leaf Decay 2.0.0\n  [loaded] AI Improvements 0.5.2\n  [loaded] Async Locator 1.3.0\n  [loaded] Get It Together, Drops! 1.3\n  [missing] Ksyxis\n  [loaded] Noisium 2.3.0+mc1.20-1.20.1\n  [loaded] Radium 0.12.4+git.26c9d8e\n  [loaded] ServerCore 1.5.2+1.20.1\n  [loaded] Shinoyuki-BetterAutoSave 0.20.2\n  [loaded] Structure Layout Optimizer 1.0.11\n  [loaded] AntiXray 1.4.6\n  [loaded] Beautified Chat [Server] 4.0\n  [loaded] Combatlog 2.8.5\n  [loaded] TPA Teleport 1.0.0\n  [pack] UltimateAntiSeedCracker (datapack, not detectable from the server)\nClient targets:\n  [pack] Anti Cords Leaker (resourcepack, not detectable from the server)\n  [missing] BadOptimizations\n  [pack] BSL Shaders (shader, not detectable from the server)\n  [pack] Complementary Shaders - Reimagined (shader, not detectable from the server)\n  [missing] Cull Leaves\n  [missing] Dynamic FPS\n  [missing] Embeddium\n  [missing] Entity Culling\n  [missing] ImmediatelyFast\n  [missing] Kerria\n  [missing] Optimized Block Entities [OBE]\n  [missing] Oculus\n  [missing] Remove Reloading Screen\n  [missing] Embeddium (Rubidium) Extra\n  [pack] Sildur's Vibrant Shaders (Lite) (shader, not detectable from the server)\nNo conflicts detected.\n"
+    },
+    {
+      "server": "A",
+      "command": "datapack list",
+      "response": "There are 28 data pack(s) enabled: [vanilla (built-in)], [mod:multiforge], [mod:forge], [mod:shinoyuki_betterautosave], [mod:mr_timber_strike], [mod:radium], [mod:getittogetherdrops], [mod:tpateleport], [mod:lithostitched], [mod:resourcefulconfig], [mod:servercore], [mod:justplayerheads], [mod:collective], [mod:noisium], [mod:mixinextras], [mod:antixray], [mod:beautifiedchatserver], [mod:aiimprovements], [mod:asynclocator], [mod:structure_layout_optimizer], [mod:fastleafdecay], [mod:combatlog], [mod:mr_darcenos_minecarts], [mod:tectonic], [file/UltimateAntiSeedCracker.zip (world)], [tectonic/tectonic (built-in)], [tectonic/tectonic/overlay.mod (built-in)], [lithostitched/breaks_seed_parity (built-in)]\nThere are no more data packs available\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunks",
+      "response": "Chunks owned by live1: 19\n - world,-2,9\n - world,5,12\n - world,5,-5\n - world,12,-4\n - world,3,4\n - world,11,12\n - world,4,7\n - world,5,-1\n - world,3,3\n - world,0,0\n - world,5,-4\n - world,-1,8\n - world,-2,8\n - world,5,0\n - world,4,5\n - world,10,6\n - world,4,4\n - world,-1,9\n - world,11,14\nLoaded chunks on this server:\n - world,11,-4 owner=unowned\n - world,-9,3 owner=live2\n - world,10,-1 owner=unowned\n - world,-5,16 owner=live2\n - world,-5,-6 owner=unowned\n - world,-6,16 owner=live2\n - world,9,14 owner=unowned\n - world,-7,1 owner=unowned\n - world,-2,1 owner=unowned\n - world,-3,7 owner=unowned\n - world,11,4 owner=unowned\n - world,-1,16 owner=live2\n - world,2,-5 owner=unowned\n - world,5,-2 owner=unowned\n - world,1,-4 owner=unowned\n - world,-7,11 owner=unowned\n - world,7,1 owner=unowned\n - world,12,-5 owner=unowned\n - world,6,7 owner=unowned\n - world,7,11 owner=unowned\n - world,-7,16 owner=live2\n - world,0,11 owner=unowned\n - world,3,-4 owner=unowned\n - world,0,8 owner=unowned\n - world,8,-6 owner=unowned\n - world,-9,9 owner=unowned\n - world,-7,7 owner=unowned\n - world,-1,-5 owner=unowned\n - world,2,8 owner=unowned\n - world,12,-1 owner=unowned\n - world,12,-2 owner=unowned\n - world,-2,3 owner=unowned\n - world,9,-5 owner=unowned\n - world,8,6 owner=unowned\n - world,1,1 owner=unowned\n - world,-4,6 owner=unowned\n - world,10,10 owner=unowned\n - world,-6,-3 owner=unowned\n - world,7,0 owner=unowned\n - world,7,-4 owner=unowned\n - world,-6,12 owner=unowned\n - world,3,1 owner=unowned\n - world,13,-4 owner=unowned\n - world,9,-4 owner=unowned\n - world,-1,-1 owner=unowned\n - world,1,7 owner=unowned\n - world,-8,0 owner=unowned\n - world,9,0 owner=unowned\n - world,4,9 owner=unowned\n - world,13,4 owner=unowned\n... (truncated)\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunks",
+      "response": "Chunks owned by live2: 239\n - world,-16,3\n - world,-17,5\n - world,-12,10\n - world,-10,8\n - world,-16,-3\n - world,-18,14\n - world,-11,7\n - world,-17,11\n - world,-15,-1\n - world,-16,-2\n - world,-13,9\n - world,-14,8\n - world,-16,4\n - world,-15,-4\n - world,-18,15\n - world,-16,2\n - world,-20,5\n - world,-15,0\n - world,-8,16\n - world,-15,6\n - world,-13,7\n - world,-20,11\n - world,-11,9\n - world,-18,12\n - world,-21,11\n - world,-16,6\n - world,-10,7\n - world,-9,16\n - world,-19,15\n - world,-21,5\n - world,-14,7\n - world,-16,0\n - world,-11,8\n - world,-15,2\n - world,-15,-2\n - world,-15,4\n - world,-16,-4\n - world,-15,3\n - world,-2,16\n - world,-14,9\n - world,-13,8\n - world,-15,-3\n - world,-21,3\n - world,-1,16\n - world,-21,-3\n - world,-17,0\n - world,-20,-4\n - world,-17,6\n - world,-21,-2\n - world,-21,4\n... (truncated)\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -8 64 264 minecraft:gold_block",
+      "response": "Changed the block at -8, 64, 264\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -8 64 264 minecraft:gold_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "setblock -7 64 264 minecraft:diamond_block",
+      "response": "Changed the block at -7, 64, 264\n"
+    },
+    {
+      "server": "A",
+      "command": "execute if block -7 64 264 minecraft:diamond_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -6 64 264 minecraft:chest",
+      "response": "Changed the block at -6, 64, 264\n"
+    },
+    {
+      "server": "A",
+      "command": "item replace block -6 64 264 container.0 with minecraft:diamond 5",
+      "response": "Replaced a slot at -6, 64, 264 with [Diamond]\n"
+    },
+    {
+      "server": "B",
+      "command": "data get block -6 64 264 Items[0].id",
+      "response": "-6, 64, 264 has the following block data: \"minecraft:diamond\"\n"
+    },
+    {
+      "server": "A",
+      "command": "time set 6000",
+      "response": "Set the time to 6000\n"
+    },
+    {
+      "server": "B",
+      "command": "time query daytime",
+      "response": "The time is 6061\n"
+    },
+    {
+      "server": "A",
+      "command": "gamerule doDaylightCycle false",
+      "response": "Gamerule doDaylightCycle is now set to: false\n"
+    },
+    {
+      "server": "B",
+      "command": "gamerule doDaylightCycle",
+      "response": "Gamerule doDaylightCycle is currently set to: false\n"
+    },
+    {
+      "server": "A",
+      "command": "gamerule doDaylightCycle true",
+      "response": "Gamerule doDaylightCycle is now set to: true\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunks",
+      "response": "Chunks owned by live1: 19\n - world,-2,9\n - world,5,12\n - world,5,-5\n - world,12,-4\n - world,3,4\n - world,11,12\n - world,4,7\n - world,5,-1\n - world,3,3\n - world,0,0\n - world,5,-4\n - world,-1,8\n - world,-2,8\n - world,5,0\n - world,4,5\n - world,10,6\n - world,4,4\n - world,-1,9\n - world,11,14\nLoaded chunks on this server:\n - world,11,-4 owner=unowned\n - world,-9,3 owner=live2\n - world,10,-1 owner=unowned\n - world,-5,16 owner=live2\n - world,-5,-6 owner=unowned\n - world,-6,16 owner=live2\n - world,9,14 owner=unowned\n - world,-7,1 owner=unowned\n - world,-2,1 owner=unowned\n - world,-3,7 owner=unowned\n - world,11,4 owner=unowned\n - world,-1,16 owner=live2\n - world,2,-5 owner=unowned\n - world,5,-2 owner=unowned\n - world,1,-4 owner=unowned\n - world,-7,11 owner=unowned\n - world,7,1 owner=unowned\n - world,12,-5 owner=unowned\n - world,6,7 owner=unowned\n - world,7,11 owner=unowned\n - world,-7,16 owner=live2\n - world,0,11 owner=unowned\n - world,3,-4 owner=unowned\n - world,0,8 owner=unowned\n - world,8,-6 owner=unowned\n - world,-9,9 owner=unowned\n - world,-7,7 owner=unowned\n - world,-1,-5 owner=unowned\n - world,2,8 owner=unowned\n - world,12,-1 owner=unowned\n - world,12,-2 owner=unowned\n - world,-2,3 owner=unowned\n - world,9,-5 owner=unowned\n - world,8,6 owner=unowned\n - world,1,1 owner=unowned\n - world,-4,6 owner=unowned\n - world,10,10 owner=unowned\n - world,-6,-3 owner=unowned\n - world,7,0 owner=unowned\n - world,7,-4 owner=unowned\n - world,-6,12 owner=unowned\n - world,3,1 owner=unowned\n - world,13,-4 owner=unowned\n - world,9,-4 owner=unowned\n - world,-1,-1 owner=unowned\n - world,1,7 owner=unowned\n - world,-8,0 owner=unowned\n - world,9,0 owner=unowned\n - world,4,9 owner=unowned\n - world,13,4 owner=unowned\n... (truncated)\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunks",
+      "response": "Chunks owned by live2: 239\n - world,-16,3\n - world,-17,5\n - world,-12,10\n - world,-10,8\n - world,-16,-3\n - world,-18,14\n - world,-11,7\n - world,-17,11\n - world,-15,-1\n - world,-16,-2\n - world,-13,9\n - world,-14,8\n - world,-16,4\n - world,-15,-4\n - world,-18,15\n - world,-16,2\n - world,-20,5\n - world,-15,0\n - world,-8,16\n - world,-15,6\n - world,-13,7\n - world,-20,11\n - world,-11,9\n - world,-18,12\n - world,-21,11\n - world,-16,6\n - world,-10,7\n - world,-9,16\n - world,-19,15\n - world,-21,5\n - world,-14,7\n - world,-16,0\n - world,-11,8\n - world,-15,2\n - world,-15,-2\n - world,-15,4\n - world,-16,-4\n - world,-15,3\n - world,-2,16\n - world,-14,9\n - world,-13,8\n - world,-15,-3\n - world,-21,3\n - world,-1,16\n - world,-21,-3\n - world,-17,0\n - world,-20,-4\n - world,-17,6\n - world,-21,-2\n - world,-21,4\n... (truncated)\n"
+    },
+    {
+      "server": "A",
+      "command": "forge tps",
+      "response": "Dim minecraft:overworld (minecraft:overworld): Mean tick time: 0.872 ms. Mean TPS: 20.000\nDim minecraft:the_end (minecraft:the_end): Mean tick time: 0.030 ms. Mean TPS: 20.000\nDim minecraft:the_nether (minecraft:the_nether): Mean tick time: 0.012 ms. Mean TPS: 20.000\nOverall: Mean tick time: 1.259 ms. Mean TPS: 20.000\n"
+    },
+    {
+      "server": "B",
+      "command": "forge tps",
+      "response": "Dim minecraft:overworld (minecraft:overworld): Mean tick time: 0.780 ms. Mean TPS: 20.000\nDim minecraft:the_end (minecraft:the_end): Mean tick time: 0.017 ms. Mean TPS: 20.000\nDim minecraft:the_nether (minecraft:the_nether): Mean tick time: 0.007 ms. Mean TPS: 20.000\nOverall: Mean tick time: 1.485 ms. Mean TPS: 20.000\n"
+    },
+    {
+      "server": "A",
+      "command": "save-all flush",
+      "response": "Saving the game (this may take a moment!)\nSaved the game\n"
+    },
+    {
+      "server": "B",
+      "command": "save-all flush",
+      "response": "Saving the game (this may take a moment!)\nSaved the game\n"
+    }
+  ]
+}
