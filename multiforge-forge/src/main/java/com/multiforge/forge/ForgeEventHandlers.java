@@ -4,6 +4,7 @@ import com.multiforge.forge.chunk.ChunkStorageRegistry;
 import com.multiforge.forge.config.MultiForgeConfig;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.level.ChunkEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.event.ServerChatEvent;
@@ -109,6 +110,30 @@ public final class ForgeEventHandlers {
         if (event.getChunk() instanceof net.minecraft.world.level.chunk.LevelChunk) {
             runtime.chunks().onChunkUnload(level, event.getChunk().getPos());
         }
+    }
+
+    /**
+     * Assigns a cluster-unique entity id when an entity joins a server level.
+     *
+     * <p>Forge fires {@link EntityJoinLevelEvent} from
+     * {@code PersistentEntitySectionManager.addEntity} before the entity is
+     * inserted into the section storage, so changing the id here is safe for the
+     * server's id map and for clients (they have not seen the entity yet). The id
+     * comes from the block the master reserved for this server, which is what
+     * keeps two servers from handing the same id to different entities.</p>
+     *
+     * <p>Client levels are ignored; entity ids are a server-side concept.</p>
+     *
+     * @param event entity join event
+     */
+    @SubscribeEvent
+    public static void onEntityJoinLevel(EntityJoinLevelEvent event) {
+        MultiForgeServer runtime = MultiForgeServer.instanceOrNull();
+        if (runtime == null || event.getLevel().isClientSide() || runtime.isStopping()
+                || !runtime.config().entitySync()) {
+            return;
+        }
+        event.getEntity().setId(runtime.entityIds().nextId());
     }
 
     /**

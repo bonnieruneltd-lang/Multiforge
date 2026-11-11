@@ -17,9 +17,13 @@ coding.
    (`MultiPaperInventoryHandler`, `MultiPaperEnderChestHandler`, `MultiPaperEffectsHandler`).
    Player data files are already synchronized; live changes while a player is online on
    another server are not.
-4. **Entity id allocation** - done: `RequestEntityIdBlockHandler` hands out disjoint,
-   persisted blocks (`lastblock.txt` in the master storage root) and rejects exhaustion.
-   The mod does not request blocks yet; do that when entity mirroring is implemented.
+4. **Entity id allocation** - done end to end. `RequestEntityIdBlockHandler` hands out
+   disjoint, persisted blocks (`lastblock.txt` in the master storage root) and rejects
+   exhaustion; the mod now receives a block at startup/reconnect, prefetches one block ahead
+   and assigns every entity that joins a level an id from it (`EntityIdAllocator`,
+   `EntityJoinLevelEvent`). `twoServersAllocateDisjointEntityIdsThroughTheirAllocators`
+   proves two live server connections never overlap. During a master outage the allocator
+   falls back to a high local range and logs once (see KNOWN_ISSUES).
 5. **Peer packet coverage**: port the remaining MultiPaper packets (teleport, hurt, equipment,
    mob navigation handover, raids, dragon fight, projectile hits, container interactions,
    sign editing, pistons, statistics/advancement live updates).

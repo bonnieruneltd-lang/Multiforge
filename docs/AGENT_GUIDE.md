@@ -59,8 +59,8 @@ touching code, then read the architecture document of the subsystem you change.
 
 ```bash
 ./gradlew build                        # compiles protocol, api, master, mod
-./gradlew :multiforge-protocol:test    # 17 tests
-./gradlew :multiforge-master:test      # 24 integration tests
+./gradlew :multiforge-protocol:test    # 21 tests
+./gradlew :multiforge-master:test      # 25 integration tests
 ```
 
 For changes to chunk IO, ownership or player handling also run a live cluster (DEVELOPMENT.md)
@@ -75,7 +75,7 @@ and confirm:
 ## 5. Current state and next best steps
 
 * Verified this session: clean build on Forge 47.4.29 (bumped for Structure Layout
-  Optimizer 1.0.11), 17 protocol tests and 24 master integration tests pass.
+  Optimizer 1.0.11), 21 protocol tests and 25 master integration tests pass.
 * Verified live: master + two Forge 47.4.29 servers with the pinned compatibility set.
   `tools/compat/cluster_check.py` passed 13/13 checks (blocks both directions, chest
   inventory, time, gamerule, single owner, 20 TPS, save-all) with 18/19 server mods loaded.

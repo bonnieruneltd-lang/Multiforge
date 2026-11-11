@@ -26,8 +26,8 @@ Artifacts:
 ## Tests
 
 ```bash
-./gradlew :multiforge-protocol:test   # 17 tests: wire format, message round-trips, data streams
-./gradlew :multiforge-master:test     # 24 tests: real TCP integration against a master
+./gradlew :multiforge-protocol:test   # 21 tests: wire format, message round-trips, data streams
+./gradlew :multiforge-master:test     # 25 tests: real TCP integration against a master
 ```
 
 The master tests start a master on an ephemeral port with a temporary storage root and a

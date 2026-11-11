@@ -26,12 +26,19 @@ Player data files, statistics and advancements are synchronized on save/load. Ch
 while a player is online on another server are not pushed as packets (MultiPaper's inventory,
 ender chest, effects and hunger handlers are not ported).
 
-### 3. Entity ids can collide (fixed master-side, not used by the mod yet)
+### 3. Entity ids during a master outage
 
-The master now hands out disjoint, persisted entity id blocks
+The master hands out disjoint, persisted entity id blocks
 (`RequestEntityIdBlockHandler`, `lastblock.txt` in the master storage root), tested by
-`entityIdBlocksAreDisjointAndPersisted`. The mod does not request a block yet because live
-entity mirroring is not implemented; do it when entity packets are ported.
+`entityIdBlocksAreDisjointAndPersisted`. The mod requests a block at startup/reconnect and
+prefetches one ahead (`EntityIdAllocator`), and every entity that joins a level gets an id
+from the block, so two servers never hand the same id to different entities.
+
+**Remaining risk:** while the master is unreachable no block can be reserved. Blocking
+entity spawns until the master returns would freeze the server, so the allocator falls back
+to a descending high range (`Integer.MAX_VALUE` downwards) and logs once. Ids from that range
+cannot collide with master blocks in practice (the master counter starts at zero), but they
+are not persisted. See `EntityIdAllocatorTest.unavailableMasterFallsBackAndReportsIt`.
 
 ### 4. Chunk generation is single-owner but still local to one server
 

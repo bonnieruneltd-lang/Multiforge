@@ -15,13 +15,16 @@ import com.multiforge.forge.player.PlayerSyncManager;
 import com.multiforge.forge.world.FileSyncer;
 import com.multiforge.forge.world.WorldSyncManager;
 import com.multiforge.protocol.ChunkKey;
+import com.multiforge.protocol.entity.EntityIdAllocator;
 import com.multiforge.protocol.messages.masterbound.ReadLevelMessage;
 import com.multiforge.protocol.messages.masterbound.ReadUidMessage;
+import com.multiforge.protocol.messages.masterbound.RequestEntityIdBlock;
 import com.multiforge.protocol.messages.masterbound.SetPortMessage;
 import com.multiforge.protocol.messages.masterbound.StartMessage;
 import com.multiforge.protocol.messages.masterbound.WriteLevelMessage;
 import com.multiforge.protocol.messages.masterbound.WriteUidMessage;
 import com.multiforge.protocol.messages.serverbound.DataMessageReply;
+import com.multiforge.protocol.messages.serverbound.IntegerPairMessageReply;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.storage.LevelResource;
@@ -80,6 +83,7 @@ public final class MultiForgeServer {
     private final WorldSyncManager world;
     private final PlayerSyncManager players;
     private final FileSyncer files;
+    private final EntityIdAllocator entityIds;
     private final ModCompatibilityManager compat;
     private final MultiForgeApiImpl api;
 
@@ -105,6 +109,9 @@ public final class MultiForgeServer {
         this.files = new FileSyncer(this);
         this.compat = new ModCompatibilityManager(this);
         this.api = new MultiForgeApiImpl(this);
+        this.entityIds = new EntityIdAllocator(
+                () -> master.request(new RequestEntityIdBlock(), IntegerPairMessageReply.class),
+                message -> LOGGER.warn("Entity id allocation: {}", message));
     }
 
     /**
@@ -292,6 +299,7 @@ public final class MultiForgeServer {
     public void onMasterConnected() {
         LOGGER.info("Master connection established, re-subscribing chunks");
         announce();
+        entityIds.prefetch();
         world.invalidate();
         chunks.onMasterReconnected();
         files.onMasterReconnected();
@@ -405,6 +413,7 @@ public final class MultiForgeServer {
         peerServer.stop();
         master.stop();
         players.clear();
+        entityIds.clear();
         chunks.clear();
         levels.clear();
         ChunkStorageRegistry.clear();
@@ -484,6 +493,11 @@ public final class MultiForgeServer {
     /** @return file synchronization */
     public FileSyncer files() {
         return files;
+    }
+
+    /** @return cluster-unique entity id allocator backed by the master */
+    public EntityIdAllocator entityIds() {
+        return entityIds;
     }
 
     /** @return required-target detection and compatibility reporting */

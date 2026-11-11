@@ -3,6 +3,7 @@ package com.multiforge.master;
 import com.multiforge.master.util.MasterStorage;
 import com.multiforge.master.handlers.RequestEntityIdBlockHandler;
 import com.multiforge.protocol.ChunkKey;
+import com.multiforge.protocol.entity.EntityIdAllocator;
 import com.multiforge.protocol.MessageBootstrap;
 import com.multiforge.protocol.messages.masterbound.CallDataStorageMessage;
 import com.multiforge.protocol.messages.masterbound.ChunkChangedStatusMessage;
@@ -59,6 +60,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * End-to-end tests of the master against real TCP clients speaking the production
@@ -474,6 +476,52 @@ class MasterIntegrationTest {
         RequestEntityIdBlockHandler.resetForTests();
         IntegerPairMessageReply afterRestart = a.request(new RequestEntityIdBlock()).get();
         assertEquals(second.y, afterRestart.x, "allocation must resume from the persisted counter");
+    }
+
+    @Test
+    void twoServersAllocateDisjointEntityIdsThroughTheirAllocators() throws Exception {
+        TestServerClient a = client("entityids-alloc-a");
+        TestServerClient b = client("entityids-alloc-b");
+
+        // This is exactly the plumbing the mod installs: the allocator asks the
+        // master for a block and hands ids out locally.
+        EntityIdAllocator allocatorA = new EntityIdAllocator(
+                () -> requestBlock(a), message -> fail(message));
+        EntityIdAllocator allocatorB = new EntityIdAllocator(
+                () -> requestBlock(b), message -> fail(message));
+
+        allocatorA.prefetch().get(5, TimeUnit.SECONDS);
+        allocatorB.prefetch().get(5, TimeUnit.SECONDS);
+
+        java.util.Set<Integer> idsA = new java.util.HashSet<>();
+        java.util.Set<Integer> idsB = new java.util.HashSet<>();
+        for (int i = 0; i < 32; i++) {
+            idsA.add(allocatorA.nextId());
+            idsB.add(allocatorB.nextId());
+        }
+
+        assertTrue(java.util.Collections.disjoint(idsA, idsB),
+                "two servers must never allocate the same entity id");
+        // Every id comes from a block the master reserved, so it lies in a
+        // multiple of the block size and below the persisted counter.
+        int blockSize = RequestEntityIdBlockHandler.blockSize();
+        for (int id : idsA) {
+            assertTrue(id >= 0 && id / blockSize < 1_000_000, "unexpected entity id " + id);
+        }
+    }
+
+    /**
+     * Performs one blocking block request through the production protocol.
+     *
+     * @param client connected test server
+     * @return completed future with the master's reply, or a failed future
+     */
+    private static CompletableFuture<IntegerPairMessageReply> requestBlock(TestServerClient client) {
+        try {
+            return CompletableFuture.completedFuture(client.request(new RequestEntityIdBlock()).get());
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 
 
