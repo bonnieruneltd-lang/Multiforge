@@ -97,6 +97,44 @@ refmap and the mixin config are out of date and Mixin will fail at class transfo
 The option exists in the config and is documented as reserved. Either implement it or remove
 it (see TODO.md item 16).
 
+## Interoperability and compatibility findings (session 3)
+
+### 14. Master region files are not readable by vanilla tools
+
+The master stores the bytes it receives (gzip-compressed NBT) under the region format's
+zlib version byte (`VERSION_DEFLATE = 2`). MultiForge's own read path decodes gzip, so the
+cluster works, but a standard region reader or a plain Forge server pointed at the master
+storage sees `incorrect header check`. Do not change the format without a migration plan and
+a round-trip test using a vanilla-format reader. Tracked in TODO.
+
+### 15. `/forceload` tickets disappear while Ksyxis is installed
+
+With Ksyxis 1.4.6 loaded, `forceload add` reported success but `forceload query` immediately
+showed no ticket and the chunk did not stay loaded. Player-driven chunk loading is not
+affected. The compatibility harness removes Ksyxis from both servers so it can find a common
+spawn chunk; the full 19/19 startup including Ksyxis was verified separately.
+
+### 16. Radium wins a mixin redirect over ServerCore
+
+`servercore.common.mixins.json:optimizations.ticking.chunk.cache.ServerChunkCacheMixin`
+logs `@Redirect conflict` and is skipped because Radium's `lithium.mixins.json` redirect has
+priority 1000. The server is correct; one ServerCore optimisation is inactive. BetterAutoSave
+also disables its synchronous chunk-load detector because Radium overwrites
+`ServerChunkCache.getChunk`. There is no config profile yet that restores both.
+
+### 17. BetterAutoSave probes `level.dat` before MultiForge downloads it
+
+During startup BetterAutoSave logs `level.dat ... MISSING` because MultiForge fetches
+`level.dat` from the master in `loadLevel`, after the first BetterAutoSave probe. The file
+is present afterwards (`Loaded level.dat (... bytes) from the master`) and the server runs.
+The message is cosmetic but confusing; a future adapter could delay the probe or silence it.
+
+### 18. Timber Strike 3.0 is mislabelled for 1.20.1
+
+Its Modrinth version lists 1.20.1 but its data-pack functions use 1.20.2 `return run`
+syntax; every tree function fails to parse. Pin `timber-strike-1.3.jar`, which loads cleanly.
+This is a target-mod defect, recorded so nobody re-pins 3.0.
+
 ## Fixed issues worth knowing about (regression tests cover them)
 
 * Data stream downloads were truncated at 64 KiB because the outbound stream reused the

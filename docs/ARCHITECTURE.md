@@ -10,7 +10,7 @@ the first file to read before changing a subsystem.
 | `multiforge-protocol` | Netty framing, message registry, data streams, complete master <-> server message set, `ChunkKey` | none |
 | `multiforge-api` | Stable, Minecraft-free API (`MultiForgeApi`, `ServerInfo`, `ChunkLocation`) | none |
 | `multiforge-master` | Standalone coordination process: storage, locks, subscriptions, proxy, CLI | none |
-| `multiforge-forge` | The Forge 1.20.1 mod: Mixins, networking, chunk/entity/player/world managers | Forge 47.3.0 |
+| `multiforge-forge` | The Forge 1.20.1 mod: Mixins, networking, chunk/entity/player/world managers | Forge 47.4.29 |
 
 The protocol and API modules are compiled **into the mod jar** (see
 "Why the protocol sources are compiled into the mod" below). They remain separate
@@ -37,6 +37,7 @@ com.multiforge.forge
 │   └── FileSyncer             level.dat, uid.dat, JSON files, arbitrary files
 ├── config/MultiForgeConfig    ForgeConfigSpec + startup TOML reader + immutable Snapshot
 ├── command/MultiForgeCommands /multiforge commands
+├── compat/ModCompatibilityManager  required-target detection and `/multiforge compat`
 ├── api/MultiForgeApiImpl      public API implementation
 ├── common/                    small value types and path helpers
 └── mixin/                     nine Mixins (see below)

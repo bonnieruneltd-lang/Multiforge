@@ -139,3 +139,9 @@ Purpur fork whose functionality lives in three places:
   reconnected, the master replayed peer addresses and the servers resumed.
 * Clean-checkout build after this session's fixes: `./gradlew build` with Gradle 8.10.2, 17
   protocol + 20 master tests green. See DEVELOPMENT_HANDOFF.md.
+* Session 3: Forge bumped to 47.4.29 for Structure Layout Optimizer 1.0.11. Two real Forge
+  dedicated servers with the pinned compatibility set; `tools/compat/cluster_check.py`
+  recorded 13/13 checks (bidirectional blocks, chest inventory, time, gamerule, single owner,
+  20 TPS, save-all). 20/20 required targets installed; 19/19 Forge mods load in the full
+  configuration. `docs/REQUIRED_MOD_COMPATIBILITY.md` has the per-target evidence and the
+  honest 0/35 fully-compatible score.

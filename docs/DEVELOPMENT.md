@@ -6,7 +6,7 @@
   resolver)
 * Gradle 8.10.2 (wrapper included) - required; ForgeGradle 6.0.54 fails on Gradle 8.8 with
   "Project services has been closed"
-* ForgeGradle 6.0.x, Forge 47.3.0, MixinGradle 0.7.x, Mixin 0.8.5
+* ForgeGradle 6.0.x, Forge 47.4.29, MixinGradle 0.7.x, Mixin 0.8.5
 
 ## Build
 
@@ -71,6 +71,34 @@ and entity id block allocation.
 
    The durable way for a real cluster is to drop the built jar into a normal Forge server
    installation and run two copies with different `server-port` and `[server] name`.
+
+## Required-mod compatibility environment
+
+The pinned target manifest is generated and downloaded with:
+
+```bash
+python3 tools/compat/resolve_required_mods.py --write
+python3 tools/compat/resolve_required_mods.py --write --download .runtime/server-mods
+python3 tools/compat/resolve_required_mods.py --write --download-client .runtime/client-mods
+```
+
+Install the Forge 47.4.29 dedicated server, copy
+`multiforge-forge/build/libs/multiforge-1.0.0-alpha.1.jar` and every
+`.runtime/server-mods/*.jar` into `mods/`, put `UltimateAntiSeedCracker.zip` in
+`world/datapacks/`, and enable RCON (`enable-rcon`, `rcon.port`, `rcon.password`).
+Two servers plus one master, then:
+
+```bash
+python3 tools/compat/cluster_check.py --a-port 25575 --b-port 25576 \
+    --password <rcon-password> --expected-targets 19 --out compat/evidence
+```
+
+Use `--expected-targets 18` when Ksyxis is removed. The harness needs both servers to hold
+one common chunk; it reads `/multiforge chunks` to find it. The transcript it writes is the
+evidence for `docs/REQUIRED_MOD_COMPATIBILITY.md`.
+
+**Never copy a new jar into `mods/` while the server is running.** Stop it, copy, start it;
+otherwise lazy class loading can throw `ClassNotFoundException` from the replaced jar.
 
 ## Configuration files
 

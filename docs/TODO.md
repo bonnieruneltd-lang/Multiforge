@@ -30,6 +30,32 @@ coding.
    but a running server keeps its in-memory `PlayerList` until restart. Add
    `StoredUserList`/`PlayerList` hooks or reload the lists after a `DataUpdateMessage`.
 
+## Compatibility and reliability (session 3 additions)
+
+* **Chunk generation lease** (high): two servers can generate the same never-seen chunk
+  concurrently; last write wins. Add a master-side "generating" lease so only one server
+  generates and the other waits/reads. Needs a timeout and crash recovery.
+* **Ownership epochs + packet sequence numbers** (high, before dynamic ownership): delayed
+  block/block-entity packets from a previous owner can overwrite newer state. Append an
+  epoch to `BlockChangePacket`/`BlockEntityUpdatePacket` and drop stale epochs. See
+  `DISTRIBUTED_ARCHITECTURE_RESEARCH.md`.
+* **Master region format compatibility** (medium): master region files contain gzip bytes
+  with the zlib version byte, so vanilla region readers cannot open them. Decide between
+  writing true zlib and converting on read, or labelling gzip correctly; add a round-trip
+  test with a standard reader before changing existing storage.
+* **Ksyxis `/forceload` interaction** (low/medium): while Ksyxis is loaded, force-loaded
+  tickets disappeared in the test environment. Reproduce with Ksyxis alone, determine
+  whether it matters for players, and document the workaround.
+* **Radium + ServerCore profile** (low): Radium wins a chunk-cache redirect and one
+  ServerCore optimisation is skipped. Provide a documented config profile instead of
+  claiming both are active.
+* **Player-driven compatibility tests** (highest for the 35 targets): a client or fake-player
+  harness is required for minecarts, tree felling, leaf decay, head drops, item merging,
+  combat log, TPA, chat, xray and the anti-seed data pack. Until then those rows stay
+  LOADING in `REQUIRED_MOD_COMPATIBILITY.md`.
+* **Client matrix** (highest for the 15 client targets): run the pinned client set on a GPU
+  machine, one shader pack at a time, and append the results to the matrix.
+
 ## Medium priority
 
 8. **Run configuration for a second dev server** - done: the `server2` ForgeGradle run inherits
@@ -75,3 +101,11 @@ coding.
 * level.dat, uid.dat, time, weather, gamerules, world border, shared/real-time file sync.
 * Second development server run (`runServer2`, inherited ForgeGradle run).
 * Commands, public API, documentation, protocol and master integration tests.
+* `ModCompatibilityManager` + `/multiforge compat` (target detection, version report,
+  deployment conflicts).
+* `/multiforge chunk <x> <z>`, loaded-chunk listing, and the server-list self-address fix.
+* Required-mod resolver, pinned manifest (`compat/required-mods.json`), RCON client and the
+  two-server `cluster_check.py` harness with recorded evidence.
+* `docs/REQUIRED_MOD_COMPATIBILITY.md`, `docs/DISTRIBUTED_ARCHITECTURE_RESEARCH.md`,
+  `docs/DISTRIBUTED_ROADMAP.md`.
+* Forge 47.4.29 build/run verification and the full 20-target server startup.

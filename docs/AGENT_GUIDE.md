@@ -48,6 +48,9 @@ touching code, then read the architecture document of the subsystem you change.
 | Ownership / ticking | `ChunkManager`, `ServerLevelMixin`, `LevelTicksMixin` |
 | Block/block entity sync | `LevelChunkMixin`, `BlockEntityMixin`, `ChunkManager` |
 | Player data / login | `PlayerSyncManager`, `PlayerListMixin`, `ServerStatsCounterMixin`, `PlayerAdvancementsMixin` |
+| Required-target detection / `/multiforge compat` | `compat/ModCompatibilityManager`, `MultiForgeServer.compat()` |
+| Pinned compatibility targets | `tools/compat/resolve_required_mods.py`, `compat/required-mods.json`, `docs/REQUIRED_MOD_COMPATIBILITY.md` |
+| Two-server verification | `tools/compat/cluster_check.py` (+ `rcon.py`), evidence in `compat/evidence/` |
 | World state / files | `WorldSyncManager`, `FileSyncer` |
 | Master storage | `MasterStorage`, `RegionFileCache`, `RegionFile`, handlers |
 | Polling intervals / feature switches | `MultiForgeConfig`, then the consuming manager |
@@ -71,22 +74,23 @@ and confirm:
 
 ## 5. Current state and next best steps
 
-* Verified this session: clean checkout builds with Gradle 8.10.2, 17 protocol tests and
-  20 master integration tests pass. The world-state and file-sync classes that were missing
-  from git were re-implemented and wired into bootstrap/tick/shutdown; chunk unload status
-  and entity id blocks are now used.
-* Verified live this session: master + two Forge servers, level.dat and shared-file download,
-  peer chunk transfer, real-time file push and graceful shutdown upload. `runServer2` now
-  works. Details in `docs/DEVELOPMENT_HANDOFF.md`.
-* Biggest gap: entity/player mirroring between servers (TODO items 1-2). Start by designing
-  the external entity representation around the entity id blocks that now exist, then port
-  MultiPaper's entity packets one by one, each with a test.
-* Second gap: inventory/ender chest/experience live sync (TODO item 3). Player data files
-  already work, so the packet layer is the main work.
-* Third gap: live application of user lists (whitelist/ops/bans); the files are synced, the
-  running `PlayerList` only picks them up on restart.
-* Polish: make `runServer2` usable, implement or remove `debug.chunkBorders`, add fuzz tests
-  for the protocol. Read `docs/DEVELOPMENT_HANDOFF.md` for the full audit.
+* Verified this session: clean build on Forge 47.4.29 (bumped for Structure Layout
+  Optimizer 1.0.11), 17 protocol tests and 20 master integration tests pass.
+* Verified live: master + two Forge 47.4.29 servers with the pinned compatibility set.
+  `tools/compat/cluster_check.py` passed 13/13 checks (blocks both directions, chest
+  inventory, time, gamerule, single owner, 20 TPS, save-all) with 18/19 server mods loaded.
+  The full set (19/19 incl. Ksyxis) also starts; Ksyxis is removed for the shared-chunk
+  check because force-loaded tickets disappear while it is installed.
+* Compatibility score: 0/35 FULLY COMPATIBLE. 2 server targets FUNCTIONAL, 8 PARTIAL,
+  10 LOADING, 15 client targets NOT TESTED (no GPU). Do not inflate this; the matrix and
+  evidence are in `docs/REQUIRED_MOD_COMPATIBILITY.md`.
+* Biggest functional gap: entity/player mirroring (TODO 1-2). Then inventory/experience
+  sync (TODO 3), live user-list reload, chunk generation lease, ownership epochs.
+* Highest-value next work for compatibility: a player-driven harness/client, because most
+  server rows are waiting on gameplay interaction, not code.
+* Do not restart or rewrite working subsystems. Read `DEVELOPMENT_HANDOFF.md` for the
+  session audit and `KNOWN_ISSUES.md` for the interaction findings (Timber 3.0, Radium ×
+  ServerCore, Ksyxis × forceload, master region compression label).
 
 ## 6. Research resources
 

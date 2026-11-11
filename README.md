@@ -47,6 +47,9 @@ integration tests and by running two real Forge servers against a master:
 | Recovery after master or server disconnects | implemented (see KNOWN_ISSUES) |
 | Live entity/player packet mirroring between servers | partial (see [docs/TODO.md](docs/TODO.md)) |
 | Inventory/ender chest/experience sync | not yet ported |
+| Required-target detection and `/multiforge compat` | implemented |
+| Pinned compatibility manifest and two-server RCON harness | implemented; 35 targets pinned, server set tested together |
+| Required mod compatibility (35 targets) | 0/35 FULLY COMPATIBLE: 2 functional, 8 partial, 10 loading, 15 client targets not tested (no GPU) - see [docs/REQUIRED_MOD_COMPATIBILITY.md](docs/REQUIRED_MOD_COMPATIBILITY.md) |
 
 Read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before running a production world, and
 [docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md) for the current audit.
@@ -54,7 +57,7 @@ Read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before running a production wo
 ## Requirements
 
 * Java 17
-* Forge 1.20.1 (47.x) dedicated server
+* Forge 1.20.1 (47.x; built and tested against 47.4.29)
 * One MultiForge master process (Java 17, no Minecraft)
 
 ## Quick start
@@ -90,7 +93,8 @@ Read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before running a production wo
 ## Commands
 
 `/multiforge status`, `/multiforge servers`, `/multiforge players`, `/multiforge chunk`,
-`/multiforge chunks`, `/multiforge download <path>` (aliases `/mfservers`, `/mfslist`).
+`/multiforge chunks`, `/multiforge compat`, `/multiforge download <path>` (aliases
+`/mfservers`, `/mfslist`).
 
 ## Documentation
 
@@ -104,6 +108,9 @@ Read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before running a production wo
 * [Known issues](docs/KNOWN_ISSUES.md)
 * [Agent guide](docs/AGENT_GUIDE.md)
 * [Development handoff](docs/DEVELOPMENT_HANDOFF.md)
+* [Required mod compatibility](docs/REQUIRED_MOD_COMPATIBILITY.md)
+* [Distributed architecture research](docs/DISTRIBUTED_ARCHITECTURE_RESEARCH.md)
+* [Distributed roadmap](docs/DISTRIBUTED_ROADMAP.md)
 
 ## License
 
