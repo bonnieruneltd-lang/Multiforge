@@ -56,7 +56,7 @@ touching code, then read the architecture document of the subsystem you change.
 
 ```bash
 ./gradlew build                        # compiles protocol, api, master, mod
-./gradlew :multiforge-protocol:test    # 15 tests
+./gradlew :multiforge-protocol:test    # 17 tests
 ./gradlew :multiforge-master:test      # 19 integration tests
 ```
 
@@ -71,7 +71,7 @@ and confirm:
 
 ## 5. Current state and next best steps
 
-* Verified this session: clean checkout builds with Gradle 8.10.2, 15 protocol tests and
+* Verified this session: clean checkout builds with Gradle 8.10.2, 17 protocol tests and
   19 master integration tests pass. The world-state and file-sync classes that were missing
   from git were re-implemented and wired into bootstrap/tick/shutdown; chunk unload status
   and entity id blocks are now used.

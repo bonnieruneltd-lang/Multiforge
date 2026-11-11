@@ -42,7 +42,7 @@ the repository itself needs only JDK 17 and network access to Maven/Forge.
 
 ```bash
 ./gradlew build
-# :multiforge-protocol:test  -> 15 tests
+# :multiforge-protocol:test  -> 17 tests
 # :multiforge-master:test    -> 19 tests (17 inherited + 2 added this session)
 # BUILD SUCCESSFUL
 ```
@@ -55,8 +55,9 @@ Artifacts produced by `build`:
 * `:multiforge-master:fatJar` produces the runnable `-all.jar`.
 
 The new tests are `unloadingPeerIsNotChosenForChunkRead` and
-`entityIdBlocksAreDisjointAndPersisted`; both fail without the fixes described in
-section 4 and pass with them.
+`entityIdBlocksAreDisjointAndPersisted` on the master side, and
+`truncatedFrameWaitsForTheRestOfTheBytes` / `oversizedFrameIsRejectedBeforeBuffering`
+for the protocol; they fail without the fixes described in section 4 and pass with them.
 
 **Live verification performed in this session:** a master plus two real Forge 1.20.1
 dedicated servers (`runServer` and `runServer2`) were started against one storage root:
@@ -169,6 +170,14 @@ afterwards. Frames that the master sent before the handler was attached were
 replayed into no handler, leaving a zero-byte file (observed live). Downloads now
 use the four-argument `createInboundDataStream(channel, id, onData, onClose)`,
 which installs the handlers before replaying buffered frames.
+
+### 4.8 Protocol frame bound
+
+`MessageLengthDecoder` now rejects negative lengths and frames above 64 MiB
+(`-Dmultiforge.protocol.maxFrameBytes`) with a `TooLongFrameException` before
+buffering them, so a corrupted or hostile length prefix cannot allocate an
+unbounded cumulation buffer. Partial frames are still buffered until complete;
+both behaviours have unit tests.
 
 
 ## 5. Known bugs and limitations (see KNOWN_ISSUES.md for symptoms)

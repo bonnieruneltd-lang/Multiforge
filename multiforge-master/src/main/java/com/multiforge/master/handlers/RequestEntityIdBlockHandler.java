@@ -113,10 +113,10 @@ public final class RequestEntityIdBlockHandler {
     }
 
     /**
-     * Reloads the counter from storage. Only used by tests that need a clean
-     * process-like state without restarting the JVM.
+     * Reloads the counter from storage. Public so integration tests can simulate a
+     * master restart without spawning a new JVM; not used by production code.
      */
-    static void resetForTests() {
+    public static void resetForTests() {
         synchronized (ALLOCATION_LOCK) {
             nextId = -1;
         }

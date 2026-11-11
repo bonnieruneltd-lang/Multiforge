@@ -20,6 +20,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -154,6 +155,33 @@ class MessageCodecTest {
         assertTrue(encoder.writeOutbound(payload));
         ByteBuf frame = encoder.readOutbound();
         assertThrows(Exception.class, () -> decoder.writeInbound(frame));
+    }
+
+    @Test
+    void truncatedFrameWaitsForTheRestOfTheBytes() {
+        EmbeddedChannel encoder = new EmbeddedChannel(new MessageLengthEncoder(),
+                new MessageEncoder<>(new MasterBoundProtocol()));
+        assertTrue(encoder.writeOutbound(new HelloMessage("partial", UUID.randomUUID())));
+        ByteBuf frame = encoder.readOutbound();
+        byte[] bytes = new byte[frame.readableBytes()];
+        frame.readBytes(bytes);
+
+        EmbeddedChannel decoder = new EmbeddedChannel(new MessageLengthDecoder(),
+                new MessageDecoder<>(new MasterBoundProtocol()));
+        int split = bytes.length - 3;
+        assertFalse(decoder.writeInbound(io.netty.buffer.Unpooled.wrappedBuffer(bytes, 0, split)),
+                "a partial frame must not produce a message");
+        assertTrue(decoder.writeInbound(io.netty.buffer.Unpooled.wrappedBuffer(bytes, split, bytes.length - split)));
+        assertInstanceOf(HelloMessage.class, decoder.readInbound());
+    }
+
+    @Test
+    void oversizedFrameIsRejectedBeforeBuffering() {
+        EmbeddedChannel encoder = new EmbeddedChannel();
+        ByteBuf prefix = encoder.alloc().buffer();
+        new ExtendedByteBuf(prefix).writeVarInt(MessageLengthDecoder.MAX_FRAME_BYTES + 1);
+        assertThrows(io.netty.handler.codec.TooLongFrameException.class,
+                () -> new EmbeddedChannel(new MessageLengthDecoder()).writeInbound(prefix));
     }
 
     @Test

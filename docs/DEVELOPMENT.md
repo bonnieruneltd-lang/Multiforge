@@ -26,7 +26,7 @@ Artifacts:
 ## Tests
 
 ```bash
-./gradlew :multiforge-protocol:test   # 15 tests: wire format, message round-trips, data streams
+./gradlew :multiforge-protocol:test   # 17 tests: wire format, message round-trips, data streams
 ./gradlew :multiforge-master:test     # 19 tests: real TCP integration against a master
 ```
 

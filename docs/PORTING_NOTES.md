@@ -118,9 +118,10 @@ Purpur fork whose functionality lives in three places:
 
 ## 6. Verification performed
 
-* 15 protocol unit tests: framing, varints, representative message round-trips, transaction
-  ids, large payloads, unknown id rejection and data streams (300 KB multi-frame transfer,
-  buffering of frames that arrive before the stream is registered).
+* 17 protocol unit tests: framing, varints, representative message round-trips, transaction
+  ids, large payloads, unknown id rejection, truncated frames, oversized frame rejection and
+  data streams (300 KB multi-frame transfer, buffering of frames that arrive before the stream
+  is registered).
 * 19 master integration tests against a real master over TCP: ownership arbitration, handover,
   concurrent locks, disconnect recovery, subscriber sync, chunk read/write, read redirection to
   a peer, forced ownership, duplicate login, player broadcasts, player data, file
@@ -136,5 +137,5 @@ Purpur fork whose functionality lives in three places:
   graceful shutdown. No errors in either server or the master log. See DEVELOPMENT_HANDOFF.md.
 * Master restart while both servers ran (previous session): both detected the disconnect,
   reconnected, the master replayed peer addresses and the servers resumed.
-* Clean-checkout build after this session's fixes: `./gradlew build` with Gradle 8.10.2, 14
+* Clean-checkout build after this session's fixes: `./gradlew build` with Gradle 8.10.2, 17
   protocol + 19 master tests green. See DEVELOPMENT_HANDOFF.md.

@@ -55,7 +55,8 @@ coding.
     Implement it or remove the option (do not leave it as a silent no-op).
 17. Metrics/observability endpoint (Prometheus) for the master.
 18. Structured progress reporting for large file downloads (the download itself is streamed).
-19. More protocol fuzz tests (truncated frames, invalid ids, oversized arrays).
+19. More protocol fuzz tests (invalid message ids are covered, as are truncated and oversized
+    frames; add malformed string/array lengths and random payload fuzzing).
 20. A `multiforge-api` example mod and integration test.
 21. Port MultiPaper's `/mpmap` and `/mpdebug` visualisations.
 22. Automate the live two-server check (container recipe) so it can run in CI.

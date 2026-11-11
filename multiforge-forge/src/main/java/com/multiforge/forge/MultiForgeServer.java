@@ -290,6 +290,7 @@ public final class MultiForgeServer {
         announce();
         world.invalidate();
         chunks.onMasterReconnected();
+        files.onMasterReconnected();
     }
 
     /** Called when the master connection dropped. */

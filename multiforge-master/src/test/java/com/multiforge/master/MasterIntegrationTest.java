@@ -331,6 +331,12 @@ class MasterIntegrationTest {
         assertEquals(Integer.toString(second.y),
                 java.nio.file.Files.readString(persisted).trim(),
                 "persisted counter must be the next unallocated id");
+
+        // Simulate a master restart: the next block must continue from the persisted
+        // counter instead of starting at zero (which would re-issue live entity ids).
+        RequestEntityIdBlockHandler.resetForTests();
+        IntegerPairMessageReply afterRestart = a.request(new RequestEntityIdBlock()).get();
+        assertEquals(second.y, afterRestart.x, "allocation must resume from the persisted counter");
     }
 
 

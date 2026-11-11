@@ -13,7 +13,9 @@ frame   := varint messageLength, message
 message := varint transactionId, varint messageId, payload
 ```
 
-* `MessageLengthEncoder/Decoder` add/remove the length prefix.
+* `MessageLengthEncoder/Decoder` add/remove the length prefix. Frames larger than 64 MiB
+  (`-Dmultiforge.protocol.maxFrameBytes`) are rejected before they are buffered, and a
+  partial frame is kept until the rest arrives rather than being consumed.
 * `MessageEncoder/Decoder` write/read the two ids and call `Message#write`/`Message(ExtendedByteBuf)`.
 * `MessageHandler` keeps a map of transaction id -> callback. A reply is delivered to the
   callback when the ids match. Reply-only messages received without a callback are ignored

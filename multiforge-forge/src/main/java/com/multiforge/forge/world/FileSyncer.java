@@ -101,6 +101,10 @@ public final class FileSyncer {
 
     private final AtomicBoolean started = new AtomicBoolean();
     private final AtomicBoolean closed = new AtomicBoolean();
+    /** Set once the startup reconciliation finished; gates the periodic scanner. */
+    private final AtomicBoolean reconciled = new AtomicBoolean();
+    /** Guards against queueing several reconciliations while one is pending. */
+    private final AtomicBoolean reconcileScheduled = new AtomicBoolean();
     private volatile int tickCounter;
     private volatile long lastLevelDatHash = Long.MIN_VALUE;
     private volatile long lastUidDatHash = Long.MIN_VALUE;
@@ -127,7 +131,39 @@ public final class FileSyncer {
         if (!started.compareAndSet(false, true)) {
             return;
         }
-        io.execute(this::reconcileWithMaster);
+        scheduleReconcile();
+    }
+
+    /**
+     * Re-runs the reconciliation after the master connection was re-established.
+     *
+     * <p>The master forgets nothing about shared files, but a connection outage can
+     * hide files uploaded by peers while this server was disconnected. Called from
+     * {@link MultiForgeServer#onMasterConnected()}.</p>
+     */
+    public void onMasterReconnected() {
+        reconciled.set(false);
+        if (started.get()) {
+            scheduleReconcile();
+        }
+    }
+
+    /**
+     * Queues exactly one reconciliation on the IO thread. Failures leave
+     * {@link #reconciled} false so {@link #tick()} retries once per second.
+     */
+    private void scheduleReconcile() {
+        if (!reconcileScheduled.compareAndSet(false, true) || closed.get()) {
+            return;
+        }
+        try {
+            io.execute(() -> {
+                reconcileScheduled.set(false);
+                reconcileWithMaster();
+            });
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            reconcileScheduled.set(false);
+        }
     }
 
     /**
@@ -205,6 +241,12 @@ public final class FileSyncer {
         if (!started.get() || closed.get() || !server.master().isConnected()) {
             return;
         }
+        if (!reconciled.get()) {
+            // The master was unreachable at start-up or the connection dropped
+            // before reconciliation finished; retry (at most one task at a time).
+            scheduleReconcile();
+            return;
+        }
         if (++tickCounter % 20 != 0) {
             return;
         }
@@ -251,6 +293,7 @@ public final class FileSyncer {
             }
             reconcileJsonFilesAtStartup();
             uploadWorldFiles(false, false);
+            reconciled.set(true);
             LOGGER.info("File synchronization ready ({} shared files on the master)", listing.filesToSync.length);
         } catch (Exception e) {
             LOGGER.warn("Initial file reconciliation failed: {}", e.toString());
