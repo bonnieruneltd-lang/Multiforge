@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -44,6 +45,8 @@ public final class PeerConnection {
     private final CompletableFuture<PeerConnection> ready = new CompletableFuture<>();
     private final AtomicInteger nextRequestId = new AtomicInteger(1);
     private final Map<Integer, CompletableFuture<byte[]>> pendingChunkRequests = new ConcurrentHashMap<>();
+    /** Set while a coalesced flush is queued on the event loop. */
+    private final AtomicBoolean flushScheduled = new AtomicBoolean();
 
     private volatile String remoteName;
     private volatile long lastReceived = System.currentTimeMillis();
@@ -109,13 +112,40 @@ public final class PeerConnection {
      * every caller has a fallback path (master read or local file) and a failed
      * broadcast must not break the caller's tick.
      *
+     * <p>Writes are coalesced: {@code writeAndFlush} performed one socket flush
+     * per packet, and entity mirroring emits one packet per tracked entity per
+     * tick. The write is queued and a single flush runs on the event loop after
+     * the writes already queued there, so latency stays in the sub-millisecond
+     * range while syscalls drop to at most one per event-loop burst.</p>
+     *
      * @param packet packet to send
      */
     public void send(PeerPacket packet) {
         if (!isActive()) {
             return;
         }
-        channel.writeAndFlush(packet, channel.voidPromise());
+        channel.write(packet, channel.voidPromise());
+        scheduleFlush();
+    }
+
+    /**
+     * Queues one flush on the event loop unless one is already queued.
+     *
+     * <p>The flag is cleared inside the event-loop task, so a write that arrives
+     * between the flush and the flag reset simply schedules the next flush.</p>
+     */
+    private void scheduleFlush() {
+        if (flushScheduled.compareAndSet(false, true)) {
+            try {
+                channel.eventLoop().execute(() -> {
+                    flushScheduled.set(false);
+                    channel.flush();
+                });
+            } catch (java.util.concurrent.RejectedExecutionException e) {
+                // Event loop already shutting down; the channel is closing anyway.
+                flushScheduled.set(false);
+            }
+        }
     }
 
     /**

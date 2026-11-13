@@ -16,6 +16,15 @@ public final class ChunkState {
     /** Name of the server that ticks the chunk, {@code null} when unowned. */
     private volatile String owner;
 
+    /**
+     * Derived fast-path flag: {@code true} when {@link #owner} is this server.
+     *
+     * <p>{@code shouldTick} runs once per chunk per tick and once per entity per
+     * tick, so it reads this single flag instead of comparing owner strings or
+     * probing a second concurrent set.</p>
+     */
+    private volatile boolean localOwner;
+
     /** Whether the chunk is currently loaded on this server. */
     private volatile boolean loaded;
 
@@ -44,6 +53,16 @@ public final class ChunkState {
      */
     public void owner(String owner) {
         this.owner = owner;
+    }
+
+    /** @return whether this server is the current owner */
+    public boolean localOwner() {
+        return localOwner;
+    }
+
+    /** @param localOwner whether this server is the current owner */
+    public void localOwner(boolean localOwner) {
+        this.localOwner = localOwner;
     }
 
     /** @return whether the chunk is loaded here */

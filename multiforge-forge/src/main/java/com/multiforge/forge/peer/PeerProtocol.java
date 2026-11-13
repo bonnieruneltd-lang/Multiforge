@@ -23,7 +23,9 @@ import com.multiforge.forge.peer.packet.WorldBorderUpdatePacket;
 import net.minecraft.network.FriendlyByteBuf;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 /**
@@ -40,6 +42,12 @@ public final class PeerProtocol {
 
     private static final List<Class<? extends PeerPacket>> CLASSES = new ArrayList<>();
     private static final List<Function<FriendlyByteBuf, PeerPacket>> FACTORIES = new ArrayList<>();
+    /**
+     * Class to wire id. {@code List.indexOf} was a linear scan on every packet
+     * send; entity updates send several packets per entity per tick, so the lookup
+     * is on a hot path.
+     */
+    private static final Map<Class<? extends PeerPacket>, Integer> IDS = new HashMap<>();
 
     static {
         add(HelloPacket.class, HelloPacket::new);
@@ -69,6 +77,7 @@ public final class PeerProtocol {
     }
 
     private static void add(Class<? extends PeerPacket> type, Function<FriendlyByteBuf, PeerPacket> factory) {
+        IDS.put(type, CLASSES.size());
         CLASSES.add(type);
         FACTORIES.add(factory);
     }
@@ -79,8 +88,8 @@ public final class PeerProtocol {
      * @throws IllegalArgumentException when the packet was never registered
      */
     public static int idOf(PeerPacket packet) {
-        int id = CLASSES.indexOf(packet.getClass());
-        if (id < 0) {
+        Integer id = IDS.get(packet.getClass());
+        if (id == null) {
             throw new IllegalArgumentException("Unregistered peer packet " + packet.getClass().getName());
         }
         return id;

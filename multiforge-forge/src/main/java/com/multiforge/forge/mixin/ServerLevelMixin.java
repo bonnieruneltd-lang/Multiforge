@@ -91,11 +91,7 @@ public abstract class ServerLevelMixin {
             return;
         }
         ServerLevel level = (ServerLevel) (Object) this;
-        LevelChunk chunk = level.getChunkSource().getChunkNow(entity.chunkPosition().x, entity.chunkPosition().z);
-        if (chunk == null) {
-            return;
-        }
-        if (!server.chunks().shouldTick(level, chunk)) {
+        if (!server.chunks().shouldTick(level, entity)) {
             callbackInfo.cancel();
         }
     }

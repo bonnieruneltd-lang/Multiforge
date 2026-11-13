@@ -31,6 +31,7 @@ import java.io.*;
 import java.lang.ref.*;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class RegionFileCache {
 
@@ -38,13 +39,22 @@ public class RegionFileCache {
 
     private static final LinkedHashMap<File, Reference<RegionFile>> cache = new LinkedHashMap<>(16, 0.75f, true);
 
+    /**
+     * Canonical form of each region directory, resolved once per directory.
+     *
+     * <p>The original code called {@link File#getCanonicalPath()} for every chunk
+     * access while holding the class lock. That is a filesystem syscall (and, on
+     * some platforms, a chain of {@code stat} calls) on the hot path of every
+     * chunk read and write, serialized across all server connections. Resolving
+     * the directory once keeps the cache keys canonical without the syscall.</p>
+     */
+    private static final Map<String, File> canonicalDirectories = new ConcurrentHashMap<>();
+
     private RegionFileCache() {
     }
 
     public static synchronized boolean isRegionFileOpen(File regionDir, int chunkX, int chunkZ) {
-        File file = new File(regionDir, "r." + (chunkX >> 5) + "." + (chunkZ >> 5) + ".mca");
-
-        file = canonical(file);
+        File file = getFileForRegionFile(regionDir, chunkX, chunkZ);
 
         Reference<RegionFile> ref = cache.get(file);
 
@@ -55,24 +65,35 @@ public class RegionFileCache {
         return false;
     }
 
-    private static File canonical(File file) {
-        try {
-            // Remove any .'s and ..'s
-            return new File(file.getCanonicalPath());
-        } catch (IOException e) {
-            e.printStackTrace();
-            return file;
-        }
+    /**
+     * @param dir region directory
+     * @return canonical form of the directory, memoized by its path
+     */
+    private static File canonicalDirectory(File dir) {
+        return canonicalDirectories.computeIfAbsent(dir.getPath(), ignored -> {
+            try {
+                // Remove any .'s and ..'s and resolve symbolic links once.
+                return new File(dir.getCanonicalPath());
+            } catch (IOException e) {
+                Log.error("Could not resolve region directory " + dir + ": " + e);
+                return dir.getAbsoluteFile();
+            }
+        });
     }
-    
+
+    /**
+     * @param regionDir region directory
+     * @param chunkX    chunk X
+     * @param chunkZ    chunk Z
+     * @return region file belonging to the chunk, with a canonical parent
+     */
     private static File getFileForRegionFile(File regionDir, int chunkX, int chunkZ) {
-        return new File(regionDir, "r." + (chunkX >> 5) + "." + (chunkZ >> 5) + ".mca");
+        return new File(canonicalDirectory(regionDir),
+                "r." + (chunkX >> 5) + "." + (chunkZ >> 5) + ".mca");
     }
 
     public static synchronized RegionFile getRegionFileIfExists(File regionDir, int chunkX, int chunkZ) {
         File file = getFileForRegionFile(regionDir, chunkX, chunkZ);
-
-        file = canonical(file);
 
         Reference<RegionFile> ref = cache.get(file);
 
@@ -89,8 +110,6 @@ public class RegionFileCache {
 
     public static synchronized RegionFile getRegionFile(File regionDir, int chunkX, int chunkZ) {
         File file = getFileForRegionFile(regionDir, chunkX, chunkZ);
-
-        file = canonical(file);
 
         Reference<RegionFile> ref = cache.get(file);
 

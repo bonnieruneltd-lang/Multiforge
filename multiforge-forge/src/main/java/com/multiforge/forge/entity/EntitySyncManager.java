@@ -37,6 +37,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
@@ -49,6 +50,7 @@ import net.minecraft.world.entity.decoration.LeashFenceKnotEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,6 +115,17 @@ public final class EntitySyncManager {
 
     private static final ThreadLocal<Boolean> APPLYING_REMOTE = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
+    /**
+     * Reusable serialization buffer for {@link #encode(Packet)}.
+     *
+     * <p>{@code encode} runs once per forwarded entity packet per tick. Allocating
+     * a fresh 256-byte Netty buffer each time was pure churn: the bytes are copied
+     * out immediately and the buffer is never retained. The buffer is heap based
+     * and only touched on the server thread.</p>
+     */
+    private static final ThreadLocal<FriendlyByteBuf> ENCODE_BUFFER =
+            ThreadLocal.withInitial(() -> new FriendlyByteBuf(Unpooled.buffer(256)));
+
     private final MultiForgeServer server;
     private final Deque<Entity> pendingSpawns = new ArrayDeque<>();
     private final List<Pending> pending = new ArrayList<>();
@@ -171,6 +184,11 @@ public final class EntitySyncManager {
         if (!shouldMirror(entity)) {
             return;
         }
+        if (!server.chunks().hasEntitySubscribers()) {
+            // Nobody to snapshot for. A peer that subscribes later receives the
+            // full chunk snapshot from onEntitySubscriberAdded.
+            return;
+        }
         pendingSpawns.addLast(entity);
     }
 
@@ -195,6 +213,11 @@ public final class EntitySyncManager {
             return;
         }
         if (!shouldMirror(entity)) {
+            return;
+        }
+        if (!server.chunks().hasEntitySubscribers()) {
+            // No mirror to announce the removal to; drop the local bookkeeping.
+            mirrored.remove(entity.getUUID());
             return;
         }
         if (!(entity.level() instanceof ServerLevel level)) {
@@ -232,6 +255,13 @@ public final class EntitySyncManager {
         if (server.isStopping() || !server.config().entitySync() || isApplyingRemote()) {
             return;
         }
+        if (!server.chunks().hasEntitySubscribers()) {
+            // Nobody mirrors this server's entities. Skipping here avoids the chunk
+            // lookup, the subscription copy and the packet encoding for every
+            // tracked entity on every tick; a later subscriber receives a full
+            // snapshot through onEntitySubscriberAdded.
+            return;
+        }
         if (!shouldMirror(entity) || !(entity.level() instanceof ServerLevel level)) {
             return;
         }
@@ -240,7 +270,9 @@ public final class EntitySyncManager {
             // broadcast would duplicate it.
             return;
         }
-        ChunkKey key = server.chunks().keyOf(level, entity.chunkPosition());
+        int chunkX = Mth.floor(entity.getX()) >> 4;
+        int chunkZ = Mth.floor(entity.getZ()) >> 4;
+        ChunkKey key = server.chunks().keyOf(level, chunkX, chunkZ);
         if (!isReplicationAuthority(key)) {
             return;
         }
@@ -249,8 +281,6 @@ public final class EntitySyncManager {
             return;
         }
         String world = server.chunks().worldName(level);
-        int chunkX = entity.chunkPosition().x;
-        int chunkZ = entity.chunkPosition().z;
         try {
             if (packet instanceof ClientboundSetPassengersPacket passengers) {
                 List<Entity> dependencies = new ArrayList<>();
@@ -311,7 +341,7 @@ public final class EntitySyncManager {
             return false;
         }
         ChunkKey key = server.chunks().keyOf(level, entity.chunkPosition());
-        String owner = server.chunks().ownerOf(key).orElse(null);
+        String owner = server.chunks().ownerName(key);
         if (owner == null || owner.equals(server.serverName())) {
             return false;
         }
@@ -465,9 +495,17 @@ public final class EntitySyncManager {
         if (level == null) {
             return;
         }
-        for (Entity entity : level.getAllEntities()) {
-            if (entity.chunkPosition().x != key.getX() || entity.chunkPosition().z != key.getZ()
-                    || entity.isPassenger() || !shouldMirror(entity)) {
+        // Query the chunk's area instead of iterating every entity in the level:
+        // this runs on every entity subscription (chunk load), and a busy world
+        // can hold tens of thousands of entities.
+        int minX = key.getX() << 4;
+        int minZ = key.getZ() << 4;
+        AABB area = new AABB(minX, level.getMinBuildHeight(), minZ,
+                minX + 16, level.getMaxBuildHeight(), minZ + 16);
+        for (Entity entity : level.getEntities((Entity) null, area,
+                candidate -> Mth.floor(candidate.getX()) >> 4 == key.getX()
+                        && Mth.floor(candidate.getZ()) >> 4 == key.getZ())) {
+            if (entity.isPassenger() || !shouldMirror(entity)) {
                 continue;
             }
             ResourceLocation typeId = EntityType.getKey(entity.getType());
@@ -507,7 +545,12 @@ public final class EntitySyncManager {
         }
         drainSpawns();
         retryPending();
-        removedUntil.entrySet().removeIf(entry -> entry.getValue() <= tickCounter);
+        if (tickCounter % 20 == 0) {
+            // Expire the removal cache once per second instead of scanning it on
+            // every tick; entries live 600 ticks, so a few extra ticks of
+            // staleness are harmless.
+            removedUntil.entrySet().removeIf(entry -> entry.getValue() <= tickCounter);
+        }
     }
 
     /** Forgets every cached state. Called when the server stops. */
@@ -787,11 +830,16 @@ public final class EntitySyncManager {
         if (id == null || id < 0) {
             throw new IllegalStateException("No play packet id for " + packet.getClass().getName());
         }
-        FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+        FriendlyByteBuf buffer = ENCODE_BUFFER.get();
+        buffer.clear();
         buffer.writeVarInt(id);
         packet.write(buffer);
         byte[] data = new byte[buffer.readableBytes()];
         buffer.readBytes(data);
+        if (buffer.capacity() > 64 * 1024) {
+            // Do not retain a buffer that an unusually large packet grew.
+            ENCODE_BUFFER.remove();
+        }
         return data;
     }
 
@@ -873,7 +921,7 @@ public final class EntitySyncManager {
      * @return whether this server simulates (or is about to own) the chunk
      */
     private boolean isReplicationAuthority(ChunkKey key) {
-        String owner = server.chunks().ownerOf(key).orElse(null);
+        String owner = server.chunks().ownerName(key);
         return owner == null || owner.equals(server.serverName());
     }
 
@@ -965,6 +1013,10 @@ public final class EntitySyncManager {
      * thread, so the packet only carries bytes.
      */
     private void drainSpawns() {
+        if (!server.chunks().hasEntitySubscribers()) {
+            pendingSpawns.clear();
+            return;
+        }
         int handled = 0;
         while (!pendingSpawns.isEmpty() && handled++ < MAX_SPAWNS_PER_TICK) {
             Entity entity = pendingSpawns.pollFirst();

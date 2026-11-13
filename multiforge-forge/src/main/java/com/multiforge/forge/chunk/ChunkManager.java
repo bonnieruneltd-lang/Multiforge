@@ -19,8 +19,12 @@ import com.multiforge.protocol.messages.masterbound.UnsubscribeEntitiesMessage;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -70,9 +74,28 @@ public final class ChunkManager {
     private final Set<ChunkKey> ownedLocally = ConcurrentHashMap.newKeySet();
     private final Map<ChunkKey, Integer> unsubscribeAtTick = new ConcurrentHashMap<>();
     private final Map<ChunkKey, Integer> lastOwnershipRequest = new ConcurrentHashMap<>();
-    private final Map<String, String> worldNames = new ConcurrentHashMap<>();
+    /**
+     * Cache of the logical world name per dimension.
+     *
+     * <p>Keyed by {@link ResourceKey} instead of the rendered dimension string:
+     * {@code dimension().location().toString()} allocated a fresh {@code String}
+     * on every call, and this method is on the per-chunk-tick path. The key is the
+     * level's own immutable {@code ResourceKey} instance, so lookups allocate
+     * nothing.</p>
+     */
+    private final Map<ResourceKey<Level>, String> worldNames = new ConcurrentHashMap<>();
     private final ThreadLocal<Boolean> applyingRemote = ThreadLocal.withInitial(() -> Boolean.FALSE);
     private final Set<BlockEntity> pendingBlockEntities = ConcurrentHashMap.newKeySet();
+    /**
+     * Number of known chunks with at least one entity subscriber.
+     *
+     * <p>Maintained on the server thread together with the subscription sets. It
+     * gives the per-entity-tick forwarding path an O(1) answer to "would anybody
+     * receive this?" without building a chunk key first. Mutations are tiny and
+     * infrequent, so an atomic counter is cheaper than scanning the state map.</p>
+     */
+    private final java.util.concurrent.atomic.AtomicInteger chunksWithEntitySubscribers =
+            new java.util.concurrent.atomic.AtomicInteger();
 
     /**
      * @param server owning server
@@ -120,9 +143,11 @@ public final class ChunkManager {
             return;
         }
         state.loaded(false);
+        lastOwnershipRequest.remove(key);
         if (ownedLocally.remove(key)) {
             server.master().send(new UnlockChunkMessage(key.getName(), key.getX(), key.getZ()));
             state.owner(null);
+            state.localOwner(false);
             LOGGER.debug("Released ownership of {} on unload", key);
         }
         int delay = server.config().chunkUnloadGraceTicks();
@@ -220,14 +245,49 @@ public final class ChunkManager {
      * @return {@code true} when this server owns the chunk
      */
     public boolean shouldTick(ServerLevel level, LevelChunk chunk) {
-        ChunkKey key = keyOf(level, chunk.getPos());
-        if (ownedLocally.contains(key)) {
-            return true;
-        }
-        ChunkState state = state(key);
-        String owner = state.owner();
-        if (owner != null && !owner.equals(server.serverName())) {
-            return false;
+        return shouldTick(level, chunk.getPos().x, chunk.getPos().z);
+    }
+
+    /**
+     * Entity overload of {@link #shouldTick(ServerLevel, LevelChunk)}.
+     *
+     * <p>Called from {@code ServerLevel.tickNonPassenger} for every non-player
+     * entity of every tick. The chunk coordinates are derived from the entity
+     * position directly, which avoids the {@link ChunkPos} allocation of
+     * {@code entity.chunkPosition()} and the chunk-map lookup the mixin used to
+     * perform. An entity that is ticking is by definition in a loaded chunk.</p>
+     *
+     * @param level  level being ticked
+     * @param entity entity that would tick
+     * @return {@code true} when this server owns the entity's chunk
+     */
+    public boolean shouldTick(ServerLevel level, Entity entity) {
+        return shouldTick(level, Mth.floor(entity.getX()) >> 4, Mth.floor(entity.getZ()) >> 4);
+    }
+
+    /**
+     * Shared hot path of the two overloads above.
+     *
+     * <p>A single map lookup answers the common cases: owned locally, owned by a
+     * peer, or unknown. An unknown chunk is not materialized in {@link #states}
+     * here; the state is created when the master answers the ownership request.
+     * Only when the chunk is unowned does an ownership request go out.</p>
+     *
+     * @param level  level of the chunk
+     * @param chunkX chunk X
+     * @param chunkZ chunk Z
+     * @return {@code true} when this server owns the chunk
+     */
+    private boolean shouldTick(ServerLevel level, int chunkX, int chunkZ) {
+        ChunkKey key = new ChunkKey(worldName(level), chunkX, chunkZ);
+        ChunkState state = states.get(key);
+        if (state != null) {
+            if (state.localOwner()) {
+                return true;
+            }
+            if (state.owner() != null) {
+                return false;
+            }
         }
         requestOwnership(key);
         return false;
@@ -285,8 +345,12 @@ public final class ChunkManager {
             return;
         }
         state.owner(normalized);
-        if (server.serverName().equals(normalized)) {
+        boolean local = server.serverName().equals(normalized);
+        state.localOwner(local);
+        if (local) {
             ownedLocally.add(key);
+            // The request bookkeeping is only needed while a request is pending.
+            lastOwnershipRequest.remove(key);
             LOGGER.debug("Acquired ownership of {} (was {})", key, previous);
         } else {
             ownedLocally.remove(key);
@@ -306,11 +370,19 @@ public final class ChunkManager {
 
     /**
      * @param key chunk
+     * @return owner name, or {@code null} when the chunk is unowned or unknown
+     */
+    public String ownerName(ChunkKey key) {
+        ChunkState state = states.get(key);
+        return state == null ? null : state.owner();
+    }
+
+    /**
+     * @param key chunk
      * @return owner name, empty when unowned or unknown
      */
     public Optional<String> ownerOf(ChunkKey key) {
-        ChunkState state = states.get(key);
-        return state == null ? Optional.empty() : Optional.ofNullable(state.owner());
+        return Optional.ofNullable(ownerName(key));
     }
 
     /**
@@ -319,7 +391,10 @@ public final class ChunkManager {
      */
     public Collection<String> subscribersOf(ChunkKey key) {
         ChunkState state = states.get(key);
-        return state == null ? List.of() : List.copyOf(state.subscribers());
+        if (state == null || state.subscribers().isEmpty()) {
+            return List.of();
+        }
+        return List.copyOf(state.subscribers());
     }
 
     /**
@@ -329,7 +404,10 @@ public final class ChunkManager {
      */
     public Collection<String> entitySubscribersOf(ChunkKey key) {
         ChunkState state = states.get(key);
-        return state == null ? List.of() : List.copyOf(state.entitySubscribers());
+        if (state == null || state.entitySubscribers().isEmpty()) {
+            return List.of();
+        }
+        return List.copyOf(state.entitySubscribers());
     }
 
     // ------------------------------------------------------------------
@@ -377,9 +455,16 @@ public final class ChunkManager {
      */
     public void onEntitySubscribersSync(ChunkKey key, String[] subscribers) {
         ChunkState state = state(key);
-        state.entitySubscribers().clear();
+        Set<String> current = state.entitySubscribers();
+        boolean wasEmpty = current.isEmpty();
+        current.clear();
         for (String subscriber : subscribers) {
-            state.entitySubscribers().add(subscriber);
+            current.add(subscriber);
+        }
+        if (wasEmpty && !current.isEmpty()) {
+            chunksWithEntitySubscribers.incrementAndGet();
+        } else if (!wasEmpty && current.isEmpty()) {
+            chunksWithEntitySubscribers.decrementAndGet();
         }
         for (String subscriber : subscribers) {
             server.entities().onEntitySubscriberAdded(key, subscriber);
@@ -391,7 +476,10 @@ public final class ChunkManager {
      * @param serverName server that loaded the entities
      */
     public void onEntitySubscriberAdded(ChunkKey key, String serverName) {
-        state(key).entitySubscribers().add(serverName);
+        Set<String> subscribers = state(key).entitySubscribers();
+        if (subscribers.add(serverName) && subscribers.size() == 1) {
+            chunksWithEntitySubscribers.incrementAndGet();
+        }
         server.entities().onEntitySubscriberAdded(key, serverName);
     }
 
@@ -402,8 +490,19 @@ public final class ChunkManager {
     public void onEntitySubscriberRemoved(ChunkKey key, String serverName) {
         ChunkState state = states.get(key);
         if (state != null) {
-            state.entitySubscribers().remove(serverName);
+            Set<String> subscribers = state.entitySubscribers();
+            if (subscribers.remove(serverName) && subscribers.isEmpty()) {
+                chunksWithEntitySubscribers.decrementAndGet();
+            }
         }
+    }
+
+    /**
+     * @return {@code true} when at least one chunk has a remote entity subscriber,
+     *         i.e. entity updates produced here have a destination
+     */
+    public boolean hasEntitySubscribers() {
+        return chunksWithEntitySubscribers.get() > 0;
     }
 
     /**
@@ -433,6 +532,13 @@ public final class ChunkManager {
      */
     public void broadcastBlockChange(ServerLevel level, BlockPos pos, BlockState state) {
         if (Boolean.TRUE.equals(applyingRemote.get())) {
+            return;
+        }
+        // Without a live peer there is nobody to tell. The chunk data plane is the
+        // fallback: peers read the newest copy when they load the chunk. Building
+        // the packet allocates a world string and a packet object per changed
+        // block, which matters for explosions and large redstone updates.
+        if (!server.peers().hasConnections()) {
             return;
         }
         // Peer connections are independent of the master: a master outage must not
@@ -468,6 +574,12 @@ public final class ChunkManager {
     /** Sends all queued block entity updates. Called once per tick. */
     private void drainBlockEntityUpdates() {
         if (pendingBlockEntities.isEmpty()) {
+            return;
+        }
+        if (!server.peers().hasConnections()) {
+            // Serializing NBT for a packet that has no receiver is wasted work; the
+            // master's stored copy is what peers read when they load the chunk.
+            pendingBlockEntities.clear();
             return;
         }
         for (BlockEntity blockEntity : pendingBlockEntities) {
@@ -604,11 +716,21 @@ public final class ChunkManager {
 
     /**
      * @param level level
+     * @param x     chunk X
+     * @param z     chunk Z
+     * @return cluster key of the chunk
+     */
+    public ChunkKey keyOf(ServerLevel level, int x, int z) {
+        return new ChunkKey(worldName(level), x, z);
+    }
+
+    /**
+     * @param level level
      * @param pos   chunk position
      * @return cluster key of the chunk
      */
     public ChunkKey keyOf(ServerLevel level, ChunkPos pos) {
-        return new ChunkKey(worldName(level), pos.x, pos.z);
+        return keyOf(level, pos.x, pos.z);
     }
 
     /**
@@ -616,7 +738,7 @@ public final class ChunkManager {
      * @return logical world name of the level
      */
     public String worldName(ServerLevel level) {
-        return worldNames.computeIfAbsent(level.dimension().location().toString(),
+        return worldNames.computeIfAbsent(level.dimension(),
                 ignored -> WorldDirectories.worldName(level));
     }
 
@@ -662,5 +784,6 @@ public final class ChunkManager {
         unsubscribeAtTick.clear();
         lastOwnershipRequest.clear();
         worldNames.clear();
+        chunksWithEntitySubscribers.set(0);
     }
 }

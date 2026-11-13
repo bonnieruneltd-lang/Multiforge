@@ -176,3 +176,11 @@ source set produces one self-contained jar that works identically in dev and pro
   `MultiForgeServer.tick()`; document it in SYNCHRONIZATION.md.
 * Third-party mods: use `MultiForgeApiProvider.api()` / `Services` or the
   `com.multiforge.api` classes bundled in the mod jar.
+
+## 8. Performance
+
+The hot paths (per-chunk tick, per-entity tick, entity packet forwarding, block
+changes), what was optimized and how to measure it are documented in
+[PERFORMANCE.md](PERFORMANCE.md). Keep that document and its "remaining
+opportunities" list current when you touch one of those paths.
+

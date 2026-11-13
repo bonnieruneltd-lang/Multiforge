@@ -327,6 +327,18 @@ public final class PeerManager {
     }
 
     /**
+     * @return {@code true} when at least one peer connection is established
+     *
+     * <p>Cheap guard for the per-tick broadcast paths: without a connection no
+     * packet can be delivered, and building it (world string, NBT, entity packet
+     * encoding) is pure overhead. Peers that connect later receive the newest
+     * state through the chunk data plane and the entity snapshot on subscription.</p>
+     */
+    public boolean hasConnections() {
+        return !peers.isEmpty();
+    }
+
+    /**
      * Broadcasts a packet to every live peer.
      *
      * @param packet packet to send

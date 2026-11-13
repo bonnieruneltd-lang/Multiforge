@@ -38,6 +38,7 @@ import java.nio.file.Path;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -349,13 +350,24 @@ public final class MultiForgeServer {
     /**
      * Schedules work on the server thread. Safe to call from any thread.
      *
+     * <p>Tasks submitted while the server is already shutting down are dropped:
+     * {@code MinecraftServer.executeIfPossible} throws
+     * {@link RejectedExecutionException}, and letting that escape from a Netty
+     * handler produced a full stack trace for every late master/peer message
+     * (thousands of lines during a normal stop). Nothing may mutate the world at
+     * that point anyway.</p>
+     *
      * @param task task to execute
      */
     public void execute(Runnable task) {
         if (server.isSameThread()) {
             task.run();
-        } else {
+            return;
+        }
+        try {
             server.executeIfPossible(task);
+        } catch (RejectedExecutionException e) {
+            LOGGER.debug("Dropping a server task: the server is already shutting down");
         }
     }
 

@@ -11,6 +11,7 @@ touching code, then read the architecture document of the subsystem you change.
 4. `docs/NETWORKING.md` - message/packet catalogues and framing.
 5. `docs/CHUNK_MANAGEMENT.md` and `docs/SYNCHRONIZATION.md` - the distributed invariants.
 6. `docs/TODO.md` and `docs/KNOWN_ISSUES.md` - what is missing and what is fragile.
+7. `docs/PERFORMANCE.md` - hot paths, measured optimizations, remaining opportunities.
 
 ## 2. Golden rules
 
@@ -87,6 +88,12 @@ and confirm:
 * Entity mirroring is implemented and verified (TODO item 1, done). Biggest remaining
   functional gap: player mirroring (TODO 2). Then inventory/experience sync (TODO 3),
   live user-list reload, ownership epochs.
+* Performance pass done and verified on a live master + two servers (20 TPS, entity,
+  block and block-entity sync, graceful stop): see `docs/PERFORMANCE.md`. Per-tick paths
+  no longer allocate a world string/`ChunkPos` per call, entity forwarding has an O(1)
+  "has subscribers" guard, peer writes flush once per event-loop burst, file scans skip
+  unchanged files, and master region lookups no longer call `getCanonicalPath()`
+  (7.2 us -> 0.12 us in `tools/bench/HotPathBench.java`).
 * Chunk generation leases are implemented and integration tested; the lease is demand
   driven (the server whose player needs the chunk generates it). Choosing an idle server
   to generate for a busy one is not implemented.

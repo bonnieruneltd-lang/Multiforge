@@ -124,4 +124,30 @@ coding.
   two-server `cluster_check.py` harness with recorded evidence.
 * `docs/REQUIRED_MOD_COMPATIBILITY.md`, `docs/DISTRIBUTED_ARCHITECTURE_RESEARCH.md`,
   `docs/DISTRIBUTED_ROADMAP.md`.
+
+## Performance (session 4)
+
+Done and verified:
+
+* **Hot-path pass** on the per-chunk tick, per-entity tick, entity packet forwarding and
+  block/block-entity broadcast paths: single map lookup for ownership, no string or
+  `ChunkPos` allocation per call, O(1) "has entity subscribers" guard, empty subscription
+  lists no longer copied, reused encode buffer, peer writes coalesced into one flush per
+  event-loop burst, `PeerProtocol.idOf` hash lookup. Details and measurements in
+  [PERFORMANCE.md](PERFORMANCE.md).
+* **Entity subscription snapshot** now queries the chunk's entities (AABB) instead of
+  scanning every entity in the level; the removal cache expires once per second.
+* **File sync** skips reading `level.dat`/`uid.dat`/user lists that did not change and no
+  longer queues scans behind a slow one.
+* **Master region lookup** no longer calls `File.getCanonicalPath()` (a filesystem syscall
+  under the global cache lock) for every chunk access; canonical directories are memoized.
+  `tools/bench/HotPathBench.java` records 7.2 us -> 0.12 us per lookup.
+* **Shutdown noise**: late master/peer messages no longer log a `RejectedExecutionException`
+  stack trace when the server is already stopping.
+
+Still open (moved from the analysis, in value order): chunk NBT compression off the server
+thread (`respondToChunkRequest`), a `ChunkKey` cache for the entity tick path, a per
+connection `Inflater` for compressed peer frames, gamerule diffing without `createTag`,
+single-encode entity snapshots for many subscribers, and a segmented master region cache.
+
 * Forge 47.4.29 build/run verification and the full 20-target server startup.

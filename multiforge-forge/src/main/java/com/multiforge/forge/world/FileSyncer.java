@@ -98,6 +98,17 @@ public final class FileSyncer {
     private final Set<String> pendingWrites = ConcurrentHashMap.newKeySet();
     /** JSON file name -> content hash at the last upload. */
     private final Map<String, Long> uploadedJsonHashes = new ConcurrentHashMap<>();
+    /**
+     * JSON file name -> modification time and size at the last content check.
+     *
+     * <p>Lets the one-second scan skip the {@code readAllBytes} + hash of files
+     * that were not touched at all. The content hash is still compared whenever
+     * the file did change.</p>
+     */
+    private final Map<String, FileStamp> jsonStamps = new ConcurrentHashMap<>();
+
+    /** True while a periodic scan is queued or running on the IO thread. */
+    private final AtomicBoolean scanScheduled = new AtomicBoolean();
 
     private final AtomicBoolean started = new AtomicBoolean();
     private final AtomicBoolean closed = new AtomicBoolean();
@@ -108,6 +119,18 @@ public final class FileSyncer {
     private volatile int tickCounter;
     private volatile long lastLevelDatHash = Long.MIN_VALUE;
     private volatile long lastUidDatHash = Long.MIN_VALUE;
+    private volatile FileStamp lastLevelDatStamp;
+    private volatile FileStamp lastUidDatStamp;
+
+    /**
+     * Modification time and size of a file, used to detect changes without
+     * reading the content.
+     *
+     * @param modified last modification time in milliseconds
+     * @param size     file size in bytes
+     */
+    private record FileStamp(long modified, long size) {
+    }
 
     /**
      * @param server owning MultiForge server; provides the master connection, the
@@ -250,10 +273,22 @@ public final class FileSyncer {
         if (++tickCounter % 20 != 0) {
             return;
         }
+        // A slow disk (or a large filesToSyncInRealTime tree) must not queue one
+        // scan per second behind the previous one.
+        if (!scanScheduled.compareAndSet(false, true)) {
+            return;
+        }
         try {
-            io.execute(this::scanRealTimeFiles);
+            io.execute(() -> {
+                try {
+                    scanRealTimeFiles();
+                } finally {
+                    scanScheduled.set(false);
+                }
+            });
         } catch (java.util.concurrent.RejectedExecutionException e) {
             // The server is stopping and the IO executor was already shut down.
+            scanScheduled.set(false);
         }
     }
 
@@ -427,9 +462,16 @@ public final class FileSyncer {
             return;
         }
         try {
-            byte[] data = Files.readAllBytes(local);
-            long hash = hash(data);
+            FileStamp stamp = stamp(local);
             Long previous = uploadedJsonHashes.get(name);
+            if (previous != null && stamp.equals(jsonStamps.get(name))) {
+                // Neither the size nor the modification time changed, so the
+                // content cannot have changed either: skip the read and hash.
+                return;
+            }
+            byte[] data = Files.readAllBytes(local);
+            jsonStamps.put(name, stamp);
+            long hash = hash(data);
             if (previous != null && previous == hash) {
                 return;
             }
@@ -439,6 +481,15 @@ public final class FileSyncer {
         } catch (IOException e) {
             LOGGER.warn("Could not read {}: {}", name, e.toString());
         }
+    }
+
+    /**
+     * @param file regular file
+     * @return modification time and size used for change detection
+     * @throws IOException when the attributes cannot be read
+     */
+    private static FileStamp stamp(Path file) throws IOException {
+        return new FileStamp(Files.getLastModifiedTime(file).toMillis(), Files.size(file));
     }
 
     /**
@@ -508,6 +559,16 @@ public final class FileSyncer {
             return;
         }
         try {
+            FileStamp stamp = stamp(file);
+            if (!force && stamp.equals(isLevel ? lastLevelDatStamp : lastUidDatStamp)) {
+                // Untouched since the last check: no read and no hash needed.
+                return;
+            }
+            if (isLevel) {
+                lastLevelDatStamp = stamp;
+            } else {
+                lastUidDatStamp = stamp;
+            }
             byte[] data = Files.readAllBytes(file);
             long hash = hash(data);
             long previous = isLevel ? lastLevelDatHash : lastUidDatHash;
