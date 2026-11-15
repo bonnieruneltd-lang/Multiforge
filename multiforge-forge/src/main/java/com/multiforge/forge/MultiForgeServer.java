@@ -13,6 +13,7 @@ import com.multiforge.forge.peer.PeerManager;
 import com.multiforge.forge.peer.PeerServer;
 import com.multiforge.forge.peer.packet.EntityChunkChangedPacket;
 import com.multiforge.forge.player.PlayerMirrorManager;
+import com.multiforge.forge.player.PlayerStateSyncManager;
 import com.multiforge.forge.player.PlayerSyncManager;
 import com.multiforge.forge.world.FileSyncer;
 import com.multiforge.forge.world.WorldSyncManager;
@@ -86,6 +87,7 @@ public final class MultiForgeServer {
     private final WorldSyncManager world;
     private final PlayerSyncManager players;
     private final PlayerMirrorManager playerMirrors;
+    private final PlayerStateSyncManager playerState;
     private final FileSyncer files;
     private final EntitySyncManager entities;
     private final EntityIdAllocator entityIds;
@@ -112,6 +114,7 @@ public final class MultiForgeServer {
         this.world = new WorldSyncManager(this);
         this.players = new PlayerSyncManager(this);
         this.playerMirrors = new PlayerMirrorManager(this);
+        this.playerState = new PlayerStateSyncManager(this);
         this.files = new FileSyncer(this);
         this.entities = new EntitySyncManager(this);
         this.compat = new ModCompatibilityManager(this);
@@ -287,6 +290,7 @@ public final class MultiForgeServer {
         chunks.tick();
         entities.tick();
         playerMirrors.tick();
+        playerState.tick();
         world.tick();
         files.tick();
     }
@@ -434,6 +438,7 @@ public final class MultiForgeServer {
         master.stop();
         players.clear();
         playerMirrors.clear();
+        playerState.clear();
         entityIds.clear();
         chunks.clear();
         levels.clear();
@@ -516,6 +521,13 @@ public final class MultiForgeServer {
      */
     public PlayerMirrorManager playerMirrors() {
         return playerMirrors;
+    }
+
+    /**
+     * @return live inventory/ender chest/hunger/experience/effects sync
+     */
+    public PlayerStateSyncManager playerState() {
+        return playerState;
     }
 
     /** @return file synchronization */

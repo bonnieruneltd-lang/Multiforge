@@ -52,3 +52,6 @@ dev-server-args.json
 # Python tooling
 __pycache__/
 *.pyc
+
+# Local JDK used for builds (installed per session, never committed)
+/.jdk/

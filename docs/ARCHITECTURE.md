@@ -35,6 +35,7 @@ com.multiforge.forge
 ├── player/
 │   ├── PlayerSyncManager      data files, duplicate login prevention, chat, registry
 │   ├── PlayerMirrorManager    remote player copies, tab list, retries, peer cleanup
+│   ├── PlayerStateSyncManager live inventory/ender chest/hunger/experience/effects sync
 │   └── ExternalPlayer         ServerPlayer copy hosted by another server
 ├── world/
 │   ├── WorldSyncManager       time, weather, gamerules, world border, level data

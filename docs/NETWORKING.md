@@ -146,10 +146,16 @@ varint frameLength, varint uncompressedLength, varint packetId, payload
 | 19 | `EntityHurtPacket` | damage taken on a mirror, forwarded to the owner |
 | 20 | `PlayerCreatePacket` | profile, position, game mode and player data for a mirror copy |
 | 21 | `PlayerRemovePacket` | a mirrored player left the cluster |
+| 22 | `PlayerInventoryUpdatePacket` | one changed inventory/armor/off-hand/ender-chest slot |
+| 23 | `PlayerSelectedSlotPacket` | selected hotbar slot of a mirrored player |
+| 24 | `PlayerFoodUpdatePacket` | food, saturation and exhaustion of a mirrored player |
+| 25 | `PlayerExperiencePacket` | experience progress, level and total of a mirrored player |
+| 26 | `PlayerEffectsUpdatePacket` | one status effect added, refreshed or removed |
 
 The entity family (15-19) is the M1 mirroring protocol. Ids 20-21 extend it to players and
-are described in [SYNCHRONIZATION.md](SYNCHRONIZATION.md#entities); ids were appended, so
-older peers keep their ids.
+ids 22-26 carry live player state; they are described in
+[SYNCHRONIZATION.md](SYNCHRONIZATION.md#players). Ids were appended, so older peers keep
+their ids.
 
 ### Time synchronization
 

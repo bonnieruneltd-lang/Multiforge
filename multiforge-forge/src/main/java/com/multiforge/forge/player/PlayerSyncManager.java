@@ -155,6 +155,7 @@ public final class PlayerSyncManager {
         // Tell the other servers first: the master broadcast that follows updates
         // the cluster list, while the peer packet removes the visible entity.
         server.playerMirrors().onLocalPlayerLeft(player);
+        server.playerState().forget(player.getUUID());
         server.master().send(new PlayerDisconnectMessage(player.getUUID()));
         players.remove(player.getUUID());
     }

@@ -27,7 +27,7 @@ Artifacts:
 
 ```bash
 ./gradlew :multiforge-protocol:test   # 21 tests: wire format, message round-trips, data streams
-./gradlew :multiforge-master:test     # 25 tests: real TCP integration against a master
+./gradlew :multiforge-master:test     # 28 tests: real TCP integration against a master
 ```
 
 The master tests start a master on an ephemeral port with a temporary storage root and a
@@ -99,6 +99,26 @@ evidence for `docs/REQUIRED_MOD_COMPATIBILITY.md`.
 
 **Never copy a new jar into `mods/` while the server is running.** Stop it, copy, start it;
 otherwise lazy class loading can throw `ClassNotFoundException` from the replaced jar.
+
+## Live player-state check
+
+Player mirroring and the live player-state sync (inventory, ender chest, hotbar, hunger,
+experience, effects) are verified with a headless bot and RCON, without a graphical client:
+
+```bash
+# Node 18+; the bot is development tooling and is not committed with node_modules.
+npm install minecraft-protocol@1.68.0
+node tools/compat/mcbot.js 127.0.0.1 25565 MirrorBot 25599 &
+
+python3 tools/compat/player_state_check.py --password <rcon-password>
+```
+
+The bot connects to the first server; the second server creates the mirror when it loads the
+player's chunk (the spawn chunks are loaded on both). The script changes the owner's state with
+vanilla commands and with a serverbound `held_item_slot` packet, then compares `/data get
+entity` output on both servers. It exits non-zero when a check fails and prints the transcript
+used as evidence in `compat/evidence/`. See
+`compat/evidence/player-state-20261115T054356Z.md` for a recorded run.
 
 ## Configuration files
 

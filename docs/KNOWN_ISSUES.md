@@ -21,19 +21,36 @@ the mitigation.
   ticked, and a hit on it is forwarded to the origin server before local invulnerability
   checks. A logout packet removes the copy; a peer disconnect removes everything that came
   from that server.
-* **Live effects, display names, death animation and inventory are not fully mirrored.**
-  Health and movement do sync, but potion particles on other players, a changed tab-list
-  display name or game-mode icon, the death animation (`tick death` is not simulated on the
-  copy) and live inventory/hunger changes need MultiPaper's separate handlers (TODO 3 and
-  10). Player data files are still authoritative on the master at save/load time, and the
-  mirror uses the profile properties sent with `PlayerCreatePacket`, so skins work when the
-  origin has them.
+* **Live player state has the same eventual-consistency window.** Health and movement sync,
+  and inventory, ender chest, hotbar, hunger, experience and effects are diffed once per tick,
+  but a few details are not mirrored: potion *particles* on other players (vanilla derives them
+  from synched metadata, which does sync), a changed tab-list display name or game-mode icon,
+  the death animation (`tick death` is not simulated on the copy), the open container window
+  and cursor stack, and the countdown of an effect duration (the mirror holds the duration from
+  the last add/extension because the copy never ticks effects). Player data files are still
+  authoritative on the master at save/load time, and the mirror uses the profile properties
+  sent with `PlayerCreatePacket`, so skins work when the origin has them.
 
-### 2. Live inventory/experience changes are not synchronized
+### 2. Live player state sync latency and scope
 
-Player data files, statistics and advancements are synchronized on save/load. Changes made
-while a player is online on another server are not pushed as packets (MultiPaper's inventory,
-ender chest, effects and hunger handlers are not ported).
+Player data files, statistics and advancements are synchronized on save/load. Live changes
+while the player is online are now pushed as peer packets by `PlayerStateSyncManager`
+(inventory, ender chest, hotbar selection, hunger, experience, effects).
+
+Remaining limitations:
+
+* Detection is a once-per-tick snapshot diff, so a change can take up to one tick (50 ms) to
+  reach a mirror. MultiPaper reacts inside the mutating method instead.
+* Effect duration is sent when an effect is applied or extended, not while it counts down.
+  The mirror's `ActiveEffects` therefore shows the duration of the last update and not the
+  decreasing owner value.
+* Container windows are not forwarded: opening a chest that is owned by another server
+  (MultiPaper's `openContainer` forwarding), the cursor stack and container menu state stay
+  local. The inventory slots themselves are synced, so the items are consistent.
+* Duplication repair is not implemented. Only the owning server mutates the player's
+  inventory, and TCP keeps the deltas ordered, so MultiPaper's "replacing item mismatch"
+  search for dupes has no trigger here; if a future feature lets another server mutate the
+  inventory directly, this must be revisited.
 
 ### 3. Entity ids during a master outage
 
@@ -185,3 +202,10 @@ This is a target-mod defect, recorded so nobody re-pins 3.0.
   master-connection gates were removed from `LevelChunkMixin` and `ChunkManager`.
 * A two-server reconnect threw `ConcurrentModificationException` in the chunk status handler;
   `getSubscribers` returns an immutable snapshot (`subscriberSnapshotsAreImmutableAcrossChanges`).
+* A mirrored player's main hand could land in the wrong inventory slot: `Player.setItemSlot`
+  writes `Inventory.items[selected]`, and the owner's `ClientboundSetEquipmentPacket` is sent
+  before the live-selected-slot packet in the same tick. `EntitySyncManager.applyEquipment`
+  now keeps the mirror's own main hand and only applies absolute slots (armor, off hand) from
+  the packet. Found by `tools/compat/player_state_check.py`, which showed the golden sword in
+  both hotbar slots 0 and 8 on the mirror before the fix
+  (`compat/evidence/player-state-20261115T054356Z.md`).

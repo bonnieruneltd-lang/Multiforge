@@ -48,7 +48,7 @@ integration tests and by running two real Forge servers against a master:
 | Recovery after master or server disconnects | implemented (see KNOWN_ISSUES) |
 | Live entity mirroring (mobs, items, vehicles; movement/metadata/removals/damage) | implemented, verified on a two-server cluster (see [compat/evidence/entity-mirroring-20261111T212200Z.md](compat/evidence/entity-mirroring-20261111T212200Z.md)) |
 | Player mirroring across servers (tab list, movement, metadata, damage, logout) | implemented, verified on a two-server cluster with headless clients (see [compat/evidence/player-mirroring-20261115T030505Z.md](compat/evidence/player-mirroring-20261115T030505Z.md)) |
-| Inventory/ender chest/experience sync | not yet ported |
+| Live player state (inventory, ender chest, hotbar, hunger, experience, effects) | implemented, verified on a two-server cluster (see [compat/evidence/player-state-20261115T054356Z.md](compat/evidence/player-state-20261115T054356Z.md)) |
 | Required-target detection and `/multiforge compat` | implemented |
 | Pinned compatibility manifest and two-server RCON harness | implemented; 35 targets pinned, server set tested together |
 | Required mod compatibility (35 targets) | 0/35 FULLY COMPATIBLE: 2 functional, 8 partial, 10 loading, 15 client targets not tested (no GPU) - see [docs/REQUIRED_MOD_COMPATIBILITY.md](docs/REQUIRED_MOD_COMPATIBILITY.md) |

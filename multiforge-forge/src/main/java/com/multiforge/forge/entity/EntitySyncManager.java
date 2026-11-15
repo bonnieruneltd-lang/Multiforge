@@ -799,12 +799,26 @@ public final class EntitySyncManager {
     }
 
     private void applyEquipment(ServerLevel level, Entity entity, ClientboundSetEquipmentPacket equipment) {
+        List<com.mojang.datafixers.util.Pair<EquipmentSlot, net.minecraft.world.item.ItemStack>> applied =
+                new ArrayList<>(equipment.getSlots().size());
         for (com.mojang.datafixers.util.Pair<EquipmentSlot, net.minecraft.world.item.ItemStack> slot
                 : equipment.getSlots()) {
+            if (slot.getFirst() == EquipmentSlot.MAINHAND && entity instanceof ExternalPlayer player) {
+                // Player.setItemSlot(MAINHAND) writes items[selected]. The mirror can
+                // still be one tick behind on the owner's hotbar selection (the
+                // tracker sends equipment before PlayerStateSyncManager runs at the
+                // end of the tick), so applying the owner's main hand here would put
+                // the stack into the wrong slot. The inventory channel carries the
+                // stack itself; keep the mirror's own hand and only refresh clients.
+                applied.add(com.mojang.datafixers.util.Pair.of(
+                        EquipmentSlot.MAINHAND, player.getMainHandItem()));
+                continue;
+            }
             entity.setItemSlot(slot.getFirst(), slot.getSecond());
+            applied.add(slot);
         }
         level.getChunkSource().broadcast(entity,
-                new ClientboundSetEquipmentPacket(entity.getId(), equipment.getSlots()));
+                new ClientboundSetEquipmentPacket(entity.getId(), applied));
     }
 
     private void applyPassengers(ServerLevel level, Entity vehicle, Entity[] passengers) {

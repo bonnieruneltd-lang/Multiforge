@@ -167,13 +167,12 @@ mod-mod interaction, not a MultiForge ownership failure, and is recorded in
 
 1. **Player-driven compatibility tests.** A real client (or a fake-player harness) unlocks
    most LOADING rows: minecarts, tree felling, leaf decay, head drops, item merging, combat
-   log, TPA, chat, xray, anti-seed datapack, and MultiForge's own player transfer.
-2. **Inventory/experience/effects sync** — now the largest functional gap; player mirroring
-   is done.
-3. **Display-name/team sync and attacker attribution** for cross-server player interactions.
-4. **Client matrix** for the 15 client targets on a GPU machine, using the pinned manifest
+   log, TPA, chat, xray, anti-seed datapack, and MultiForge's own player transfer. A minimal
+   bot harness now exists (`tools/compat/mcbot.js`); extend it with interactions.
+2. **Display-name/team sync and attacker attribution** for cross-server player interactions.
+3. **Client matrix** for the 15 client targets on a GPU machine, using the pinned manifest
    and the plan in `REQUIRED_MOD_COMPATIBILITY.md`.
-5. **Reliability**: reconnect re-upload queue, protocol fuzz tests,
+4. **Reliability**: reconnect re-upload queue, protocol fuzz tests,
    automated two-server cluster in CI.
 
 ## 8. Handoff notes
@@ -191,3 +190,21 @@ mod-mod interaction, not a MultiForge ownership failure, and is recorded in
   proof.
 * Commit after each verified milestone and update `TODO.md`/`KNOWN_ISSUES.md` in the same
   commit.
+
+## 9. Session 5 update (2026-11-15)
+
+* **Live player-state sync is done.** `PlayerStateSyncManager` diffs inventory, armor, off
+  hand, ender chest, hotbar selection, hunger, experience and effects once per tick and sends
+  five new peer packets (ids 22-26); the mirror applies them to the `ExternalPlayer`. A newly
+  created mirror gets the full state from `PlayerCreatePacket`, so only deltas travel.
+* **Verified live:** master + two Forge 47.4.29 servers with a headless
+  `minecraft-protocol` bot, 21/21 checks. Harness: `tools/compat/player_state_check.py` and
+  `tools/compat/mcbot.js`; evidence: `compat/evidence/player-state-20261115T054356Z.md`.
+* **Bug found by the harness:** the mirror's main hand could be written into
+  `Inventory.items[selected]` from the owner's equipment packet before the selected-slot
+  packet arrived (sword duplicated into slots 0 and 8). Fixed in
+  `EntitySyncManager.applyEquipment`; regression evidence is in the same transcript.
+* `./gradlew build :multiforge-master:fatJar` passes 49 tests (21 protocol, 28 master).
+* Next milestones from section 7 stay valid except item 2, which is now complete; the
+  player-driven harness now exists and should be extended with gameplay interactions.
+

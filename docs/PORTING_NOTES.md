@@ -48,7 +48,7 @@ Purpur fork whose functionality lives in three places:
 | 6 | Commands, public API, documentation | done |
 | 7 | Tests: protocol, master integration over real sockets, live two-server cluster | done |
 | 8 | External entity and player mirroring | **ported** (M1 entities, TODO 1; players, TODO 2, with live evidence) |
-| 9 | Inventory/ender chest/experience, dragon/raids | **not ported** (TODO.md) |
+| 9 | Inventory/ender chest/experience, dragon/raids | **player state ported** (inventory, ender chest, hotbar, hunger, experience, effects); dragon/raids/container windows remain in TODO.md |
 
 ## 3. Paper-specific code replaced by Forge equivalents
 
@@ -89,8 +89,8 @@ Purpur fork whose functionality lives in three places:
 5. **Mixin instead of patches.** Mixin 0.8.5 cannot inject at constructor HEAD; statistics and
    advancement prefetch therefore happens in `PlayerList.getPlayerForLogin`, before the
    `ServerPlayer` constructor.
-6. **Peer protocol scope.** MultiPaper's 81 peer packets encode Paper-specific object graphs
-   (raids, dragon fight, mob navigation). MultiForge implements the 15 packets needed by the
+6. **Peer protocol scope.** MultiPaper's ~80 peer packets encode Paper-specific object graphs
+   (raids, dragon fight, mob navigation). MultiForge implements the 26 packets needed by the
    ported systems; the rest is additive (ids are append-only).
 7. **Explicit fallbacks.** MultiPaper assumes the master is always available. MultiForge adds
    local-file fallbacks so a cluster degrades instead of corrupting data.
@@ -116,6 +116,13 @@ Purpur fork whose functionality lives in three places:
   starts later never learns the addresses of existing peers.
 * `WorldDirectories.inferStore` reconstructs the world name from a storage path because POI
   storages exist before `LevelEvent.Load` registers the dimensions.
+* Live player state (inventory, ender chest, hotbar, hunger, experience, effects) is detected
+  by comparing a snapshot once per tick (`PlayerStateSyncManager`) instead of Paper's
+  container listeners, `FoodData` setter patches and `LivingEntity` effect callbacks. Forge
+  has no event for many mutation paths (commands, other mods, direct field writes), so polling
+  the public getters is both smaller than a set of Mixins and complete. Only changes are sent,
+  and a newly mirrored player receives the full state through `PlayerCreatePacket`, so the
+  wire cost stays proportional to the actual changes.
 
 ## 6. Verification performed
 
@@ -123,7 +130,7 @@ Purpur fork whose functionality lives in three places:
   ids, large payloads, unknown id rejection, truncated frames, oversized frame rejection and
   data streams (300 KB multi-frame transfer, buffering of frames that arrive before the stream
   is registered).
-* 25 master integration tests against a real master over TCP: ownership arbitration,
+* 28 master integration tests against a real master over TCP: ownership arbitration,
   handover, generation leases,
   concurrent locks, disconnect recovery, subscriber sync, chunk read/write, read redirection to
   a peer, forced ownership, duplicate login, player broadcasts, player data, file
@@ -147,3 +154,9 @@ Purpur fork whose functionality lives in three places:
   20 TPS, save-all). 20/20 required targets installed; 19/19 Forge mods load in the full
   configuration. `docs/REQUIRED_MOD_COMPATIBILITY.md` has the per-target evidence and the
   honest 0/35 fully-compatible score.
+* Session 5: live player-state sync verified on master + two Forge 47.4.29 servers with a
+  headless `minecraft-protocol` bot; `tools/compat/player_state_check.py` recorded 21/21
+  checks (main/armor/off-hand/ender-chest slots, hotbar selection, hunger, experience,
+  effect add/remove) and both servers shut down cleanly. The run also exposed and fixed the
+  mirror main-hand/selected-slot ordering bug in `EntitySyncManager.applyEquipment` described
+  in `docs/KNOWN_ISSUES.md`. Evidence: `compat/evidence/player-state-20261115T054356Z.md`.

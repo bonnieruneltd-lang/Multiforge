@@ -62,7 +62,7 @@ touching code, then read the architecture document of the subsystem you change.
 ```bash
 ./gradlew build                        # compiles protocol, api, master, mod
 ./gradlew :multiforge-protocol:test    # 21 tests
-./gradlew :multiforge-master:test      # 25 integration tests
+./gradlew :multiforge-master:test      # 28 integration tests
 ```
 
 For changes to chunk IO, ownership or player handling also run a live cluster (DEVELOPMENT.md)
@@ -80,8 +80,8 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
 
 ## 5. Current state and next best steps
 
-* Verified this session: clean build on Forge 47.4.29 (bumped for Structure Layout
-  Optimizer 1.0.11), 21 protocol tests and 25 master integration tests pass.
+* Verified this session: clean build on Forge 47.4.29, 21 protocol tests and 28 master
+  integration tests pass.
 * Verified live: master + two Forge 47.4.29 servers with the pinned compatibility set.
   `tools/compat/cluster_check.py` passed 13/13 checks (blocks both directions, chest
   inventory, time, gamerule, single owner, 20 TPS, save-all) with 18/19 server mods loaded.
@@ -92,9 +92,12 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   evidence are in `docs/REQUIRED_MOD_COMPATIBILITY.md`.
 * Entity mirroring (TODO 1) and player mirroring (TODO 2) are implemented and verified on a
   two-server cluster; player evidence is in
-  `compat/evidence/player-mirroring-20261115T030505Z.md`. Biggest remaining functional gap:
-  live inventory/experience/effect sync (TODO 3). Then live user-list reload, ownership
-  epochs and full attacker attribution for cross-server hits.
+  `compat/evidence/player-mirroring-20261115T030505Z.md`. Live inventory, ender chest,
+  hotbar, hunger, experience and effect sync (TODO 3) is implemented by
+  `PlayerStateSyncManager` and verified 21/21 on a two-server cluster with a headless bot
+  (`compat/evidence/player-state-20261115T054356Z.md`; harness:
+  `tools/compat/player_state_check.py` + `tools/compat/mcbot.js`). Then live user-list
+  reload, ownership epochs and full attacker attribution for cross-server hits.
 * Performance pass done and verified on a live master + two servers (20 TPS, entity,
   block and block-entity sync, graceful stop): see `docs/PERFORMANCE.md`. Per-tick paths
   no longer allocate a world string/`ChunkPos` per call, entity forwarding has an O(1)
@@ -104,8 +107,9 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
 * Chunk generation leases are implemented and integration tested; the lease is demand
   driven (the server whose player needs the chunk generates it). Choosing an idle server
   to generate for a busy one is not implemented.
-* Highest-value next work for compatibility: a player-driven harness/client, because most
-  server rows are waiting on gameplay interaction, not code.
+* Highest-value next work for compatibility: extend the player-driven harness
+  (`tools/compat/mcbot.js` + `player_state_check.py`) with gameplay interactions, because
+  most server rows are waiting on interaction, not code.
 * Do not restart or rewrite working subsystems. Read `DEVELOPMENT_HANDOFF.md` for the
   session audit and `KNOWN_ISSUES.md` for the interaction findings (Timber 3.0, Radium ×
   ServerCore, Ksyxis × forceload, master region compression label).

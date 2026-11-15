@@ -94,10 +94,24 @@ Implemented:
   local player list to the peer. A hit on the copy is forwarded from `ServerPlayer.hurt`
   before local invulnerability checks.
 
+* **Live state.** The owning server keeps the mirror's inventory, armor, off hand, ender
+  chest, selected hotbar slot, hunger, experience and status effects in sync. `PlayerStateSyncManager`
+  diffs every local player against its last transmitted snapshot once per tick and broadcasts
+  `PlayerInventoryUpdatePacket` (one slot), `PlayerSelectedSlotPacket`, `PlayerFoodUpdatePacket`,
+  `PlayerExperiencePacket` and `PlayerEffectsUpdatePacket`. A newly created mirror already has
+  the full state, because `PlayerCreatePacket` carries `saveWithoutId` (inventory, ender chest,
+  hunger, experience, effects); only the deltas after that are sent. Effect duration is sent
+  when an effect appears or is extended, not while it counts down, because the mirror never
+  ticks the effect. When no peer connection is live the snapshots are dropped; the next
+  handshake re-announces every local player with a full create packet. The receiving side
+  applies changes only to an `ExternalPlayer`; a packet that names a locally hosted player is
+  ignored (the local player is authoritative). Inventory changes also re-send the mirror's
+  equipment to local clients.
+
 Not implemented yet: full `DamageSource` serialization (attacker attribution in death
-messages is lost for cross-server hits), live inventory/experience/effect changes (TODO 3),
-and a full NBT resync when an entity crosses an ownership boundary. See [TODO.md](TODO.md)
-and [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+messages is lost for cross-server hits), container interaction forwarding (opening a chest
+that is owned by another server), and a full NBT resync when an entity crosses an ownership
+boundary. See [TODO.md](TODO.md) and [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## Players
 
@@ -114,6 +128,9 @@ and [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 * **Statistics/advancements**: fetched into the local files before vanilla constructs
   `ServerStatsCounter`/`PlayerAdvancements` (`PlayerList.getPlayerForLogin` hook), uploaded
   after each `save()`.
+* **Live state**: inventory, ender chest, hotbar selection, hunger, experience and effects
+  are diffed once per tick by `PlayerStateSyncManager` and applied to the mirror (see the
+  "Live state" bullet in the entity section for the packets and the resync policy).
 * **Registry**: the master broadcasts `PlayerUpdateMessage` on login/logout; servers keep a
   UUID -> (name, server) map used by the API, commands and chat.
 * **Chat**: `ServerChatEvent` is forwarded to peers as JSON and shown locally on every

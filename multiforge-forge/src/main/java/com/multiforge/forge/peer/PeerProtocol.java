@@ -14,7 +14,12 @@ import com.multiforge.forge.peer.packet.HelloPacket;
 import com.multiforge.forge.peer.packet.KeepAlivePacket;
 import com.multiforge.forge.peer.packet.LevelDataUpdatePacket;
 import com.multiforge.forge.peer.packet.PlayerCreatePacket;
+import com.multiforge.forge.peer.packet.PlayerEffectsUpdatePacket;
+import com.multiforge.forge.peer.packet.PlayerExperiencePacket;
+import com.multiforge.forge.peer.packet.PlayerFoodUpdatePacket;
+import com.multiforge.forge.peer.packet.PlayerInventoryUpdatePacket;
 import com.multiforge.forge.peer.packet.PlayerRemovePacket;
+import com.multiforge.forge.peer.packet.PlayerSelectedSlotPacket;
 import com.multiforge.forge.peer.packet.RequestChunkPacket;
 import com.multiforge.forge.peer.packet.SendChunkPacket;
 import com.multiforge.forge.peer.packet.SetCompressionPacket;
@@ -76,6 +81,13 @@ public final class PeerProtocol {
         // Player mirroring. Appended after the entity family; never reorder.
         add(PlayerCreatePacket.class, PlayerCreatePacket::new);
         add(PlayerRemovePacket.class, PlayerRemovePacket::new);
+        // Live player state (inventory, ender chest, hotbar, hunger, experience,
+        // effects). Appended after the player family; never reorder.
+        add(PlayerInventoryUpdatePacket.class, PlayerInventoryUpdatePacket::new);
+        add(PlayerSelectedSlotPacket.class, PlayerSelectedSlotPacket::new);
+        add(PlayerFoodUpdatePacket.class, PlayerFoodUpdatePacket::new);
+        add(PlayerExperiencePacket.class, PlayerExperiencePacket::new);
+        add(PlayerEffectsUpdatePacket.class, PlayerEffectsUpdatePacket::new);
     }
 
     private PeerProtocol() {

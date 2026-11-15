@@ -5,10 +5,16 @@ coding.
 
 ## High priority
 
-3. **Inventory / ender chest / experience / hunger / effects syncing**
-   (`MultiPaperInventoryHandler`, `MultiPaperEnderChestHandler`, `MultiPaperEffectsHandler`).
-   Player data files are already synchronized; live changes while a player is online on
-   another server are not.
+3. **Inventory / ender chest / experience / hunger / effects syncing** - done.
+   `PlayerStateSyncManager` diffs every local player against the last transmitted snapshot
+   once per tick and broadcasts `PlayerInventoryUpdatePacket`, `PlayerSelectedSlotPacket`,
+   `PlayerFoodUpdatePacket`, `PlayerExperiencePacket` and `PlayerEffectsUpdatePacket`; the
+   receiver applies them to the `ExternalPlayer`. It covers `MultiPaperInventoryHandler`,
+   `MultiPaperEnderChestHandler` and `MultiPaperEffectsHandler` in one manager (see
+   [PORTING_NOTES.md](PORTING_NOTES.md) for the polling deviation). A newly created mirror
+   gets the full state from `PlayerCreatePacket` (`saveWithoutId`). Still missing:
+   forwarding container windows between servers (a player opening a chest owned by another
+   server), which stays under peer packet coverage (item 5).
 4. **Entity id allocation** - done end to end. `RequestEntityIdBlockHandler` hands out
    disjoint, persisted blocks (`lastblock.txt` in the master storage root) and rejects
    exhaustion; the mod now receives a block at startup/reconnect, prefetches one block ahead
@@ -53,8 +59,9 @@ coding.
   claiming both are active.
 * **Player-driven compatibility tests** (highest for the 35 targets): a client or fake-player
   harness is required for minecarts, tree felling, leaf decay, head drops, item merging,
-  combat log, TPA, chat, xray and the anti-seed data pack. Until then those rows stay
-  LOADING in `REQUIRED_MOD_COMPATIBILITY.md`.
+  combat log, TPA, chat, xray and the anti-seed data pack. A minimal headless bot now exists
+  (`tools/compat/mcbot.js`, used by `player_state_check.py`) and can be extended for those
+  interactions; until then those rows stay LOADING in `REQUIRED_MOD_COMPATIBILITY.md`.
 * **Client matrix** (highest for the 15 client targets): run the pinned client set on a GPU
   machine, one shader pack at a time, and append the results to the matrix.
 
@@ -99,8 +106,8 @@ coding.
   metadata and equipment use the existing entity packet stream; hits on a copy are forwarded
   from `ServerPlayer.hurt` to the server that hosts the connection; logout and peer loss
   remove the copies. Evidence: `compat/evidence/player-mirroring-20261115T030505Z.md`.
-  Remaining: live inventory/effects/hunger sync (TODO 3), display-name/team sync, and full
-  attacker attribution for cross-server hits.
+  Live inventory/ender chest/hotbar/hunger/experience/effects sync is done (item 3);
+  remaining: display-name/team sync and full attacker attribution for cross-server hits.
 
 * **Live entity mirroring (M1)** - done and verified on a two-server cluster. The owner
   forwards `ChunkMap.TrackedEntity.broadcast` packets (`EntityUpdatePacket`), spawns are
