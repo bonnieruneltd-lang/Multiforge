@@ -7,10 +7,13 @@ the mitigation.
 
 ### 1. Entity and player mirroring edge cases
 
-* **Cross-server damage attribution:** `EntityHurtPacket` carries the damage type and amount,
-  not the attacking entity. Damage applies correctly on the owner (including hits on a
-  mirrored player), but death messages and kill credit do not name a player who hit from
-  another server. Full `DamageSource` serialization is tracked in TODO item 5.
+* **Cross-server damage attribution:** `EntityHurtPacket` carries the damage type, amount,
+  the causing and direct entity UUIDs and the source position. The owner resolves them and
+  rebuilds a real `DamageSource`, so death messages and kill credit name a player who hit
+  from another server. Limitation: if the causing/direct entity does not exist on the owner
+  (not even as a player mirror), the hit degrades to damage-type-only attribution. Projectile
+  ownership still relies on the owner having a mirror of the shooter; there is no
+  entity-handover protocol for a projectile that outlives its shooter's chunk.
 * **Ownership boundary crossings:** an entity that walks from a chunk owned by A into one
   owned by B can freeze for a moment. A stops broadcasting when its chunk is no longer the
   entity's chunk, and B starts once it ticks and owns the new chunk; there is no full NBT
@@ -25,9 +28,11 @@ the mitigation.
   and inventory, ender chest, hotbar, hunger, experience and effects are diffed once per tick,
   but a few details are not mirrored: potion *particles* on other players (vanilla derives them
   from synched metadata, which does sync), a changed tab-list display name or game-mode icon,
-  the death animation (`tick death` is not simulated on the copy), the open container window
-  and cursor stack, and the countdown of an effect duration (the mirror holds the duration from
-  the last add/extension because the copy never ticks effects). Player data files are still
+  the death animation (`tick death` is not simulated on the copy), the cursor stack, and the
+  countdown of an effect duration (the mirror holds the duration from the last add/extension
+  because the copy never ticks effects). An open container window is forwarded to the owner
+  (see section 2 and the Containers section of SYNCHRONIZATION.md), including clicks, but the
+  cursor stack itself still lives only on the player's server. Player data files are still
   authoritative on the master at save/load time, and the mirror uses the profile properties
   sent with `PlayerCreatePacket`, so skins work when the origin has them.
 
@@ -44,9 +49,14 @@ Remaining limitations:
 * Effect duration is sent when an effect is applied or extended, not while it counts down.
   The mirror's `ActiveEffects` therefore shows the duration of the last update and not the
   decreasing owner value.
-* Container windows are not forwarded: opening a chest that is owned by another server
-  (MultiPaper's `openContainer` forwarding), the cursor stack and container menu state stay
-  local. The inventory slots themselves are synced, so the items are consistent.
+* Container windows are forwarded to the owning server (`ContainerSyncManager`): opening a
+  chest/furnace in a foreign chunk sends `OpenContainerPacket`, clicks send only the changed
+  container slots, and closing sends `ContainerClosePacket`. The menu itself runs on the
+  server the client is connected to, so the cursor stack, drag distribution and shift-click
+  stay local and responsive; the owner applies the resulting container slots and broadcasts
+  the authoritative block entity NBT. The trade-off is last-writer-wins for the container
+  slots: a mod that mutates the same container directly on both servers during one click can
+  produce a transient mismatch, repaired by the next block entity broadcast.
 * Duplication repair is not implemented. Only the owning server mutates the player's
   inventory, and TCP keeps the deltas ordered, so MultiPaper's "replacing item mismatch"
   search for dupes has no trigger here; if a future feature lets another server mutate the
@@ -93,55 +103,59 @@ last-writer-wins policy sampled once per second. Time is broadcast unconditional
 or a timer reset, which avoids a feedback loop between servers that all decrement the timer.
 A visible flicker is possible if two admins change the same value within one second.
 
-### 7. User list changes apply on restart
+### 7. User list reload conflicts
 
-`FileSyncer` uploads `whitelist.json`, `ops.json` and the ban lists to the master and adopts the
-master's copies at startup, but a running server does not reload its in-memory `PlayerList`.
-A newly connected server picks the cluster lists up on its next start. Tracked in TODO item 7.
+`StoredUserListMixin` uploads a whitelist/ops/ban change immediately, and `WriteJsonHandler`
+broadcasts the content to the other servers, which reload their in-memory lists without a
+restart (`PlayerSyncManager#reloadUserList`). A whitelist reload disconnects players that are
+no longer allowed; a ban reload disconnects matching users/IPs; an op reload re-sends
+permission levels. Two admins editing the same list on two servers within the round-trip
+window still produce last-writer-wins (the master serializes the writes, but the later write
+replaces the earlier one rather than merging entries).
 
-### 8. Config hot reload is partial
+### 8. Region files written by older masters
+
+New chunks are zlib-compressed and readable by vanilla and external tools. A master world
+written before this change contains gzip bytes stored under the deflate version byte; the
+read path detects the gzip magic and transcodes it, so servers and peers can still load
+those chunks, but an external tool that does its own region parsing will see the old files
+as corrupt until they are rewritten (re-save the chunk through the master).
+
+### 9. Config hot reload is partial
 
 `/reload` re-bakes the config snapshot, but components that cache values at construction (peer
 compression threshold, master address) keep the old values until restart.
 
 ## Operational notes
 
-### 9. ForgeGradle second dev server (fixed)
+### 10. ForgeGradle second dev server (fixed)
 
 `:multiforge-forge:runServer2` used to fail with "No main class specified" because the
 `server2` run did not inherit ForgeGradle's resolved launch configuration. It now declares
 `parent runs.server` and runs from `run2/`; see DEVELOPMENT.md.
 
-### 10. Master must be started in (or pointed at) its storage root
+### 11. Master must be started in (or pointed at) its storage root
 
 The master stores worlds relative to `-Dmultiforge.master.storage` (default: working
 directory). Changing the root after a world exists looks like an empty cluster and the first
 server will upload a fresh world on top. Keep the root stable; back it up.
 
-### 11. Logging volume
+### 12. Logging volume
 
 `debug.logging = true` logs every chunk load and ownership change. On a busy server this is
 several MB per minute. Use it only while diagnosing.
 
-### 12. Refmap when editing mixins
+### 13. Refmap when editing mixins
 
 After changing a mixin target or adding a new mixin, rebuild before running, otherwise the
 refmap and the mixin config are out of date and Mixin will fail at class transformation.
 
-### 13. `debug.chunkBorders` is not implemented
+### 14. `debug.chunkBorders` is not implemented
 
 The option exists in the config and is documented as reserved. Either implement it or remove
 it (see TODO.md item 16).
 
 ## Interoperability and compatibility findings (session 3)
-
-### 14. Master region files are not readable by vanilla tools
-
-The master stores the bytes it receives (gzip-compressed NBT) under the region format's
-zlib version byte (`VERSION_DEFLATE = 2`). MultiForge's own read path decodes gzip, so the
-cluster works, but a standard region reader or a plain Forge server pointed at the master
-storage sees `incorrect header check`. Do not change the format without a migration plan and
-a round-trip test using a vanilla-format reader. Tracked in TODO.
 
 ### 15. `/forceload` tickets disappear while Ksyxis is installed
 

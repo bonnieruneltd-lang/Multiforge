@@ -48,7 +48,7 @@ Purpur fork whose functionality lives in three places:
 | 6 | Commands, public API, documentation | done |
 | 7 | Tests: protocol, master integration over real sockets, live two-server cluster | done |
 | 8 | External entity and player mirroring | **ported** (M1 entities, TODO 1; players, TODO 2, with live evidence) |
-| 9 | Inventory/ender chest/experience, dragon/raids | **player state ported** (inventory, ender chest, hotbar, hunger, experience, effects); dragon/raids/container windows remain in TODO.md |
+| 9 | Inventory/ender chest/experience, dragon/raids | **player state ported** (inventory, ender chest, hotbar, hunger, experience, effects) and container windows forwarded (`ContainerSyncManager`); dragon/raids remain in TODO.md |
 
 ## 3. Paper-specific code replaced by Forge equivalents
 

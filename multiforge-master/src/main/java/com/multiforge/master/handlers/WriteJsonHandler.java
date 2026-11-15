@@ -4,6 +4,7 @@ import com.multiforge.master.util.MasterStorage;
 
 import com.multiforge.protocol.messages.masterbound.WriteJsonMessage;
 import com.multiforge.protocol.messages.serverbound.BooleanMessageReply;
+import com.multiforge.protocol.messages.serverbound.DataUpdateMessage;
 import com.multiforge.master.ServerConnection;
 
 import java.io.File;
@@ -32,6 +33,10 @@ public class WriteJsonHandler {
                 }
 
                 connection.sendReply(new BooleanMessageReply(true), message);
+                // Push the new list to the other servers. Without this a running
+                // server kept its in-memory PlayerList until restart; receivers
+                // reload whitelist/ops/ban lists on DataUpdateMessage.
+                connection.broadcastOthers(new DataUpdateMessage(message.file, message.data));
             } catch (IOException e) {
                 e.printStackTrace();
             }

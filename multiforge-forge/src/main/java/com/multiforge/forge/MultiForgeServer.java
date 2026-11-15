@@ -7,6 +7,7 @@ import com.multiforge.forge.chunk.ChunkStorageRegistry;
 import com.multiforge.forge.chunk.ChunkSyncIo;
 import com.multiforge.forge.compat.ModCompatibilityManager;
 import com.multiforge.forge.config.MultiForgeConfig;
+import com.multiforge.forge.container.ContainerSyncManager;
 import com.multiforge.forge.entity.EntitySyncManager;
 import com.multiforge.forge.network.MasterConnection;
 import com.multiforge.forge.peer.PeerManager;
@@ -90,6 +91,7 @@ public final class MultiForgeServer {
     private final PlayerStateSyncManager playerState;
     private final FileSyncer files;
     private final EntitySyncManager entities;
+    private final ContainerSyncManager containers;
     private final EntityIdAllocator entityIds;
     private final ModCompatibilityManager compat;
     private final MultiForgeApiImpl api;
@@ -117,6 +119,7 @@ public final class MultiForgeServer {
         this.playerState = new PlayerStateSyncManager(this);
         this.files = new FileSyncer(this);
         this.entities = new EntitySyncManager(this);
+        this.containers = new ContainerSyncManager(this);
         this.compat = new ModCompatibilityManager(this);
         this.api = new MultiForgeApiImpl(this);
         this.entityIds = new EntityIdAllocator(
@@ -439,6 +442,7 @@ public final class MultiForgeServer {
         players.clear();
         playerMirrors.clear();
         playerState.clear();
+        containers.clear();
         entityIds.clear();
         chunks.clear();
         levels.clear();
@@ -538,6 +542,11 @@ public final class MultiForgeServer {
     /** @return live entity mirroring between servers */
     public EntitySyncManager entities() {
         return entities;
+    }
+
+    /** @return cross-server container window forwarding */
+    public ContainerSyncManager containers() {
+        return containers;
     }
 
     /** @return cluster-unique entity id allocator backed by the master */

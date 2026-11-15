@@ -117,13 +117,15 @@ class MessageCodecTest {
 
     @Test
     void ownerAndSubscribersRoundTrip() {
-        SetChunkOwnerMessage owner = roundTrip(new SetChunkOwnerMessage("world", 3, 4, "server-b"),
+        SetChunkOwnerMessage owner = roundTrip(new SetChunkOwnerMessage("world", 3, 4, "server-b", 7L),
                 new ServerBoundProtocol());
         assertEquals("server-b", owner.owner);
+        assertEquals(7L, owner.epoch);
 
         ChunkSubscribersSyncMessage sync = roundTrip(new ChunkSubscribersSyncMessage("world", 3, 4, "server-b",
-                new String[] { "server-a", "server-c" }), new ServerBoundProtocol());
+                new String[] { "server-a", "server-c" }, 8L), new ServerBoundProtocol());
         assertEquals("server-b", sync.owner);
+        assertEquals(8L, sync.epoch);
         assertArrayEquals(new String[] { "server-a", "server-c" }, sync.subscribers);
     }
 

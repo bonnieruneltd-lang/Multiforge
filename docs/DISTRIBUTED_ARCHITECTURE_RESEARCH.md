@@ -89,10 +89,13 @@ A correct handoff needs, in order:
 4. **Fence**: master increments an ownership epoch; packets from older epochs are dropped.
 5. **Resume**: new owner starts ticking; old owner keeps a read-only mirror.
 
-Items 1, 3 and 5 partly exist. There is **no epoch** in any packet today, so a delayed
-block change from the old owner can overwrite a newer change from the new owner. Adding an
-epoch to `BlockChangePacket` and `BlockEntityUpdatePacket` is the smallest useful next step
-and does not require a protocol redesign (append a field, bump the peer protocol version).
+Items 1, 3 and 5 partly exist. **Step 4 (the fence) is now implemented**: the master keeps a
+per-chunk ownership epoch, `SetChunkOwnerMessage`/`ChunkSubscribersSyncMessage` announce it,
+and `BlockChangePacket`/`BlockEntityUpdatePacket` are stamped and filtered by
+`ChunkState.observeEpoch`. What is still missing for a full handoff is the freeze/drain/
+snapshot sequence and acknowledgements; the epoch alone prevents an old owner's delayed
+packet from overwriting the new owner, but it does not tell the master when it is safe to
+resume ticking on the new owner.
 
 ### 3.2 Region ownership
 

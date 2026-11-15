@@ -71,8 +71,8 @@ each other. A timeout that aborts the operation is mandatory.
 
 **Steps:**
 
-1. Add an ownership epoch to the master and to block/block-entity packets; drop packets
-   from older epochs.
+1. ~~Add an ownership epoch to the master and to block/block-entity packets; drop packets
+   from older epochs.~~ Done (see TODO.md); acknowledgements are still missing.
 2. Implement freeze → drain → snapshot → fence → resume in the master and `ChunkManager`.
 3. Trigger migration on player movement first (deterministic), then on tick-time load.
 4. Kill the old owner mid-migration and verify rollback or completion with no unowned chunk.

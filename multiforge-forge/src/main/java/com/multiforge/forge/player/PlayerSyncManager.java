@@ -17,6 +17,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.players.IpBanListEntry;
+import net.minecraft.server.players.PlayerList;
+import net.minecraft.server.players.UserBanListEntry;
 import net.minecraft.world.level.storage.LevelResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -155,9 +158,91 @@ public final class PlayerSyncManager {
         // Tell the other servers first: the master broadcast that follows updates
         // the cluster list, while the peer packet removes the visible entity.
         server.playerMirrors().onLocalPlayerLeft(player);
+        server.containers().onLocalPlayerLeft(player);
         server.playerState().forget(player.getUUID());
         server.master().send(new PlayerDisconnectMessage(player.getUUID()));
         players.remove(player.getUUID());
+    }
+
+    /**
+     * Applies a whitelist/ops/ban file that another server uploaded.
+     *
+     * <p>Vanilla reads these lists only during startup, so a running server would
+     * keep its old in-memory {@code StoredUserList} until restart even though the
+     * file on disk was replaced. This method reloads the affected list and makes
+     * the change visible immediately:</p>
+     * <ul>
+     *   <li>whitelist: reload and disconnect online players that are no longer
+     *       allowed (only when the whitelist is enabled);</li>
+     *   <li>ops: reload and re-send the permission level of every online player;</li>
+     *   <li>bans: reload both lists and disconnect matching players.</li>
+     * </ul>
+     *
+     * <p>Runs on the server thread. Called from {@code FileSyncer#onDataUpdate}
+     * after the new content was written.</p>
+     *
+     * @param path shared path from the data update message
+     */
+    public void reloadUserList(String path) {
+        if (path == null) {
+            return;
+        }
+        String name = path.replace('\\', '/');
+        int slash = name.lastIndexOf('/');
+        if (slash >= 0) {
+            name = name.substring(slash + 1);
+        }
+        PlayerList playerList = server.server().getPlayerList();
+        try {
+            switch (name) {
+                case "whitelist.json" -> {
+                    playerList.getWhiteList().load();
+                    if (playerList.isUsingWhitelist()) {
+                        for (ServerPlayer player : List.copyOf(playerList.getPlayers())) {
+                            if (!playerList.isWhiteListed(player.getGameProfile())) {
+                                player.connection.disconnect(
+                                        Component.translatable("multiplayer.disconnect.not_whitelisted"));
+                            }
+                        }
+                    }
+                    LOGGER.info("Reloaded whitelist.json ({} entries)", playerList.getWhiteListNames().length);
+                }
+                case "ops.json" -> {
+                    playerList.getOps().load();
+                    for (ServerPlayer player : List.copyOf(playerList.getPlayers())) {
+                        playerList.sendPlayerPermissionLevel(player);
+                    }
+                    LOGGER.info("Reloaded ops.json ({} entries)", playerList.getOpNames().length);
+                }
+                case "banned-players.json" -> {
+                    playerList.getBans().load();
+                    for (ServerPlayer player : List.copyOf(playerList.getPlayers())) {
+                        UserBanListEntry entry = playerList.getBans().get(player.getGameProfile());
+                        if (entry != null) {
+                            player.connection.disconnect(Component.translatable(
+                                    "multiplayer.disconnect.banned.reason", entry.getReason()));
+                        }
+                    }
+                    LOGGER.info("Reloaded banned-players.json");
+                }
+                case "banned-ips.json" -> {
+                    playerList.getIpBans().load();
+                    for (ServerPlayer player : List.copyOf(playerList.getPlayers())) {
+                        IpBanListEntry entry = playerList.getIpBans().get(player.getIpAddress());
+                        if (entry != null) {
+                            player.connection.disconnect(Component.translatable(
+                                    "multiplayer.disconnect.banned_ip.reason", entry.getReason()));
+                        }
+                    }
+                    LOGGER.info("Reloaded banned-ips.json");
+                }
+                default -> {
+                    // Not a user list; nothing to reload.
+                }
+            }
+        } catch (IOException e) {
+            LOGGER.warn("Could not reload {}: {}", name, e.toString());
+        }
     }
 
     // ------------------------------------------------------------------

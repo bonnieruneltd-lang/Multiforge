@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "multiforge.refmap.json",
   "mixins": [
+    "AbstractContainerMenuClickMixin",
     "BlockEntityMixin",
     "ChunkMapTrackedEntityMixin",
     "ChunkStorageMixin",
@@ -20,7 +21,9 @@
     "PlayerListMixin",
     "ServerLevelMixin",
     "ServerPlayerHurtMixin",
-    "ServerStatsCounterMixin"
+    "ServerPlayerMenuMixin",
+    "ServerStatsCounterMixin",
+    "StoredUserListMixin"
   ],
   "injectors": {
     "defaultRequire": 1

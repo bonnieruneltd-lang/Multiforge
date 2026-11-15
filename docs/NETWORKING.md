@@ -65,7 +65,7 @@ server (`ServerBoundProtocol`).
 | `ReadPlayerMessage` / `WritePlayerMessage` | player .dat |
 | `ReadStatsMessage` / `WriteStatsMessage` | statistics JSON |
 | `ReadAdvancementMessage` / `WriteAdvancementsMessage` | advancements JSON |
-| `ReadJsonMessage` / `WriteJsonMessage` | whitelist/ops/ban lists |
+| `ReadJsonMessage` / `WriteJsonMessage` | whitelist/ops/ban lists; a write is broadcast to the other servers as `DataUpdateMessage` so their running `PlayerList` reloads |
 | `ReadDataMessage` / `WriteDataMessage` | arbitrary shared file |
 | `UploadFileMessage` / `DownloadFileMessage` / `RequestFilesToSyncMessage` | shared file store |
 | `CallDataStorageMessage` | key/value storage used by integrations |
@@ -76,15 +76,16 @@ server (`ServerBoundProtocol`).
 | Message | Purpose |
 | --- | --- |
 | `SetSecretMessage` | cluster secret (used by the built-in proxy) |
-| `SetChunkOwnerMessage(world, cx, cz, owner)` | ownership changed; empty owner = unowned |
+| `SetChunkOwnerMessage(world, cx, cz, owner, epoch)` | ownership changed; empty owner = unowned; epoch fences stale peer packets |
+| `ChunkSubscribersSyncMessage(owner, subscribers[], epoch)` | full state of a chunk |
 | `AddChunkSubscriberMessage` / `RemoveChunkSubscriberMessage` | subscription changes |
 | `AddEntitySubscriberMessage` / `RemoveEntitySubscriberMessage` | entity subscription changes |
-| `ChunkSubscribersSyncMessage(owner, subscribers[])` | full state of a chunk |
 | `EntitySubscribersSyncMessage(subscribers[])` | full entity subscriber state |
 | `ServerChangedChunkStatusMessage` | another server reported a chunk status |
 | `ServerInfoUpdateMessage(name, tickTime, tps, playerCount)` | health of a server |
 | `ServerStartedMessage(name, host, port)` | a peer is reachable |
 | `PlayerUpdateMessage(uuid, name, server, online)` | cluster player list |
+| `DataUpdateMessage(path, data)` | another server wrote a shared/user-list file; receivers reload it |
 | `DataMessageReply`, `BooleanMessageReply`, `NullableStringMessageReply`, `KeyValueStringMapMessageReply`, `IntegerPairMessageReply` | replies |
 | `ChunkLoadedOnAnotherServerMessage(server)` | chunk read must go to a peer |
 | `FileContentMessage(path, lastModified, streamId)` | file download follows on a data stream |
@@ -129,8 +130,8 @@ varint frameLength, varint uncompressedLength, varint packetId, payload
 | 2 | `KeepAlivePacket` | heartbeat |
 | 3 | `RequestChunkPacket(requestId, world, x, z)` | ask for the newest chunk copy |
 | 4 | `SendChunkPacket(requestId, world, x, z, data)` | compressed chunk NBT, empty = not available |
-| 5 | `BlockChangePacket(world, pos, stateId)` | block update broadcast |
-| 6 | `BlockEntityUpdatePacket(world, pos, nbt)` | block entity update |
+| 5 | `BlockChangePacket(world, pos, stateId, epoch)` | block update broadcast |
+| 6 | `BlockEntityUpdatePacket(world, pos, nbt, epoch)` | block entity update |
 | 7 | `ChatMessagePacket(json, sender, origin)` | cluster-wide chat |
 | 8 | `TimeUpdatePacket` | legacy level time (no longer broadcast) |
 | 9 | `WeatherUpdatePacket` | rain/thunder + timers |
@@ -143,7 +144,7 @@ varint frameLength, varint uncompressedLength, varint packetId, payload
 | 16 | `EntityUpdatePacket` | one serialized clientbound entity packet (movement, metadata, ...) |
 | 17 | `EntityRemovePacket` | a mirrored entity was removed |
 | 18 | `EntityUpdateWithDependenciesPacket` | an entity packet that references other entities (passengers, leash, pickups) |
-| 19 | `EntityHurtPacket` | damage taken on a mirror, forwarded to the owner |
+| 19 | `EntityHurtPacket` | damage on a mirror with attacker/direct UUIDs and source position |
 | 20 | `PlayerCreatePacket` | profile, position, game mode and player data for a mirror copy |
 | 21 | `PlayerRemovePacket` | a mirrored player left the cluster |
 | 22 | `PlayerInventoryUpdatePacket` | one changed inventory/armor/off-hand/ender-chest slot |
@@ -151,11 +152,32 @@ varint frameLength, varint uncompressedLength, varint packetId, payload
 | 24 | `PlayerFoodUpdatePacket` | food, saturation and exhaustion of a mirrored player |
 | 25 | `PlayerExperiencePacket` | experience progress, level and total of a mirrored player |
 | 26 | `PlayerEffectsUpdatePacket` | one status effect added, refreshed or removed |
+| 27 | `OpenContainerPacket(world, pos, player)` | a player opened a container owned by the receiver |
+| 28 | `ContainerClickPacket(world, pos, player, changes[])` | changed container slots after a menu click |
+| 29 | `ContainerClosePacket(world, pos, player)` | the forwarded container window closed |
 
 The entity family (15-19) is the M1 mirroring protocol. Ids 20-21 extend it to players and
 ids 22-26 carry live player state; they are described in
-[SYNCHRONIZATION.md](SYNCHRONIZATION.md#players). Ids were appended, so older peers keep
+[SYNCHRONIZATION.md](SYNCHRONIZATION.md#players). Ids 27-29 forward container windows
+([SYNCHRONIZATION.md](SYNCHRONIZATION.md#containers)). Ids were appended, so older peers keep
 their ids.
+
+### Ownership epochs
+
+`BlockChangePacket` and `BlockEntityUpdatePacket` append a `long epoch`. The master
+increments it on every ownership change and announces it in `SetChunkOwnerMessage` and
+`ChunkSubscribersSyncMessage`; the mod stamps outgoing packets with the chunk's current
+epoch and drops a received packet whose epoch is older than the newest one it has seen for
+that chunk (from the master or from an earlier peer packet). This is a fence against a
+delayed update produced by the previous owner. Because the field is appended, a peer
+running an older build omits it and decoding yields epoch 0 ("no information", always
+applied).
+
+`EntityHurtPacket` also appends optional fields: the causing entity UUID, the direct entity
+UUID and the source position. The owner resolves them and builds a real `DamageSource`, so
+death messages and kill credit name a player who hit from another server. Field order is
+`damageType`, attacker flag+UUID, direct flag+UUID, position flag+xyz; absent fields decode
+as `null`.
 
 ### Time synchronization
 

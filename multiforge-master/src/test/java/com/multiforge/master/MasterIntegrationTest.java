@@ -33,6 +33,7 @@ import com.multiforge.protocol.messages.serverbound.BooleanMessageReply;
 import com.multiforge.protocol.messages.serverbound.ChunkLoadedOnAnotherServerMessage;
 import com.multiforge.protocol.messages.serverbound.ChunkSubscribersSyncMessage;
 import com.multiforge.protocol.messages.serverbound.DataMessageReply;
+import com.multiforge.protocol.messages.serverbound.DataUpdateMessage;
 import com.multiforge.protocol.messages.serverbound.FilesToSyncMessage;
 import com.multiforge.protocol.messages.serverbound.IntegerPairMessageReply;
 import com.multiforge.protocol.messages.serverbound.NullableStringMessageReply;
@@ -239,6 +240,52 @@ class MasterIntegrationTest {
                 message -> message.world.equals(world), 5000L);
         assertTrue(sync.subscribers.length == 1);
         assertEquals("sync-b", sync.subscribers[0]);
+    }
+
+    @Test
+    void ownershipEpochIsAssignedWithoutSubscribers() throws Exception {
+        TestServerClient a = client("epoch-solo");
+        String world = "epoch_solo_world";
+
+        // No SubscribeChunkMessage: the epoch must still advance when the lock is
+        // granted, otherwise the owner would stamp its block changes with 0 and a
+        // later subscriber could not fence a previous owner.
+        a.send(new LockChunkMessage(world, 1, 1));
+        SetChunkOwnerMessage owner = a.await(SetChunkOwnerMessage.class,
+                message -> message.world.equals(world) && message.owner.equals("epoch-solo"), 5000L);
+        assertTrue(owner.epoch > 0L);
+    }
+
+    @Test
+    void ownershipEpochAdvancesOnEveryOwnerChange() throws Exception {
+        TestServerClient a = client("epoch-a");
+        TestServerClient b = client("epoch-b");
+        String world = "epoch_world";
+
+        a.send(new SubscribeChunkMessage(world, 9, 9));
+        b.send(new SubscribeChunkMessage(world, 9, 9));
+        a.send(new LockChunkMessage(world, 9, 9));
+
+        SetChunkOwnerMessage first = b.await(SetChunkOwnerMessage.class,
+                message -> message.world.equals(world) && message.owner.equals("epoch-a"), 5000L);
+        assertTrue(first.epoch > 0L, "an ownership change must produce a positive epoch");
+
+        a.send(new UnlockChunkMessage(world, 9, 9));
+        SetChunkOwnerMessage unowned = b.await(SetChunkOwnerMessage.class,
+                message -> message.world.equals(world) && message.owner.isEmpty()
+                        && message.epoch > first.epoch, 5000L);
+
+        b.send(new LockChunkMessage(world, 9, 9));
+        SetChunkOwnerMessage second = b.await(SetChunkOwnerMessage.class,
+                message -> message.world.equals(world) && message.owner.equals("epoch-b"), 5000L);
+        assertTrue(second.epoch > unowned.epoch, "a re-lock must advance the epoch again");
+
+        // The subscriber snapshot carries the same authoritative epoch.
+        b.send(new com.multiforge.protocol.messages.masterbound.SyncChunkSubscribersMessage(world, 9, 9));
+        ChunkSubscribersSyncMessage sync = b.await(ChunkSubscribersSyncMessage.class,
+                message -> message.world.equals(world) && message.cx == 9 && message.cz == 9, 5000L);
+        assertEquals(second.epoch, sync.epoch);
+        assertEquals("epoch-b", sync.owner);
     }
 
     // ------------------------------------------------------------------
@@ -647,6 +694,22 @@ class MasterIntegrationTest {
 
         byte[] downloaded = b.download("plugins/demo/data.bin").get(10, TimeUnit.SECONDS);
         assertArrayEquals(data, downloaded);
+    }
+
+    @Test
+    void userListWriteIsBroadcastToOtherServers() throws Exception {
+        TestServerClient a = client("json-push-a");
+        TestServerClient b = client("json-push-b");
+        byte[] json = "[{\"uuid\":\"y\",\"name\":\"Alex\",\"level\":4}]".getBytes(StandardCharsets.UTF_8);
+
+        BooleanMessageReply written = a.request(new WriteJsonMessage("ops.json", json)).get();
+        assertTrue(written.result);
+
+        // A running server must learn about the change without restarting; the
+        // master broadcasts the exact bytes as DataUpdateMessage.
+        DataUpdateMessage update = b.await(DataUpdateMessage.class,
+                message -> message.path.equals("ops.json"), 5000L);
+        assertArrayEquals(json, update.data);
     }
 
     @Test

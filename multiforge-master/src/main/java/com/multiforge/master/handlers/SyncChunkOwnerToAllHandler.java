@@ -9,6 +9,8 @@ public class SyncChunkOwnerToAllHandler {
     public static void handle(ServerConnection connection, SyncChunkOwnerToAllMessage message) {
         ServerConnection owner = ChunkSubscriptionManager.getOwner(message.world, message.cx, message.cz);
 
-        ServerConnection.broadcastAll(new SetChunkOwnerMessage(message.world, message.cx, message.cz, owner == null ? "" : owner.getBungeeCordName()));
+        ServerConnection.broadcastAll(new SetChunkOwnerMessage(message.world, message.cx, message.cz,
+                owner == null ? "" : owner.getBungeeCordName(),
+                ChunkSubscriptionManager.currentEpoch(message.world, message.cx, message.cz)));
     }
 }

@@ -50,6 +50,9 @@ touching code, then read the architecture document of the subsystem you change.
 | Block/block entity sync | `LevelChunkMixin`, `BlockEntityMixin`, `ChunkManager` |
 | Player data / login | `PlayerSyncManager`, `PlayerListMixin`, `ServerStatsCounterMixin`, `PlayerAdvancementsMixin` |
 | Player mirroring | `player/PlayerMirrorManager`, `player/ExternalPlayer`, `PlayerListAccessor`, `ServerPlayerHurtMixin`, `EntitySyncManager` |
+| Container window forwarding | `container/ContainerSyncManager`, `ServerPlayerMenuMixin`, `AbstractContainerMenuClickMixin`, `OpenContainerPacket`/`ContainerClickPacket`/`ContainerClosePacket` |
+| Live user lists | `StoredUserListMixin`, `FileSyncer.onUserListChanged/onDataUpdate`, `PlayerSyncManager.reloadUserList`, `WriteJsonHandler` |
+| Ownership epochs | `ChunkSubscriptionManager`, `SetChunkOwnerMessage`, `ChunkSubscribersSyncMessage`, `ChunkState`, `ChunkManager`, `BlockChangePacket`, `BlockEntityUpdatePacket` |
 | Required-target detection / `/multiforge compat` | `compat/ModCompatibilityManager`, `MultiForgeServer.compat()` |
 | Pinned compatibility targets | `tools/compat/resolve_required_mods.py`, `compat/required-mods.json`, `docs/REQUIRED_MOD_COMPATIBILITY.md` |
 | Two-server verification | `tools/compat/cluster_check.py` (+ `rcon.py`), evidence in `compat/evidence/` |
@@ -80,8 +83,8 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
 
 ## 5. Current state and next best steps
 
-* Verified this session: clean build on Forge 47.4.29, 21 protocol tests and 28 master
-  integration tests pass.
+* Verified this session: clean build on Forge 47.4.29, protocol tests and master
+  integration/region tests pass.
 * Verified live: master + two Forge 47.4.29 servers with the pinned compatibility set.
   `tools/compat/cluster_check.py` passed 13/13 checks (blocks both directions, chest
   inventory, time, gamerule, single owner, 20 TPS, save-all) with 18/19 server mods loaded.
@@ -96,8 +99,13 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   hotbar, hunger, experience and effect sync (TODO 3) is implemented by
   `PlayerStateSyncManager` and verified 21/21 on a two-server cluster with a headless bot
   (`compat/evidence/player-state-20261115T054356Z.md`; harness:
-  `tools/compat/player_state_check.py` + `tools/compat/mcbot.js`). Then live user-list
-  reload, ownership epochs and full attacker attribution for cross-server hits.
+  `tools/compat/player_state_check.py` + `tools/compat/mcbot.js`). Then scoreboards/boss
+  bars, advancement/stat live deltas, entity boundary resync (`onRemoteEntityChunkChanged`
+  is still a log-only stub), and `debug.chunkBorders` (still a no-op).
+* This session added: cross-server container window forwarding
+  (`ContainerSyncManager`, peer packets 27-29), master ownership epochs on
+  block/block-entity packets, attacker attribution in `EntityHurtPacket`, live
+  whitelist/ops/ban reload, and true-zlib master region files with a round-trip test.
 * Performance pass done and verified on a live master + two servers (20 TPS, entity,
   block and block-entity sync, graceful stop): see `docs/PERFORMANCE.md`. Per-tick paths
   no longer allocate a world string/`ChunkPos` per call, entity forwarding has an O(1)

@@ -55,3 +55,5 @@ __pycache__/
 
 # Local JDK used for builds (installed per session, never committed)
 /.jdk/
+# Local Java truststore used by Gradle in this sandbox (never commit)
+/.truststore*

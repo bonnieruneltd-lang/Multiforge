@@ -25,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.zip.DeflaterOutputStream;
 
 /**
  * Chunk data plane: reads and writes chunk NBT through the master and peers.
@@ -163,12 +164,29 @@ public final class ChunkSyncIo {
                 });
     }
 
+    /**
+     * Decodes chunk NBT received from the cluster.
+     *
+     * <p>The data plane has two producers: this mod (true zlib, matching the
+     * region format) and older peers / {@code respondToChunkRequest} (gzip from
+     * {@code NbtIo.writeCompressed}). {@code NbtIo.readCompressed} only accepts
+     * gzip, so the magic bytes decide which stream to use. This also keeps a
+     * chunk readable while a rolling upgrade has peers on both formats.</p>
+     *
+     * @param data compressed chunk NBT
+     * @return decoded tag, empty when the peer had no copy
+     */
     private Optional<CompoundTag> decode(byte[] data) {
         if (data == null || data.length == 0) {
             return Optional.empty();
         }
-        try {
-            return Optional.ofNullable(NbtIo.readCompressed(new ByteArrayInputStream(data)));
+        boolean gzip = data.length >= 2 && (data[0] & 0xFF) == 0x1F && (data[1] & 0xFF) == 0x8B;
+        try (java.io.InputStream raw = new ByteArrayInputStream(data);
+             java.io.InputStream decompressed = gzip
+                     ? new java.util.zip.GZIPInputStream(raw)
+                     : new java.util.zip.InflaterInputStream(raw);
+             java.io.DataInputStream input = new java.io.DataInputStream(decompressed)) {
+            return Optional.ofNullable(NbtIo.read(input));
         } catch (IOException e) {
             throw new IllegalStateException("Corrupt chunk data received from the cluster", e);
         }
@@ -242,9 +260,29 @@ public final class ChunkSyncIo {
                 });
     }
 
+    /**
+     * Encodes chunk NBT in the region-file format.
+     *
+     * <p>Region version 2 means <b>zlib</b> (deflate with a zlib header), not
+     * gzip. {@code NbtIo.writeCompressed} writes gzip, which vanilla and external
+     * map tools cannot read from the master world even though the version byte
+     * says deflate. Using a {@link DeflaterOutputStream} around
+     * {@code NbtIo.write} produces real zlib data, so the master's region files
+     * are readable by vanilla, Chunky, MCA Selector and similar tools.</p>
+     *
+     * <p>Reading is unchanged: {@code NbtIo.readCompressed} accepts both gzip and
+     * zlib, so legacy data written by an older build still loads.</p>
+     *
+     * @param tag chunk NBT
+     * @return zlib-compressed NBT
+     * @throws IOException when serialization fails
+     */
     private byte[] encode(CompoundTag tag) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream(32 * 1024);
-        NbtIo.writeCompressed(tag, out);
+        try (DeflaterOutputStream deflater = new DeflaterOutputStream(out);
+             java.io.DataOutputStream data = new java.io.DataOutputStream(deflater)) {
+            NbtIo.write(tag, data);
+        }
         return out.toByteArray();
     }
 

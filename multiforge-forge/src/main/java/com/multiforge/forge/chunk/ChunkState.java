@@ -37,6 +37,28 @@ public final class ChunkState {
     /** Last status reported by any server (loaded, unloading, unloaded). */
     private volatile String remoteStatus = "unknown";
 
+    /**
+     * Master ownership epoch of the chunk.
+     *
+     * <p>The master increments it on every owner change and announces it with
+     * {@code SetChunkOwnerMessage}/{@code ChunkSubscribersSyncMessage}. Outgoing
+     * block and block entity packets are stamped with it. A value of {@code 0}
+     * means "no epoch information" (older master or a chunk that was never
+     * owned); such packets are always applied.</p>
+     */
+    private volatile long ownershipEpoch;
+
+    /**
+     * Highest epoch observed on an applied peer packet.
+     *
+     * <p>A peer packet can arrive before the master's ownership announcement
+     * because the two planes are independent. Keeping the maximum of both
+     * values means a late packet from the previous owner is still dropped.
+     * Guarded by {@link #observeEpoch(long)}; only the server thread mutates
+     * it.</p>
+     */
+    private volatile long lastAppliedEpoch;
+
     /** Server names that have the chunk loaded. */
     private final Set<String> subscribers = ConcurrentHashMap.newKeySet();
 
@@ -103,6 +125,56 @@ public final class ChunkState {
     /** @param remoteStatus new remote status */
     public void remoteStatus(String remoteStatus) {
         this.remoteStatus = remoteStatus;
+    }
+
+    /** @return master ownership epoch, {@code 0} when unknown */
+    public long ownershipEpoch() {
+        return ownershipEpoch;
+    }
+
+    /**
+     * Records a newer ownership epoch announced by the master.
+     *
+     * @param epoch epoch from the master; smaller values are ignored because an
+     *              announcement can be delivered out of order on reconnect
+     */
+    public void ownershipEpoch(long epoch) {
+        if (epoch > ownershipEpoch) {
+            ownershipEpoch = epoch;
+        }
+    }
+
+    /**
+     * Decides whether a peer update stamped with {@code epoch} may be applied.
+     *
+     * <p>Rejects anything older than the newest epoch known from the master or
+     * from an already applied peer packet. Accepting a newer epoch also records
+     * it, so a delayed packet from the previous owner is dropped even when the
+     * master's announcement has not arrived yet.</p>
+     *
+     * @param epoch epoch stamped into the peer packet
+     * @return {@code true} when the update is current and may be applied
+     */
+    public boolean observeEpoch(long epoch) {
+        if (epoch <= 0L) {
+            // No epoch information (older peer or a change made before the
+            // master announced ownership). Such packets are always applied;
+            // they cannot be ordered against a positive epoch.
+            return true;
+        }
+        long known = Math.max(ownershipEpoch, lastAppliedEpoch);
+        if (epoch < known) {
+            return false;
+        }
+        if (epoch > lastAppliedEpoch) {
+            lastAppliedEpoch = epoch;
+        }
+        return true;
+    }
+
+    /** @return highest epoch applied from a peer packet */
+    public long lastAppliedEpoch() {
+        return lastAppliedEpoch;
     }
 
     /** @return live set of servers that have the chunk loaded */

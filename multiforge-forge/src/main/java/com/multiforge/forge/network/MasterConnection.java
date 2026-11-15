@@ -356,7 +356,7 @@ public final class MasterConnection extends ServerBoundMessageHandler {
     public void handle(SetChunkOwnerMessage message) {
         lastReply = System.currentTimeMillis();
         ChunkKey key = new ChunkKey(message.world, message.cx, message.cz);
-        server.execute(() -> server.chunks().onOwnerChanged(key, message.owner));
+        server.execute(() -> server.chunks().onOwnerChanged(key, message.owner, message.epoch));
     }
 
     @Override
@@ -408,7 +408,7 @@ public final class MasterConnection extends ServerBoundMessageHandler {
     public void handle(ChunkSubscribersSyncMessage message) {
         lastReply = System.currentTimeMillis();
         ChunkKey key = new ChunkKey(message.world, message.cx, message.cz);
-        server.execute(() -> server.chunks().onSubscribersSync(key, message.owner, message.subscribers));
+        server.execute(() -> server.chunks().onSubscribersSync(key, message.owner, message.subscribers, message.epoch));
     }
 
     @Override

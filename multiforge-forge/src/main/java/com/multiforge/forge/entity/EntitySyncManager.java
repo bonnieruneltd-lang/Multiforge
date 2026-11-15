@@ -383,8 +383,16 @@ public final class EntitySyncManager {
         String damageType = source.typeHolder().unwrapKey()
                 .map(type -> type.location().toString())
                 .orElse("minecraft:generic");
+        // Attribute the hit to the real entities. The owner resolves these UUIDs
+        // in its own level; a player connected here has a mirror copy there, so
+        // death messages and kill credit name the actual attacker.
+        Entity attacker = source.getEntity();
+        Entity directEntity = source.getDirectEntity();
         return server.peers().sendTo(List.of(owner), new EntityHurtPacket(
-                server.chunks().worldName(level), entity.getUUID(), amount, damageType));
+                server.chunks().worldName(level), entity.getUUID(), amount, damageType,
+                attacker == null ? null : attacker.getUUID(),
+                directEntity == null ? null : directEntity.getUUID(),
+                source.sourcePositionRaw()));
     }
 
     /**
@@ -396,6 +404,27 @@ public final class EntitySyncManager {
      * @param damageType registry id of the damage type
      */
     public void onRemoteHurt(String world, UUID uuid, float amount, String damageType) {
+        onRemoteHurt(world, uuid, amount, damageType, null, null, null);
+    }
+
+    /**
+     * Applies a forwarded hit on the owner, rebuilding the attacker attribution.
+     *
+     * <p>The causing and direct UUIDs are resolved against the owner's level
+     * (mirror copies included), and a real {@link DamageSource} is constructed.
+     * Unknown entities are simply left out: the damage still applies and the
+     * source degrades to the damage type, matching the old behaviour.</p>
+     *
+     * @param world        logical world name
+     * @param uuid         entity UUID
+     * @param amount       damage amount
+     * @param damageType   registry id of the damage type
+     * @param attacker     UUID of the causing entity, {@code null} when unknown
+     * @param directEntity UUID of the direct entity, {@code null} when unknown
+     * @param position     source position, {@code null} when unknown
+     */
+    public void onRemoteHurt(String world, UUID uuid, float amount, String damageType,
+                             UUID attacker, UUID directEntity, Vec3 position) {
         schedule("hurt " + uuid, () -> {
             ServerLevel level = server.level(world);
             if (level == null) {
@@ -408,19 +437,44 @@ public final class EntitySyncManager {
             if (!(entity instanceof LivingEntity living)) {
                 return true;
             }
-            applyRemoteInternal(() -> living.hurt(damageSource(level, damageType), amount));
+            applyRemoteInternal(() -> living.hurt(damageSource(level, damageType,
+                    resolve(level, directEntity), resolve(level, attacker), position), amount));
             return true;
         });
     }
 
     /**
-     * Resolves a damage type id in the owner's registry.
+     * Resolves a forwarded UUID to an entity on this server.
      *
-     * @param level      level supplying registry access
-     * @param damageType registry id
+     * @param level level of the hurt entity
+     * @param uuid  entity UUID, may be {@code null}
+     * @return the entity, or {@code null} when it is unknown here
+     */
+    private Entity resolve(ServerLevel level, UUID uuid) {
+        if (uuid == null) {
+            return null;
+        }
+        Entity entity = level.getEntity(uuid);
+        if (entity != null) {
+            return entity;
+        }
+        // A mirrored player is also in the player list; this covers a mirror that
+        // was added to a different level (dimension change in flight).
+        return server.server().getPlayerList().getPlayer(uuid);
+    }
+
+    /**
+     * Resolves a damage type id in the owner's registry and rebuilds the source.
+     *
+     * @param level        level supplying registry access
+     * @param damageType   registry id
+     * @param directEntity resolved direct entity, may be {@code null}
+     * @param attacker     resolved causing entity, may be {@code null}
+     * @param position     source position, may be {@code null}
      * @return the matching damage source, or generic damage when unknown
      */
-    private static DamageSource damageSource(ServerLevel level, String damageType) {
+    private static DamageSource damageSource(ServerLevel level, String damageType,
+                                             Entity directEntity, Entity attacker, Vec3 position) {
         try {
             ResourceLocation id = ResourceLocation.tryParse(damageType);
             if (id == null) {
@@ -432,6 +486,12 @@ public final class EntitySyncManager {
                     .getHolder(key)
                     .orElse(null);
             if (holder != null) {
+                if (position != null) {
+                    return new DamageSource(holder, directEntity, attacker, position);
+                }
+                if (directEntity != null || attacker != null) {
+                    return new DamageSource(holder, directEntity, attacker);
+                }
                 return new DamageSource(holder);
             }
         } catch (RuntimeException ignored) {

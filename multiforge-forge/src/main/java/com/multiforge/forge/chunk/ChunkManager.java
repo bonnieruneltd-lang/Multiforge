@@ -336,7 +336,25 @@ public final class ChunkManager {
      * @param owner new owner, empty string when it became unowned
      */
     public void onOwnerChanged(ChunkKey key, String owner) {
+        onOwnerChanged(key, owner, 0L);
+    }
+
+    /**
+     * Applies an ownership change and the epoch it belongs to.
+     *
+     * <p>The epoch is stored on the {@link ChunkState} even when the owner is
+     * unchanged, because a reconnect can replay the announcement and a state
+     * may have been recreated from scratch. Peer block/block-entity packets
+     * older than this value are dropped in {@link #applyRemoteBlockChange} and
+     * {@link #applyRemoteBlockEntity}.</p>
+     *
+     * @param key   chunk
+     * @param owner new owner, empty string when it became unowned
+     * @param epoch master ownership epoch, {@code 0} when unknown
+     */
+    public void onOwnerChanged(ChunkKey key, String owner, long epoch) {
         ChunkState state = state(key);
+        state.ownershipEpoch(epoch);
         String previous = state.owner();
         String normalized = owner == null || owner.isEmpty() ? null : owner;
         if (java.util.Objects.equals(previous, normalized)) {
@@ -351,11 +369,11 @@ public final class ChunkManager {
             ownedLocally.add(key);
             // The request bookkeeping is only needed while a request is pending.
             lastOwnershipRequest.remove(key);
-            LOGGER.debug("Acquired ownership of {} (was {})", key, previous);
+            LOGGER.debug("Acquired ownership of {} (epoch {}, was {})", key, epoch, previous);
         } else {
             ownedLocally.remove(key);
             if (previous != null && previous.equals(server.serverName())) {
-                LOGGER.debug("Lost ownership of {} to {}", key, normalized);
+                LOGGER.debug("Lost ownership of {} to {} (epoch {})", key, normalized, epoch);
             }
         }
     }
@@ -422,12 +440,25 @@ public final class ChunkManager {
      * @param subscribers servers with the chunk loaded
      */
     public void onSubscribersSync(ChunkKey key, String owner, String[] subscribers) {
+        onSubscribersSync(key, owner, subscribers, 0L);
+    }
+
+    /**
+     * Applies a full subscription snapshot, including the master's ownership
+     * epoch, for a chunk.
+     *
+     * @param key         chunk
+     * @param owner       owner name (may be empty)
+     * @param subscribers servers with the chunk loaded
+     * @param epoch       master ownership epoch, {@code 0} when unknown
+     */
+    public void onSubscribersSync(ChunkKey key, String owner, String[] subscribers, long epoch) {
         ChunkState state = state(key);
         state.subscribers().clear();
         for (String subscriber : subscribers) {
             state.subscribers().add(subscriber);
         }
-        onOwnerChanged(key, owner);
+        onOwnerChanged(key, owner, epoch);
     }
 
     /**
@@ -543,8 +574,10 @@ public final class ChunkManager {
         }
         // Peer connections are independent of the master: a master outage must not
         // stop block propagation between servers that still have a peer link.
+        String world = worldName(level);
+        long epoch = epochOf(world, pos.getX() >> 4, pos.getZ() >> 4);
         server.peers().broadcast(new BlockChangePacket(
-                worldName(level), pos.getX(), pos.getY(), pos.getZ(), Block.getId(state)));
+                world, pos.getX(), pos.getY(), pos.getZ(), Block.getId(state), epoch));
     }
 
     /**
@@ -556,6 +589,12 @@ public final class ChunkManager {
      */
     public void queueBlockEntity(BlockEntity blockEntity) {
         if (Boolean.TRUE.equals(applyingRemote.get())) {
+            return;
+        }
+        if (server.containers().suppressesBroadcast(blockEntity)) {
+            // A forwarded container click is in progress. The owner applies the
+            // same slot changes and broadcasts the authoritative NBT; sending a
+            // second copy from here would race with it.
             return;
         }
         if (blockEntity.getLevel() == null || blockEntity.getLevel().isClientSide()) {
@@ -602,9 +641,11 @@ public final class ChunkManager {
         }
         // As with block changes, peer traffic does not depend on the master link.
         BlockPos pos = blockEntity.getBlockPos();
+        String world = worldName((ServerLevel) blockEntity.getLevel());
+        long epoch = epochOf(world, pos.getX() >> 4, pos.getZ() >> 4);
         server.peers().broadcast(new BlockEntityUpdatePacket(
-                worldName((ServerLevel) blockEntity.getLevel()), pos.getX(), pos.getY(), pos.getZ(),
-                blockEntity.saveWithFullMetadata()));
+                world, pos.getX(), pos.getY(), pos.getZ(),
+                blockEntity.saveWithFullMetadata(), epoch));
     }
 
     /**
@@ -618,6 +659,14 @@ public final class ChunkManager {
      */
     public void applyRemoteBlockChange(BlockChangePacket packet) {
         server.execute(() -> {
+            ChunkKey key = new ChunkKey(packet.world, packet.x >> 4, packet.z >> 4);
+            ChunkState chunkState = state(key);
+            if (!chunkState.observeEpoch(packet.epoch)) {
+                LOGGER.debug("Dropped stale block change for {} at {},{} (epoch {} < {})",
+                        key, packet.x, packet.z, packet.epoch,
+                        Math.max(chunkState.ownershipEpoch(), chunkState.lastAppliedEpoch()));
+                return;
+            }
             ServerLevel level = server.level(packet.world);
             if (level == null) {
                 return;
@@ -642,6 +691,14 @@ public final class ChunkManager {
      */
     public void applyRemoteBlockEntity(BlockEntityUpdatePacket packet) {
         server.execute(() -> {
+            ChunkKey key = new ChunkKey(packet.world, packet.x >> 4, packet.z >> 4);
+            ChunkState chunkState = state(key);
+            if (!chunkState.observeEpoch(packet.epoch)) {
+                LOGGER.debug("Dropped stale block entity update for {} at {},{} (epoch {} < {})",
+                        key, packet.x, packet.z, packet.epoch,
+                        Math.max(chunkState.ownershipEpoch(), chunkState.lastAppliedEpoch()));
+                return;
+            }
             ServerLevel level = server.level(packet.world);
             if (level == null || level.getChunkSource().getChunkNow(packet.x >> 4, packet.z >> 4) == null) {
                 return;
@@ -712,6 +769,17 @@ public final class ChunkManager {
 
     private ChunkState state(ChunkKey key) {
         return states.computeIfAbsent(key, ignored -> new ChunkState());
+    }
+
+    /**
+     * @param world logical world name
+     * @param x     chunk X
+     * @param z     chunk Z
+     * @return ownership epoch currently known for the chunk, {@code 0} when unknown
+     */
+    public long epochOf(String world, int x, int z) {
+        ChunkState state = states.get(new ChunkKey(world, x, z));
+        return state == null ? 0L : state.ownershipEpoch();
     }
 
     /**

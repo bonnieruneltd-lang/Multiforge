@@ -524,6 +524,11 @@ public final class FileSyncer {
             server.master().send(message);
         }
         uploadedJsonHashes.put(name, hash(data));
+        // Apply it locally too: the scanner can upload a file that was edited
+        // outside the game, and the in-memory list must match the new content.
+        if (JSON_FILES.contains(name)) {
+            server.execute(() -> server.players().reloadUserList(name));
+        }
         if (server.config().debugLogging()) {
             LOGGER.info("Uploaded user list {} ({} bytes)", name, data.length);
         }
@@ -644,6 +649,36 @@ public final class FileSyncer {
             }
         } catch (RuntimeException | IOException e) {
             LOGGER.warn("Could not apply data update for {}: {}", path, e.toString());
+        }
+        // Vanilla keeps the whitelist/ops/ban lists in memory once it started, so
+        // writing the file alone would only take effect after a restart.
+        if (JSON_FILES.contains(path)) {
+            server.execute(() -> server.players().reloadUserList(path));
+        }
+    }
+
+    /**
+     * Uploads a user list immediately after this server changed it.
+     *
+     * <p>Called from the {@code StoredUserList.add/remove} hook, i.e. right after
+     * {@code /op}, {@code /deop}, {@code /whitelist add|remove}, {@code /ban},
+     * {@code /pardon} and their programmatic equivalents. The periodic scan would
+     * pick the file up within a second; uploading immediately makes op changes
+     * visible on the other servers without waiting for the next tick of the
+     * scanner. The hash check inside {@link #uploadJsonIfChanged(String, boolean)}
+     * keeps the later scan from sending the same content twice.</p>
+     *
+     * @param name file name relative to the server directory, e.g. {@code ops.json}
+     */
+    public void onUserListChanged(String name) {
+        if (name == null || !JSON_FILES.contains(name) || closed.get()
+                || !server.config().syncJsonFiles()) {
+            return;
+        }
+        try {
+            io.execute(() -> uploadJsonIfChanged(name, false));
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            // Server is stopping; the shutdown flush uploads the final file.
         }
     }
 

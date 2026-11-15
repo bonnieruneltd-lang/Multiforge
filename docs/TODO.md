@@ -12,9 +12,8 @@ coding.
    receiver applies them to the `ExternalPlayer`. It covers `MultiPaperInventoryHandler`,
    `MultiPaperEnderChestHandler` and `MultiPaperEffectsHandler` in one manager (see
    [PORTING_NOTES.md](PORTING_NOTES.md) for the polling deviation). A newly created mirror
-   gets the full state from `PlayerCreatePacket` (`saveWithoutId`). Still missing:
-   forwarding container windows between servers (a player opening a chest owned by another
-   server), which stays under peer packet coverage (item 5).
+   gets the full state from `PlayerCreatePacket` (`saveWithoutId`). Container windows are
+   handled separately by `ContainerSyncManager` (see item 5, packets 27-29).
 4. **Entity id allocation** - done end to end. `RequestEntityIdBlockHandler` hands out
    disjoint, persisted blocks (`lastblock.txt` in the master storage root) and rejects
    exhaustion; the mod now receives a block at startup/reconnect, prefetches one block ahead
@@ -23,15 +22,24 @@ coding.
    proves two live server connections never overlap. During a master outage the allocator
    falls back to a high local range and logs once (see KNOWN_ISSUES).
 5. **Peer packet coverage**: entity movement/teleport/rotation/metadata/equipment/attributes
-   and hurt forwarding are ported (M1). Still missing: full `DamageSource`/attacker
-   attribution, mob navigation handover, raids, dragon fight, projectile hits, container
-   interactions, sign editing, pistons, statistics/advancement live updates.
+   and hurt forwarding are ported (M1). Container windows are forwarded through
+   `OpenContainerPacket`/`ContainerClickPacket`/`ContainerClosePacket` and the
+   `ServerPlayerMenuMixin`/`AbstractContainerMenuClickMixin` hooks (menu opens where the
+   client is connected; the owner applies slot deltas). Cross-server damage now carries the
+   causing/direct entity UUIDs and source position, and the owner rebuilds a real
+   `DamageSource`. Still missing: mob navigation handover, raids, dragon fight, projectile
+   ownership beyond the attacker/direct UUIDs, sign editing, pistons and
+   statistics/advancement live updates.
 6. **Chunk status protocol** - done: the master records load/unload status
    (`ChunkStatusTracker`) and does not redirect a read to a peer that is unloading; covered by
    `unloadingPeerIsNotChosenForChunkRead`. The client-side status view is still informational.
-7. **Live user list application**: `FileSyncer` syncs whitelist/ops/bans through the master,
-   but a running server keeps its in-memory `PlayerList` until restart. Add
-   `StoredUserList`/`PlayerList` hooks or reload the lists after a `DataUpdateMessage`.
+7. **Live user list application** - done. `FileSyncer` still syncs whitelist/ops/bans
+   through the master, and `StoredUserListMixin` uploads a list immediately after
+   `add`/`remove` (so `/op`, `/deop`, `/whitelist`, `/ban` and `/pardon` do not wait for the
+   one-second scan). `WriteJsonHandler` now broadcasts the new content as
+   `DataUpdateMessage`; receivers call `PlayerSyncManager.reloadUserList`, which reloads the
+   in-memory list, re-sends op levels and disconnects players that became unwhitelisted or
+   banned. No restart is needed.
 
 ## Compatibility and reliability (session 3 additions)
 
@@ -43,14 +51,17 @@ coding.
   `generatorDisconnectReleasesWaitingReader`. Remaining: the lease is still demand driven
   (the server whose player needs the chunk generates it); choosing an idle server to
   generate on behalf of a busy one is a separate feature.
-* **Ownership epochs + packet sequence numbers** (high, before dynamic ownership): delayed
-  block/block-entity packets from a previous owner can overwrite newer state. Append an
-  epoch to `BlockChangePacket`/`BlockEntityUpdatePacket` and drop stale epochs. See
-  `DISTRIBUTED_ARCHITECTURE_RESEARCH.md`.
-* **Master region format compatibility** (medium): master region files contain gzip bytes
-  with the zlib version byte, so vanilla region readers cannot open them. Decide between
-  writing true zlib and converting on read, or labelling gzip correctly; add a round-trip
-  test with a standard reader before changing existing storage.
+* **Ownership epochs + packet sequence numbers** - epochs done. The master keeps a
+  per-chunk epoch (`ChunkSubscriptionManager`) and appends it to
+  `SetChunkOwnerMessage`/`ChunkSubscribersSyncMessage`; `BlockChangePacket` and
+  `BlockEntityUpdatePacket` are stamped and receivers drop older epochs
+  (`ChunkState.observeEpoch`). Per-chunk sequence numbers and acknowledgements are still
+  missing; they are only needed for gap detection and safe dynamic ownership migration
+  (see `DISTRIBUTED_ARCHITECTURE_RESEARCH.md`).
+* **Master region format compatibility** - done. `ChunkSyncIo.encode` now writes true zlib
+  (deflate with a zlib header) and `RegionFile` detects legacy gzip bytes mislabelled as
+  version 2 and transcodes them on read. `RegionFileTest` proves a standard JDK inflater
+  reads the stored chunk and that the legacy path still round-trips.
 * **Ksyxis `/forceload` interaction** (low/medium): while Ksyxis is loaded, force-loaded
   tickets disappeared in the test environment. Reproduce with Ksyxis alone, determine
   whether it matters for players, and document the workaround.

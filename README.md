@@ -41,7 +41,7 @@ integration tests and by running two real Forge servers against a master:
 | Server registry, heartbeats, TPS/player counts, global player list | implemented |
 | Player data, statistics, advancements through the master | implemented |
 | level.dat / uid.dat / shared files / real-time file sync | implemented (restored this session) |
-| User lists (whitelist/ops/bans) | file sync done, live apply on restart only |
+| User lists (whitelist/ops/bans) | file sync + live reload (no restart) |
 | Time, weather, gamerules, world border, difficulty/spawn sync | implemented (restored this session) |
 | Cluster-wide chat | implemented |
 | Entity id block allocation | implemented, integration tested |
@@ -49,6 +49,10 @@ integration tests and by running two real Forge servers against a master:
 | Live entity mirroring (mobs, items, vehicles; movement/metadata/removals/damage) | implemented, verified on a two-server cluster (see [compat/evidence/entity-mirroring-20261111T212200Z.md](compat/evidence/entity-mirroring-20261111T212200Z.md)) |
 | Player mirroring across servers (tab list, movement, metadata, damage, logout) | implemented, verified on a two-server cluster with headless clients (see [compat/evidence/player-mirroring-20261115T030505Z.md](compat/evidence/player-mirroring-20261115T030505Z.md)) |
 | Live player state (inventory, ender chest, hotbar, hunger, experience, effects) | implemented, verified on a two-server cluster (see [compat/evidence/player-state-20261115T054356Z.md](compat/evidence/player-state-20261115T054356Z.md)) |
+| Cross-server container windows (chests, furnaces, ...) | implemented: open/click/close forwarding, owner-authoritative |
+| Ownership epochs on block/block-entity packets | implemented, master + protocol + master integration test |
+| Cross-server attacker attribution (death messages, kill credit) | implemented: causing/direct UUIDs + source position |
+| Master region file format | true zlib, readable by vanilla/tooling; legacy gzip transcoded on read (round-trip tested) |
 | Required-target detection and `/multiforge compat` | implemented |
 | Pinned compatibility manifest and two-server RCON harness | implemented; 35 targets pinned, server set tested together |
 | Required mod compatibility (35 targets) | 0/35 FULLY COMPATIBLE: 2 functional, 8 partial, 10 loading, 15 client targets not tested (no GPU) - see [docs/REQUIRED_MOD_COMPATIBILITY.md](docs/REQUIRED_MOD_COMPATIBILITY.md) |

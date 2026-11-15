@@ -32,6 +32,7 @@ com.multiforge.forge
 ├── network/MasterConnection   control plane connection, replies, reconnect, cluster view
 ├── peer/                      peer-to-peer protocol, connections, server and manager
 ├── entity/EntitySyncManager   live entity mirroring (owner packets, mirror copies, damage)
+├── container/ContainerSyncManager  forwarded chest/furnace windows across servers
 ├── player/
 │   ├── PlayerSyncManager      data files, duplicate login prevention, chat, registry
 │   ├── PlayerMirrorManager    remote player copies, tab list, retries, peer cleanup
@@ -45,7 +46,7 @@ com.multiforge.forge
 ├── compat/ModCompatibilityManager  required-target detection and `/multiforge compat`
 ├── api/MultiForgeApiImpl      public API implementation
 ├── common/                    small value types and path helpers
-└── mixin/                     sixteen Mixins (see below)
+└── mixin/                     nineteen Mixins (see below)
 ```
 
 ## 2. Processes and connections
@@ -144,6 +145,9 @@ MultiPaper changed Paper with patches; the equivalent Forge hooks are Mixins:
 | `ServerPlayerHurtMixin` | `ServerPlayer.hurt` | forward hits on a mirrored player before local invulnerability checks |
 | `ServerStatsCounterMixin` | `ServerStatsCounter.save` | upload statistics |
 | `PlayerAdvancementsMixin` | `PlayerAdvancements.save` | upload advancements |
+| `AbstractContainerMenuClickMixin` | `AbstractContainerMenu.clicked` | forward container slot changes to the owning server |
+| `ServerPlayerMenuMixin` | `ServerPlayer.openMenu/doCloseContainer` | forward container open/close notifications |
+| `StoredUserListMixin` | `StoredUserList.add/remove` | upload whitelist/ops/ban changes immediately |
 | `LivingEntityAccessor` | `LivingEntity.DATA_HEALTH_ID` | update server-side health from mirrored metadata |
 | `MobAccessor` | `Mob.restoreLeashFromSave` | restore a leash on a mirrored mob |
 

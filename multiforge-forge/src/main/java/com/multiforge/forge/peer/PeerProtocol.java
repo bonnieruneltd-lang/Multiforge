@@ -3,6 +3,8 @@ package com.multiforge.forge.peer;
 import com.multiforge.forge.peer.packet.BlockChangePacket;
 import com.multiforge.forge.peer.packet.BlockEntityUpdatePacket;
 import com.multiforge.forge.peer.packet.ChatMessagePacket;
+import com.multiforge.forge.peer.packet.ContainerClickPacket;
+import com.multiforge.forge.peer.packet.ContainerClosePacket;
 import com.multiforge.forge.peer.packet.EntityChunkChangedPacket;
 import com.multiforge.forge.peer.packet.EntityHurtPacket;
 import com.multiforge.forge.peer.packet.EntityRemovePacket;
@@ -20,6 +22,7 @@ import com.multiforge.forge.peer.packet.PlayerFoodUpdatePacket;
 import com.multiforge.forge.peer.packet.PlayerInventoryUpdatePacket;
 import com.multiforge.forge.peer.packet.PlayerRemovePacket;
 import com.multiforge.forge.peer.packet.PlayerSelectedSlotPacket;
+import com.multiforge.forge.peer.packet.OpenContainerPacket;
 import com.multiforge.forge.peer.packet.RequestChunkPacket;
 import com.multiforge.forge.peer.packet.SendChunkPacket;
 import com.multiforge.forge.peer.packet.SetCompressionPacket;
@@ -88,6 +91,11 @@ public final class PeerProtocol {
         add(PlayerFoodUpdatePacket.class, PlayerFoodUpdatePacket::new);
         add(PlayerExperiencePacket.class, PlayerExperiencePacket::new);
         add(PlayerEffectsUpdatePacket.class, PlayerEffectsUpdatePacket::new);
+        // Cross-server container windows. Appended after the live player-state
+        // family; never reorder.
+        add(OpenContainerPacket.class, OpenContainerPacket::new);
+        add(ContainerClickPacket.class, ContainerClickPacket::new);
+        add(ContainerClosePacket.class, ContainerClosePacket::new);
     }
 
     private PeerProtocol() {

@@ -18,6 +18,20 @@ public class ChunkSubscriptionManager {
     private static final Map<ChunkKey, List<ServerConnection>> chunkLocks = new ConcurrentHashMap<>();
     private static final Map<ChunkKey, List<ServerConnection>> chunkSubscribers = new ConcurrentHashMap<>();
 
+    /**
+     * Ownership epoch per chunk.
+     *
+     * <p>Incremented whenever the owner name changes (including to "unowned").
+     * The value is announced in {@link SetChunkOwnerMessage} and stamped into
+     * peer block/block-entity packets by the mod, which lets receivers discard
+     * updates produced under a previous owner. Values are never reset, not even
+     * when a chunk becomes idle: a re-lock must still produce an epoch larger
+     * than anything a peer has already seen for that chunk.</p>
+     */
+    private static final Map<ChunkKey, Long> chunkEpochs = new ConcurrentHashMap<>();
+    /** Owner name the current epoch belongs to; {@code null} means "never locked". */
+    private static final Map<ChunkKey, String> epochOwners = new ConcurrentHashMap<>();
+
     private static final Map<ServerConnection, Set<ChunkKey>> lockedChunks = new HashMap<>();
     private static final Map<ServerConnection, Set<ChunkKey>> subscribedChunks = new HashMap<>();
 
@@ -80,6 +94,10 @@ public class ChunkSubscriptionManager {
                 lockedChunks.computeIfAbsent(serverConnection, k -> ConcurrentHashMap.newKeySet()).add(key);
 
                 if (serverConnections.size() == 1 || force) {
+                    // Advance the epoch even when nobody subscribed yet: the owner's
+                    // block packets must carry the epoch, and a later subscriber must
+                    // see the same value the owner already uses.
+                    advanceEpoch(key, serverConnections.get(0).getBungeeCordName());
                     if (chunkSubscribers.get(key) != null) {
                         updateOwner(serverConnections.get(0), chunkSubscribers.get(key), key.world, key.x, key.z);
                     }
@@ -103,6 +121,12 @@ public class ChunkSubscriptionManager {
                         serverConnections.remove(i--);
 
                         if (i == -1) {
+                            String newOwner = serverConnections.isEmpty() ? ""
+                                    : serverConnections.get(0).getBungeeCordName();
+                            // Record the change even without subscribers; otherwise the
+                            // epoch would stay at 0 until somebody subscribed, and the
+                            // next owner's packets could not be fenced.
+                            advanceEpoch(key, newOwner);
                             if (chunkSubscribers.get(key) != null) {
                                 if (serverConnections.isEmpty()) {
                                     updateOwner(null, chunkSubscribers.get(key), key.world, key.x, key.z);
@@ -128,10 +152,45 @@ public class ChunkSubscriptionManager {
         }
     }
 
+    /**
+     * @param world logical world name
+     * @param cx    chunk X
+     * @param cz    chunk Z
+     * @return current ownership epoch, {@code 0} when the chunk was never owned
+     */
+    public static long currentEpoch(String world, int cx, int cz) {
+        return chunkEpochs.getOrDefault(new ChunkKey(world, cx, cz), 0L);
+    }
+
+    /**
+     * Advances the epoch when the owner name changed and returns the value that
+     * applies to the new announcement.
+     *
+     * <p>Must be called while holding the chunk lock (all callers of
+     * {@link #updateOwner} already do). A repeated announcement for the same
+     * owner (for example when a new subscriber is told the current owner) does
+     * not advance the epoch.</p>
+     *
+     * @param key   chunk
+     * @param owner normalised owner name, empty when unowned
+     * @return epoch to stamp into the announcement
+     */
+    private static long advanceEpoch(ChunkKey key, String owner) {
+        String previous = epochOwners.get(key);
+        if (java.util.Objects.equals(previous, owner)) {
+            return chunkEpochs.getOrDefault(key, 0L);
+        }
+        epochOwners.put(key, owner);
+        long next = chunkEpochs.getOrDefault(key, 0L) + 1L;
+        chunkEpochs.put(key, next);
+        return next;
+    }
+
     private static void updateOwner(ServerConnection ownerConnection, List<ServerConnection> serverConnections, String world, int cx, int cz) {
         String owner = ownerConnection == null ? "" : ownerConnection.getBungeeCordName();
+        long epoch = advanceEpoch(new ChunkKey(world, cx, cz), owner);
         for (ServerConnection connection : serverConnections) {
-            connection.send(new SetChunkOwnerMessage(world, cx, cz, owner));
+            connection.send(new SetChunkOwnerMessage(world, cx, cz, owner, epoch));
         }
     }
 
@@ -222,7 +281,10 @@ public class ChunkSubscriptionManager {
 
             String[] subscribers = chunkSubscribers.get(key).stream().filter(subscriber -> subscriber != serverConnection).map(ServerConnection::getBungeeCordName).toArray(String[]::new);
 
-            serverConnection.send(new ChunkSubscribersSyncMessage(world, cx, cz, chunkLocks.get(key) != null && !chunkLocks.get(key).isEmpty() ? chunkLocks.get(key).get(0).getBungeeCordName() : "", subscribers));
+            String owner = chunkLocks.get(key) != null && !chunkLocks.get(key).isEmpty()
+                    ? chunkLocks.get(key).get(0).getBungeeCordName() : "";
+            serverConnection.send(new ChunkSubscribersSyncMessage(world, cx, cz, owner, subscribers,
+                    chunkEpochs.getOrDefault(key, 0L)));
         }
     }
 

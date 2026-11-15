@@ -212,9 +212,19 @@ public class RegionFile {
             } else if (version == VERSION_DEFLATE) {
                 byte[] data = new byte[length - 1];
                 file.read(data);
+                // Older MultiForge masters uploaded gzip bytes but stamped them as
+                // version 2. Convert them on read so tools and peers always see
+                // true zlib; the write path now stores zlib directly.
+                if (isGzip(data)) {
+                    return toByteArray(new DeflaterInputStream(new GZIPInputStream(new ByteArrayInputStream(data))));
+                }
                 return data;
             } else if (version == VERSION_DEFLATE_EXTERNAL) {
-                return readExternalFile(x, z);
+                byte[] data = readExternalFile(x, z);
+                if (isGzip(data)) {
+                    return toByteArray(new DeflaterInputStream(new GZIPInputStream(new ByteArrayInputStream(data))));
+                }
+                return data;
             }
 
             return null;
@@ -233,6 +243,15 @@ public class RegionFile {
         }
 
         return out.toByteArray();
+    }
+
+    /**
+     * @param data compressed chunk payload
+     * @return {@code true} when the payload starts with the gzip magic bytes
+     */
+    private static boolean isGzip(byte[] data) {
+        return data != null && data.length >= 2
+                && (data[0] & 0xFF) == 0x1F && (data[1] & 0xFF) == 0x8B;
     }
 
     public synchronized void putDeflatedBytes(int x, int z, byte[] b) {
@@ -272,9 +291,17 @@ public class RegionFile {
             } else if (version == VERSION_DEFLATE) {
                 byte[] data = new byte[length - 1];
                 file.read(data);
+                if (isGzip(data)) {
+                    // Legacy master data mislabelled as deflate.
+                    return new DataInputStream(new GZIPInputStream(new ByteArrayInputStream(data)));
+                }
                 return new DataInputStream(new InflaterInputStream(new ByteArrayInputStream(data)));
             } else if (version == VERSION_DEFLATE_EXTERNAL) {
-                return new DataInputStream(new InflaterInputStream(new ByteArrayInputStream(readExternalFile(x, z))));
+                byte[] data = readExternalFile(x, z);
+                if (isGzip(data)) {
+                    return new DataInputStream(new GZIPInputStream(new ByteArrayInputStream(data)));
+                }
+                return new DataInputStream(new InflaterInputStream(new ByteArrayInputStream(data)));
             }
 
             return null;

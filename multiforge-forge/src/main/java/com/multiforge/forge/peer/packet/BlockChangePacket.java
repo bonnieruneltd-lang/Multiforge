@@ -28,6 +28,8 @@ public class BlockChangePacket extends PeerPacket {
     public final int z;
     /** Global block state id ({@code Block.getId}). */
     public final int stateId;
+    /** Ownership epoch of the chunk when the change happened. */
+    public final long epoch;
 
     /**
      * @param world   logical world name
@@ -37,11 +39,24 @@ public class BlockChangePacket extends PeerPacket {
      * @param stateId global block state id
      */
     public BlockChangePacket(String world, int x, int y, int z, int stateId) {
+        this(world, x, y, z, stateId, 0L);
+    }
+
+    /**
+     * @param world   logical world name
+     * @param x       block X
+     * @param y       block Y
+     * @param z       block Z
+     * @param stateId global block state id
+     * @param epoch   ownership epoch the change was produced under
+     */
+    public BlockChangePacket(String world, int x, int y, int z, int stateId, long epoch) {
         this.world = world;
         this.x = x;
         this.y = y;
         this.z = z;
         this.stateId = stateId;
+        this.epoch = epoch;
     }
 
     /**
@@ -53,6 +68,8 @@ public class BlockChangePacket extends PeerPacket {
         this.y = buf.readInt();
         this.z = buf.readInt();
         this.stateId = buf.readVarInt();
+        // Appended field: a peer running an older build omits it.
+        this.epoch = buf.readableBytes() >= Long.BYTES ? buf.readLong() : 0L;
     }
 
     @Override
@@ -62,6 +79,7 @@ public class BlockChangePacket extends PeerPacket {
         buf.writeInt(y);
         buf.writeInt(z);
         buf.writeVarInt(stateId);
+        buf.writeLong(epoch);
     }
 
     @Override

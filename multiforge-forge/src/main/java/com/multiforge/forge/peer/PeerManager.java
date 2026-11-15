@@ -163,6 +163,7 @@ public final class PeerManager {
                 // The peer is gone (crash, restart or network loss). Mirror copies
                 // of its players would otherwise stay as ghosts until we restart.
                 server.playerMirrors().onPeerDisconnected(name);
+                server.containers().onPeerDisconnected(name);
             }
         }
     }

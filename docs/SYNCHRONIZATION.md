@@ -52,12 +52,45 @@ See [CHUNK_MANAGEMENT.md](CHUNK_MANAGEMENT.md) for the full flow. Summary:
 * Peer broadcasts do not depend on the master connection. If the master goes down, servers
   with a live peer link keep exchanging block and block entity changes; only ownership and
   subscription changes wait for the reconnect.
+* **Ownership epochs.** Every block/block-entity packet carries the chunk's ownership epoch.
+  The master increments the epoch on each owner change and announces it with
+  `SetChunkOwnerMessage`/`ChunkSubscribersSyncMessage`; receivers drop a packet older than
+  the newest epoch they know for that chunk. A delayed packet from the previous owner can
+  therefore no longer overwrite the new owner's state.
 
 ## Block entities
 
 * `LevelChunk.setBlockEntity` and `BlockEntity.setChanged` queue the block entity.
 * `ChunkManager.tick()` drains the queue once per tick and broadcasts `saveWithFullMetadata()`.
 * Receivers load the NBT into their instance and resend the block update to their clients.
+* A forwarded container click suppresses the generic broadcast for that chunk on the
+  player's server; the owner applies the slot delta and broadcasts the canonical NBT.
+
+## Containers
+
+A player can open a chest, furnace or other block-entity container whose chunk is owned by
+another server. The window is opened where the client is connected (vanilla behaviour), and
+the owner is kept authoritative through three peer packets:
+
+* `OpenContainerPacket` — sent after `ServerPlayer.openMenu` created a menu for a block
+  entity in a foreign chunk. The owner validates that it still owns the chunk, records the
+  open window and replies with a fresh `BlockEntityUpdatePacket`, so a stale local copy is
+  refreshed before the first click.
+* `ContainerClickPacket` — `AbstractContainerMenu.clicked` is wrapped with a before/after
+  snapshot. After vanilla handled the click (cursor, shift-click, drag, quick-move) the
+  changed container slots are sent as `(container slot, item stack)` pairs. The owner writes
+  them into its container, calls `setChanged()` and broadcasts the new NBT to every
+  subscriber. Player-inventory slots are not forwarded; they are authoritative on the
+  player's server and travel through `PlayerStateSyncManager`.
+* `ContainerClosePacket` — sent from `ServerPlayer.doCloseContainer`; the owner drops the
+  open-window record so a late click is ignored.
+
+While a forwarded click runs, the player's server skips the generic block-entity broadcast
+for that chunk. Only the owner's resulting broadcast is applied by peers, which avoids two
+servers racing to write the same NBT. Double chests are reconstructed on the owner from the
+block state (`ChestBlock.getContainer`), so slot indices above 26 address the correct half.
+The design is last-writer-wins for the container slots; the player's inventory remains
+single-owner.
 
 ## Entities
 
@@ -81,7 +114,11 @@ Implemented:
   ticked because the chunk belongs to another server. Position and synched data are applied
   on the mirror, so its tracker sends the changes to its own players.
 * Damage on a mirrored entity is forwarded to the owner (`EntityHurtPacket`), so a mob can
-  be hit from any server and its health stays authoritative on the owner.
+  be hit from any server and its health stays authoritative on the owner. The packet carries
+  the damage type, amount, causing/direct entity UUIDs and source position; the owner
+  resolves them and builds a real `DamageSource`, so death messages and kill credit name an
+  attacker who is connected to a different server (the mirror copy is a real `ServerPlayer`
+  there). Unknown entities degrade to damage-type-only attribution.
 * **Player mirroring.** A player is represented on the other servers by an
   `ExternalPlayer` (a `ServerPlayer` with a sink connection and empty `tick`/`doTick`). The
   owning server sends `PlayerCreatePacket` (profile, world, position, rotation, game mode and
@@ -108,10 +145,9 @@ Implemented:
   ignored (the local player is authoritative). Inventory changes also re-send the mirror's
   equipment to local clients.
 
-Not implemented yet: full `DamageSource` serialization (attacker attribution in death
-messages is lost for cross-server hits), container interaction forwarding (opening a chest
-that is owned by another server), and a full NBT resync when an entity crosses an ownership
-boundary. See [TODO.md](TODO.md) and [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+Not implemented yet: a full NBT resync when an entity crosses an ownership boundary,
+mob navigation handover, raids, the dragon fight and projectile ownership beyond the
+attacker/direct UUIDs above. See [TODO.md](TODO.md) and [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## Players
 
@@ -133,6 +169,13 @@ boundary. See [TODO.md](TODO.md) and [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
   "Live state" bullet in the entity section for the packets and the resync policy).
 * **Registry**: the master broadcasts `PlayerUpdateMessage` on login/logout; servers keep a
   UUID -> (name, server) map used by the API, commands and chat.
+* **User lists (whitelist/ops/bans)**: `FileSyncer` uploads a changed list immediately when
+  `StoredUserList.add/remove` runs (`StoredUserListMixin`) and also on its one-second scan.
+  `WriteJsonHandler` broadcasts the new content to the other servers as
+  `DataUpdateMessage`; `FileSyncer.onDataUpdate` writes the file and calls
+  `PlayerSyncManager.reloadUserList`, which reloads the affected `StoredUserList`, re-sends
+  op permission levels, and disconnects players that are no longer whitelisted or are now
+  banned (user or IP). No restart is needed.
 * **Chat**: `ServerChatEvent` is forwarded to peers as JSON and shown locally on every
   server (MultiPaper's cluster-wide `broadcastMessage`).
 
