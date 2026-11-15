@@ -47,7 +47,8 @@ Purpur fork whose functionality lives in three places:
 | 5e | World state (level.dat, uid, time, weather, gamerules, border), file sync | done |
 | 6 | Commands, public API, documentation | done |
 | 7 | Tests: protocol, master integration over real sockets, live two-server cluster | done |
-| 8 | External entity/player mirroring, inventory/ender chest/experience, dragon/raids | **not ported** (TODO.md) |
+| 8 | External entity and player mirroring | **ported** (M1 entities, TODO 1; players, TODO 2, with live evidence) |
+| 9 | Inventory/ender chest/experience, dragon/raids | **not ported** (TODO.md) |
 
 ## 3. Paper-specific code replaced by Forge equivalents
 

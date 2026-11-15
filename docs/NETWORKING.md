@@ -144,10 +144,12 @@ varint frameLength, varint uncompressedLength, varint packetId, payload
 | 17 | `EntityRemovePacket` | a mirrored entity was removed |
 | 18 | `EntityUpdateWithDependenciesPacket` | an entity packet that references other entities (passengers, leash, pickups) |
 | 19 | `EntityHurtPacket` | damage taken on a mirror, forwarded to the owner |
+| 20 | `PlayerCreatePacket` | profile, position, game mode and player data for a mirror copy |
+| 21 | `PlayerRemovePacket` | a mirrored player left the cluster |
 
-The entity family (15-19) is the M1 mirroring protocol. It is described in
-[SYNCHRONIZATION.md](SYNCHRONIZATION.md#entities); ids were appended, so older peers keep
-their ids.
+The entity family (15-19) is the M1 mirroring protocol. Ids 20-21 extend it to players and
+are described in [SYNCHRONIZATION.md](SYNCHRONIZATION.md#entities); ids were appended, so
+older peers keep their ids.
 
 ### Time synchronization
 

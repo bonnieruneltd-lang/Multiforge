@@ -12,6 +12,7 @@ import com.multiforge.forge.network.MasterConnection;
 import com.multiforge.forge.peer.PeerManager;
 import com.multiforge.forge.peer.PeerServer;
 import com.multiforge.forge.peer.packet.EntityChunkChangedPacket;
+import com.multiforge.forge.player.PlayerMirrorManager;
 import com.multiforge.forge.player.PlayerSyncManager;
 import com.multiforge.forge.world.FileSyncer;
 import com.multiforge.forge.world.WorldSyncManager;
@@ -84,6 +85,7 @@ public final class MultiForgeServer {
     private final ChunkSyncIo chunkIo;
     private final WorldSyncManager world;
     private final PlayerSyncManager players;
+    private final PlayerMirrorManager playerMirrors;
     private final FileSyncer files;
     private final EntitySyncManager entities;
     private final EntityIdAllocator entityIds;
@@ -109,6 +111,7 @@ public final class MultiForgeServer {
         this.chunkIo = new ChunkSyncIo(this);
         this.world = new WorldSyncManager(this);
         this.players = new PlayerSyncManager(this);
+        this.playerMirrors = new PlayerMirrorManager(this);
         this.files = new FileSyncer(this);
         this.entities = new EntitySyncManager(this);
         this.compat = new ModCompatibilityManager(this);
@@ -283,6 +286,7 @@ public final class MultiForgeServer {
         tickCounter++;
         chunks.tick();
         entities.tick();
+        playerMirrors.tick();
         world.tick();
         files.tick();
     }
@@ -429,6 +433,7 @@ public final class MultiForgeServer {
         peerServer.stop();
         master.stop();
         players.clear();
+        playerMirrors.clear();
         entityIds.clear();
         chunks.clear();
         levels.clear();
@@ -504,6 +509,13 @@ public final class MultiForgeServer {
     /** @return player synchronization */
     public PlayerSyncManager players() {
         return players;
+    }
+
+    /**
+     * @return mirror copies of players hosted by other servers
+     */
+    public PlayerMirrorManager playerMirrors() {
+        return playerMirrors;
     }
 
     /** @return file synchronization */

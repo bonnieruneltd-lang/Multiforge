@@ -5,10 +5,6 @@ coding.
 
 ## High priority
 
-2. **External player mirroring** (`ExternalPlayer` in MultiPaper). Needed so that players see
-   each other across servers (tab list is already cluster-wide, world presence is not).
-   Requires a fake `ServerPlayer` per remote player with packet forwarding. Entity
-   mirroring (item 1, done) already excludes players for this reason.
 3. **Inventory / ender chest / experience / hunger / effects syncing**
    (`MultiPaperInventoryHandler`, `MultiPaperEnderChestHandler`, `MultiPaperEffectsHandler`).
    Player data files are already synchronized; live changes while a player is online on
@@ -96,6 +92,16 @@ coding.
 
 ## Done (for reference)
 
+* **Player mirroring (TODO 2)** - done and verified on a two-server cluster with headless
+  clients. `ExternalPlayer` copies are registered in the vanilla `PlayerList` and level, so
+  `/list`, the tab list and the entity tracker see them; `PlayerCreatePacket`/
+  `PlayerRemovePacket` carry the profile, position, game mode and player data; movement,
+  metadata and equipment use the existing entity packet stream; hits on a copy are forwarded
+  from `ServerPlayer.hurt` to the server that hosts the connection; logout and peer loss
+  remove the copies. Evidence: `compat/evidence/player-mirroring-20261115T030505Z.md`.
+  Remaining: live inventory/effects/hunger sync (TODO 3), display-name/team sync, and full
+  attacker attribution for cross-server hits.
+
 * **Live entity mirroring (M1)** - done and verified on a two-server cluster. The owner
   forwards `ChunkMap.TrackedEntity.broadcast` packets (`EntityUpdatePacket`), spawns are
   mirrored from NBT (`EntityUpdateNBTPacket`), removals use `EntityRemovePacket`,
@@ -103,8 +109,9 @@ coding.
   mirror is forwarded with `EntityHurtPacket`. Evidence: a cow spawned in a chunk owned by
   live1 had the same position and health on live2, followed teleports and delta movement,
   lost health when damaged from either server, and disappeared on both when killed.
-  Remaining (tracked above or in KNOWN_ISSUES): players (item 2), attacker attribution for
-  cross-server hits, and a full resync when an entity crosses an ownership boundary.
+  Players are mirrored by the player stream (TODO 2, done). Remaining (tracked above or in
+  KNOWN_ISSUES): attacker attribution for cross-server hits, and a full resync when an entity
+  crosses an ownership boundary.
 
 * Master protocol, master process, proxy, CLI.
 * Master storage refactor (`MasterStorage`) and startup TOML reader.

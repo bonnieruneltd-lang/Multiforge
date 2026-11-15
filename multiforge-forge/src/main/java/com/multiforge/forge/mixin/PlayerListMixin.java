@@ -1,6 +1,7 @@
 package com.multiforge.forge.mixin;
 
 import com.multiforge.forge.MultiForgeServer;
+import com.multiforge.forge.player.ExternalPlayer;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
@@ -63,6 +64,9 @@ public abstract class PlayerListMixin {
         if (server == null) {
             return;
         }
+        // A transfer can race the previous server's logout packet; a real
+        // connection always replaces a mirror copy of the same player.
+        server.playerMirrors().onLocalPlayerJoining(player.getUUID());
         if (!server.players().claimPlayer(player)) {
             connection.disconnect(Component.literal(
                     "You are already connected to another server in this cluster. Please try again in a moment."));
@@ -94,11 +98,18 @@ public abstract class PlayerListMixin {
      * @param player       player being saved
      * @param callbackInfo mixin callback
      */
-    @Inject(method = "save", at = @At("HEAD"))
+    @Inject(method = "save", at = @At("HEAD"), cancellable = true)
     private void multiforge$savePlayerData(ServerPlayer player, CallbackInfo callbackInfo) {
         MultiForgeServer server = MultiForgeServer.instanceOrNull();
-        if (server != null) {
-            server.players().savePlayerData(player);
+        if (server == null) {
+            return;
         }
+        if (player instanceof ExternalPlayer) {
+            // The owning server writes this player's data. Saving the mirror copy
+            // would upload stale state (and forge statistics/advancements).
+            callbackInfo.cancel();
+            return;
+        }
+        server.players().savePlayerData(player);
     }
 }

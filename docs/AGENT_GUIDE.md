@@ -49,6 +49,7 @@ touching code, then read the architecture document of the subsystem you change.
 | Ownership / ticking | `ChunkManager`, `ServerLevelMixin`, `LevelTicksMixin` |
 | Block/block entity sync | `LevelChunkMixin`, `BlockEntityMixin`, `ChunkManager` |
 | Player data / login | `PlayerSyncManager`, `PlayerListMixin`, `ServerStatsCounterMixin`, `PlayerAdvancementsMixin` |
+| Player mirroring | `player/PlayerMirrorManager`, `player/ExternalPlayer`, `PlayerListAccessor`, `ServerPlayerHurtMixin`, `EntitySyncManager` |
 | Required-target detection / `/multiforge compat` | `compat/ModCompatibilityManager`, `MultiForgeServer.compat()` |
 | Pinned compatibility targets | `tools/compat/resolve_required_mods.py`, `compat/required-mods.json`, `docs/REQUIRED_MOD_COMPATIBILITY.md` |
 | Two-server verification | `tools/compat/cluster_check.py` (+ `rcon.py`), evidence in `compat/evidence/` |
@@ -73,6 +74,10 @@ and confirm:
 * no exceptions in either server log or the master log;
 * a graceful stop logs `Stopping MultiForge (server stopped)` and pending writes are flushed.
 
+For player mirroring, join with a client (or `tools`-free headless bot) and confirm that
+`/list` on the other server shows the player, `/data get entity <name> Pos` matches on both,
+a `/damage` on the mirror reduces the owner's health, and logout removes the copy.
+
 ## 5. Current state and next best steps
 
 * Verified this session: clean build on Forge 47.4.29 (bumped for Structure Layout
@@ -85,9 +90,11 @@ and confirm:
 * Compatibility score: 0/35 FULLY COMPATIBLE. 2 server targets FUNCTIONAL, 8 PARTIAL,
   10 LOADING, 15 client targets NOT TESTED (no GPU). Do not inflate this; the matrix and
   evidence are in `docs/REQUIRED_MOD_COMPATIBILITY.md`.
-* Entity mirroring is implemented and verified (TODO item 1, done). Biggest remaining
-  functional gap: player mirroring (TODO 2). Then inventory/experience sync (TODO 3),
-  live user-list reload, ownership epochs.
+* Entity mirroring (TODO 1) and player mirroring (TODO 2) are implemented and verified on a
+  two-server cluster; player evidence is in
+  `compat/evidence/player-mirroring-20261115T030505Z.md`. Biggest remaining functional gap:
+  live inventory/experience/effect sync (TODO 3). Then live user-list reload, ownership
+  epochs and full attacker attribution for cross-server hits.
 * Performance pass done and verified on a live master + two servers (20 TPS, entity,
   block and block-entity sync, graceful stop): see `docs/PERFORMANCE.md`. Per-tick paths
   no longer allocate a world string/`ChunkPos` per call, entity forwarding has an O(1)

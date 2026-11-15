@@ -82,14 +82,29 @@ Implemented:
   on the mirror, so its tracker sends the changes to its own players.
 * Damage on a mirrored entity is forwarded to the owner (`EntityHurtPacket`), so a mob can
   be hit from any server and its health stays authoritative on the owner.
+* **Player mirroring.** A player is represented on the other servers by an
+  `ExternalPlayer` (a `ServerPlayer` with a sink connection and empty `tick`/`doTick`). The
+  owning server sends `PlayerCreatePacket` (profile, world, position, rotation, game mode and
+  `saveWithoutId` data) when the player joins, respawns, changes dimension, or when a peer
+  subscribes to their chunk; the same `EntityUpdatePacket` stream then carries movement,
+  metadata and equipment. The mirror copy is added to the vanilla `PlayerList` and level, so
+  `/list` and the tab list include it and the tracker sends `ClientboundAddPlayerPacket` and
+  movement packets to local clients. `PlayerRemovePacket` removes the copy on logout; a peer
+  disconnect removes everything that came from that server, and a reconnect replays the
+  local player list to the peer. A hit on the copy is forwarded from `ServerPlayer.hurt`
+  before local invulnerability checks.
 
-Not implemented yet: player entities (`ExternalPlayer`/`PlayerCreatePacket`, TODO 2), full
-`DamageSource` serialization (attacker attribution in death messages is lost for
-cross-server hits), and a full NBT resync when an entity crosses an ownership boundary.
-See [TODO.md](TODO.md) and [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+Not implemented yet: full `DamageSource` serialization (attacker attribution in death
+messages is lost for cross-server hits), live inventory/experience/effect changes (TODO 3),
+and a full NBT resync when an entity crosses an ownership boundary. See [TODO.md](TODO.md)
+and [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## Players
 
+* **Mirroring**: every server with the player's chunk loaded keeps an `ExternalPlayer` copy
+  (see the entity section). The copy is never ticked; its state comes from the owner's
+  packets. `PlayerListMixin.save` refuses to write a mirror copy, so player files and
+  statistics can only be uploaded by the server the player is connected to.
 * **Login**: `PlayerList.placeNewPlayer` claims the player at the master; a rejection
   disconnects the duplicate connection. The claim is released on logout and automatically
   on disconnect (master side).

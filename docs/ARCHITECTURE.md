@@ -32,7 +32,10 @@ com.multiforge.forge
 ├── network/MasterConnection   control plane connection, replies, reconnect, cluster view
 ├── peer/                      peer-to-peer protocol, connections, server and manager
 ├── entity/EntitySyncManager   live entity mirroring (owner packets, mirror copies, damage)
-├── player/PlayerSyncManager   data files, duplicate login prevention, chat, registry
+├── player/
+│   ├── PlayerSyncManager      data files, duplicate login prevention, chat, registry
+│   ├── PlayerMirrorManager    remote player copies, tab list, retries, peer cleanup
+│   └── ExternalPlayer         ServerPlayer copy hosted by another server
 ├── world/
 │   ├── WorldSyncManager       time, weather, gamerules, world border, level data
 │   └── FileSyncer             level.dat, uid.dat, JSON files, arbitrary files
@@ -41,7 +44,7 @@ com.multiforge.forge
 ├── compat/ModCompatibilityManager  required-target detection and `/multiforge compat`
 ├── api/MultiForgeApiImpl      public API implementation
 ├── common/                    small value types and path helpers
-└── mixin/                     fourteen Mixins (see below)
+└── mixin/                     sixteen Mixins (see below)
 ```
 
 ## 2. Processes and connections
@@ -135,7 +138,9 @@ MultiPaper changed Paper with patches; the equivalent Forge hooks are Mixins:
 | `LevelChunkMixin` | `LevelChunk.setBlockState/setBlockEntity` | broadcast block and block entity changes |
 | `BlockEntityMixin` | `BlockEntity.setChanged` | queue content changes (chests, signs, hoppers) |
 | `MinecraftServerMixin` | `MinecraftServer.loadLevel/stopServer` | bootstrap before world data is read, flush after the final save |
-| `PlayerListMixin` | `PlayerList.placeNewPlayer/load/save/getPlayerForLogin` | duplicate login prevention, player data and file prefetch |
+| `PlayerListMixin` | `PlayerList.placeNewPlayer/load/save/getPlayerForLogin` | duplicate login prevention, player data and file prefetch, reject saving mirror copies |
+| `PlayerListAccessor` | `PlayerList` maps | register/remove `ExternalPlayer` copies and their stats/advancements |
+| `ServerPlayerHurtMixin` | `ServerPlayer.hurt` | forward hits on a mirrored player before local invulnerability checks |
 | `ServerStatsCounterMixin` | `ServerStatsCounter.save` | upload statistics |
 | `PlayerAdvancementsMixin` | `PlayerAdvancements.save` | upload advancements |
 | `LivingEntityAccessor` | `LivingEntity.DATA_HEALTH_ID` | update server-side health from mirrored metadata |

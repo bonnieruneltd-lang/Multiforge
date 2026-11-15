@@ -18,10 +18,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * packet stream. This mirrors MultiPaper's {@code LivingEntity.hurt} patch
  * (which forwards the full {@code DamageSource}).</p>
  *
- * <p>Subclasses that override {@code hurt} without calling {@code super} (for
- * example {@code Player}, which is not mirrored) are not covered; ordinary
- * animals and monsters reach {@link LivingEntity#hurt}. The injection runs on
- * the server thread and only schedules a peer write.</p>
+ * <p>{@code Player} overrides {@code hurt} and runs its own checks before
+ * calling {@code super.hurt}; mirrored players are covered by
+ * {@link ServerPlayerHurtMixin} instead. Ordinary animals and monsters reach this
+ * method directly. The injection runs on the server thread and only schedules
+ * a peer write.</p>
  */
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityHurtMixin {

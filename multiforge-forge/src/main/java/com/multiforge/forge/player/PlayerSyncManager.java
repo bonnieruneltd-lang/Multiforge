@@ -149,9 +149,12 @@ public final class PlayerSyncManager {
      * @param player leaving player
      */
     public void releasePlayer(ServerPlayer player) {
-        if (!server.config().playerSync()) {
+        if (player instanceof ExternalPlayer || !server.config().playerSync()) {
             return;
         }
+        // Tell the other servers first: the master broadcast that follows updates
+        // the cluster list, while the peer packet removes the visible entity.
+        server.playerMirrors().onLocalPlayerLeft(player);
         server.master().send(new PlayerDisconnectMessage(player.getUUID()));
         players.remove(player.getUUID());
     }
@@ -198,7 +201,8 @@ public final class PlayerSyncManager {
      * @param player player being saved
      */
     public void savePlayerData(ServerPlayer player) {
-        if (!server.config().syncPlayerData() || !server.master().isConnected()) {
+        if (player instanceof ExternalPlayer || !server.config().syncPlayerData()
+                || !server.master().isConnected()) {
             return;
         }
         try {

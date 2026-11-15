@@ -3,8 +3,10 @@ package com.multiforge.forge;
 import com.multiforge.forge.chunk.ChunkStorageRegistry;
 import com.multiforge.forge.config.MultiForgeConfig;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.level.ChunkEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.event.ServerChatEvent;
@@ -135,6 +137,65 @@ public final class ForgeEventHandlers {
         }
         event.getEntity().setId(runtime.entityIds().nextId());
         runtime.entities().onEntityJoined(event.getEntity());
+    }
+
+    /**
+     * Announces a player to the other servers once the login completed.
+     *
+     * <p>Fires after {@code PlayerList.placeNewPlayer} loaded the player data and
+     * sent the initial packets, so the mirror receives the final inventory,
+     * health and position rather than the constructor defaults.</p>
+     *
+     * @param event login event
+     */
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        MultiForgeServer runtime = MultiForgeServer.instanceOrNull();
+        if (runtime != null && event.getEntity() instanceof ServerPlayer player) {
+            runtime.playerMirrors().onLocalPlayerChanged(player);
+        }
+    }
+
+    /**
+     * Releases the cluster claim and removes the mirror copies when a player
+     * leaves. Mirror copies themselves are ignored: their removal is initiated by
+     * this server, not by a player logout.
+     *
+     * @param event logout event
+     */
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        MultiForgeServer runtime = MultiForgeServer.instanceOrNull();
+        if (runtime != null && event.getEntity() instanceof ServerPlayer player) {
+            runtime.players().releasePlayer(player);
+        }
+    }
+
+    /**
+     * Refreshes the mirror copies after a respawn or a dimension change.
+     *
+     * @param event respawn event
+     */
+    @SubscribeEvent
+    public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        MultiForgeServer runtime = MultiForgeServer.instanceOrNull();
+        if (runtime != null && event.getEntity() instanceof ServerPlayer player) {
+            runtime.playerMirrors().onLocalPlayerChanged(player);
+        }
+    }
+
+    /**
+     * Re-creates the mirror copy in the destination world after a dimension
+     * change. The receiver removes the old copy when the world differs.
+     *
+     * @param event dimension change event
+     */
+    @SubscribeEvent
+    public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        MultiForgeServer runtime = MultiForgeServer.instanceOrNull();
+        if (runtime != null && event.getEntity() instanceof ServerPlayer player) {
+            runtime.playerMirrors().onLocalPlayerChanged(player);
+        }
     }
 
     /**

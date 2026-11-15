@@ -139,6 +139,11 @@ public final class PeerManager {
             candidate.close();
             return existing;
         });
+        if (peers.get(name) == connection) {
+            // Replay the local player list; a reconnected peer may have lost the
+            // copies when its previous connection was reaped.
+            server.playerMirrors().onPeerConnected(name);
+        }
     }
 
     /**
@@ -147,11 +152,17 @@ public final class PeerManager {
      * @param connection closed connection
      */
     void unregister(PeerConnection connection) {
-        if (connection.remoteName() != null) {
-            peers.remove(connection.remoteName(), connection);
-            CompletableFuture<PeerConnection> pending = connecting.get(connection.remoteName());
+        String name = connection.remoteName();
+        if (name != null) {
+            boolean removed = peers.remove(name, connection);
+            CompletableFuture<PeerConnection> pending = connecting.get(name);
             if (pending != null && !pending.isDone()) {
                 pending.completeExceptionally(new IllegalStateException("Connection closed during handshake"));
+            }
+            if (removed && !peers.containsKey(name)) {
+                // The peer is gone (crash, restart or network loss). Mirror copies
+                // of its players would otherwise stay as ghosts until we restart.
+                server.playerMirrors().onPeerDisconnected(name);
             }
         }
     }

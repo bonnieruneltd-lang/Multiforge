@@ -3,6 +3,7 @@ package com.multiforge.forge.entity;
 import com.multiforge.forge.MultiForgeServer;
 import com.multiforge.forge.mixin.LivingEntityAccessor;
 import com.multiforge.forge.mixin.MobAccessor;
+import com.multiforge.forge.player.ExternalPlayer;
 import com.multiforge.forge.peer.packet.EntityHurtPacket;
 import com.multiforge.forge.peer.packet.EntityRemovePacket;
 import com.multiforge.forge.peer.packet.EntityUpdateNBTPacket;
@@ -204,6 +205,11 @@ public final class EntitySyncManager {
      * @param reason vanilla removal reason
      */
     public void onEntityRemoved(Entity entity, Entity.RemovalReason reason) {
+        if (entity instanceof ExternalPlayer) {
+            // Player mirroring has its own registry and tab list lifecycle.
+            mirrored.remove(entity.getUUID());
+            return;
+        }
         if (reason == Entity.RemovalReason.UNLOADED_TO_CHUNK) {
             // The entity still exists on disk; the mirror only dropped its copy.
             mirrored.remove(entity.getUUID());
@@ -252,7 +258,10 @@ public final class EntitySyncManager {
      * @param packet vanilla packet
      */
     public void onEntityPacket(Entity entity, Packet<?> packet) {
-        if (server.isStopping() || !server.config().entitySync() || isApplyingRemote()) {
+        if (server.isStopping() || isApplyingRemote()) {
+            return;
+        }
+        if (!server.config().entitySync() && !server.config().playerSync()) {
             return;
         }
         if (!server.chunks().hasEntitySubscribers()) {
@@ -262,7 +271,18 @@ public final class EntitySyncManager {
             // snapshot through onEntitySubscriberAdded.
             return;
         }
-        if (!shouldMirror(entity) || !(entity.level() instanceof ServerLevel level)) {
+        if (entity instanceof ExternalPlayer) {
+            // Mirrored players must never be forwarded back to their owner.
+            return;
+        }
+        if (entity instanceof ServerPlayer) {
+            if (!server.config().playerSync()) {
+                return;
+            }
+        } else if (!shouldMirror(entity)) {
+            return;
+        }
+        if (!(entity.level() instanceof ServerLevel level)) {
             return;
         }
         if (packet instanceof net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket) {
@@ -273,7 +293,10 @@ public final class EntitySyncManager {
         int chunkX = Mth.floor(entity.getX()) >> 4;
         int chunkZ = Mth.floor(entity.getZ()) >> 4;
         ChunkKey key = server.chunks().keyOf(level, chunkX, chunkZ);
-        if (!isReplicationAuthority(key)) {
+        // A real player entity only exists on the server that accepted the
+        // connection, so that server is authoritative even while the chunk
+        // ownership request for a just-entered chunk is still in flight.
+        if (!(entity instanceof ServerPlayer) && !isReplicationAuthority(key)) {
             return;
         }
         Collection<String> subscribers = server.chunks().entitySubscribersOf(key);
@@ -294,9 +317,6 @@ public final class EntitySyncManager {
                 sendWithDependencies(world, entity, chunkX, chunkZ, dependencies, packet, subscribers);
             } else if (packet instanceof ClientboundSetEntityLinkPacket link) {
                 Entity dependency = link.getDestId() == 0 ? null : level.getEntity(link.getDestId());
-                if (dependency instanceof ServerPlayer) {
-                    return;
-                }
                 List<Entity> dependencies = new ArrayList<>();
                 if (dependency != null) {
                     dependencies.add(dependency);
@@ -323,7 +343,8 @@ public final class EntitySyncManager {
     /**
      * Forwards damage on a mirrored entity to the server that owns it.
      *
-     * <p>Called from the {@code LivingEntity.hurt} mixin at HEAD. Returning
+     * <p>Called from the {@code LivingEntity.hurt} and {@code ServerPlayer.hurt}
+     * mixins at HEAD. Returning
      * {@code true} tells the mixin to cancel local damage handling: only the
      * owner may change health, and its metadata update will reach this server
      * through the normal entity packet stream. When no owner is known yet (or the
@@ -335,13 +356,27 @@ public final class EntitySyncManager {
      * @return {@code true} when the hit was forwarded and must not apply locally
      */
     public boolean onEntityHurt(LivingEntity entity, DamageSource source, float amount) {
-        if (server.isStopping() || !server.config().entitySync() || isApplyingRemote()
-                || entity instanceof ServerPlayer || !shouldMirror(entity)
+        if (server.isStopping() || isApplyingRemote()
                 || !(entity.level() instanceof ServerLevel level)) {
             return false;
         }
-        ChunkKey key = server.chunks().keyOf(level, entity.chunkPosition());
-        String owner = server.chunks().ownerName(key);
+        String owner;
+        if (entity instanceof ExternalPlayer mirror) {
+            if (!server.config().playerSync()) {
+                return false;
+            }
+            // A player is simulated by the server that accepted the connection,
+            // which is not necessarily the owner of its current chunk.
+            owner = server.players().getPlayerServer(entity.getUUID())
+                    .orElse(mirror.originServer());
+        } else {
+            if (!server.config().entitySync() || entity instanceof ServerPlayer
+                    || !shouldMirror(entity)) {
+                return false;
+            }
+            ChunkKey key = server.chunks().keyOf(level, entity.chunkPosition());
+            owner = server.chunks().ownerName(key);
+        }
         if (owner == null || owner.equals(server.serverName())) {
             return false;
         }
@@ -373,7 +408,7 @@ public final class EntitySyncManager {
             if (!(entity instanceof LivingEntity living)) {
                 return true;
             }
-            applyRemote(() -> living.hurt(damageSource(level, damageType), amount));
+            applyRemoteInternal(() -> living.hurt(damageSource(level, damageType), amount));
             return true;
         });
     }
@@ -467,7 +502,7 @@ public final class EntitySyncManager {
             if (entity == null || entity instanceof ServerPlayer) {
                 return true;
             }
-            applyRemote(() -> entity.setRemoved(unloadedWithPlayer
+            applyRemoteInternal(() -> entity.setRemoved(unloadedWithPlayer
                     ? Entity.RemovalReason.UNLOADED_WITH_PLAYER
                     : Entity.RemovalReason.DISCARDED));
             return true;
@@ -488,7 +523,8 @@ public final class EntitySyncManager {
      * @param subscriber server name that subscribed
      */
     public void onEntitySubscriberAdded(ChunkKey key, String subscriber) {
-        if (!server.config().entitySync() || subscriber == null || subscriber.equals(server.serverName())) {
+        if ((!server.config().entitySync() && !server.config().playerSync())
+                || subscriber == null || subscriber.equals(server.serverName())) {
             return;
         }
         ServerLevel level = server.level(key.getName());
@@ -505,6 +541,14 @@ public final class EntitySyncManager {
         for (Entity entity : level.getEntities((Entity) null, area,
                 candidate -> Mth.floor(candidate.getX()) >> 4 == key.getX()
                         && Mth.floor(candidate.getZ()) >> 4 == key.getZ())) {
+            if (entity instanceof ServerPlayer player) {
+                // Players are announced with their profile and player data, not
+                // with the generic NBT entity snapshot.
+                if (!(player instanceof ExternalPlayer) && server.config().playerSync()) {
+                    server.playerMirrors().announceTo(player, subscriber);
+                }
+                continue;
+            }
             if (entity.isPassenger() || !shouldMirror(entity)) {
                 continue;
             }
@@ -537,7 +581,7 @@ public final class EntitySyncManager {
             pending.clear();
             return;
         }
-        if (!server.config().entitySync()) {
+        if (!server.config().entitySync() && !server.config().playerSync()) {
             pendingSpawns.clear();
             pending.clear();
             removedUntil.clear();
@@ -587,12 +631,12 @@ public final class EntitySyncManager {
         Entity existing = level.getEntity(uuid);
         if (existing != null) {
             if (!(existing instanceof ServerPlayer)) {
-                applyRemote(() -> existing.load(tag));
+                applyRemoteInternal(() -> existing.load(tag));
                 mirrored.put(uuid, tickCounter);
             }
             return true;
         }
-        applyRemote(() -> {
+        applyRemoteInternal(() -> {
             EntityType.loadEntityRecursive(tag, level, entity -> {
                 if (level.getEntity(entity.getUUID()) != null) {
                     return entity;
@@ -628,7 +672,12 @@ public final class EntitySyncManager {
         if (entity == null) {
             return false;
         }
-        if (entity instanceof ServerPlayer) {
+        if (entity instanceof ServerPlayer && !(entity instanceof ExternalPlayer)) {
+            // A real local player is authoritative; only mirror copies accept
+            // forwarded player packets.
+            return true;
+        }
+        if (entity instanceof ExternalPlayer && !server.config().playerSync()) {
             return true;
         }
         Entity[] dependencyEntities = new Entity[dependencies.length];
@@ -643,7 +692,7 @@ public final class EntitySyncManager {
         if (packet == null) {
             return true;
         }
-        applyRemote(() -> applyPacket(level, entity, dependencyEntities, packet));
+        applyRemoteInternal(() -> applyPacket(level, entity, dependencyEntities, packet));
         return true;
     }
 
@@ -796,13 +845,20 @@ public final class EntitySyncManager {
     // ------------------------------------------------------------------
 
     /**
-     * Runs a world-mutating task with the remote-application flag set, so the
-     * outbound hooks and the entity id assignment do not treat a mirrored change
-     * as local gameplay.
+     * Runs a task with the remote-application flag set, so the outbound hooks
+     * and the entity id assignment do not treat a mirrored change as local
+     * gameplay. Exposed for the player mirror manager.
      *
      * @param task task to run on the current (server) thread
      */
-    private void applyRemote(Runnable task) {
+    public static void applyRemote(Runnable task) {
+        applyRemoteInternal(task);
+    }
+
+    /**
+     * @param task task to run with the remote-application flag held
+     */
+    private static void applyRemoteInternal(Runnable task) {
         boolean previous = APPLYING_REMOTE.get();
         APPLYING_REMOTE.set(Boolean.TRUE);
         try {
@@ -890,7 +946,7 @@ public final class EntitySyncManager {
                 removeRecursive(passenger);
             }
         }
-        applyRemote(() -> entity.setRemoved(Entity.RemovalReason.UNLOADED_TO_CHUNK));
+        applyRemoteInternal(() -> entity.setRemoved(Entity.RemovalReason.UNLOADED_TO_CHUNK));
     }
 
     /**
@@ -910,10 +966,10 @@ public final class EntitySyncManager {
 
     /**
      * @param dependency entity referenced by another entity packet
-     * @return whether the mirror can resolve it (players are not mirrored yet)
+     * @return whether the mirror can resolve it (players are mirrored too)
      */
     private static boolean isMirrorableDependency(Entity dependency) {
-        return dependency != null && !(dependency instanceof ServerPlayer) && !dependency.isRemoved();
+        return dependency != null && !dependency.isRemoved();
     }
 
     /**

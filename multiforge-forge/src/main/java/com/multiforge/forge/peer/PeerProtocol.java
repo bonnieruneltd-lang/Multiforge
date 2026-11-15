@@ -13,6 +13,8 @@ import com.multiforge.forge.peer.packet.GameRuleUpdatePacket;
 import com.multiforge.forge.peer.packet.HelloPacket;
 import com.multiforge.forge.peer.packet.KeepAlivePacket;
 import com.multiforge.forge.peer.packet.LevelDataUpdatePacket;
+import com.multiforge.forge.peer.packet.PlayerCreatePacket;
+import com.multiforge.forge.peer.packet.PlayerRemovePacket;
 import com.multiforge.forge.peer.packet.RequestChunkPacket;
 import com.multiforge.forge.peer.packet.SendChunkPacket;
 import com.multiforge.forge.peer.packet.SetCompressionPacket;
@@ -71,6 +73,9 @@ public final class PeerProtocol {
         add(EntityRemovePacket.class, EntityRemovePacket::new);
         add(EntityUpdateWithDependenciesPacket.class, EntityUpdateWithDependenciesPacket::new);
         add(EntityHurtPacket.class, EntityHurtPacket::new);
+        // Player mirroring. Appended after the entity family; never reorder.
+        add(PlayerCreatePacket.class, PlayerCreatePacket::new);
+        add(PlayerRemovePacket.class, PlayerRemovePacket::new);
     }
 
     private PeerProtocol() {

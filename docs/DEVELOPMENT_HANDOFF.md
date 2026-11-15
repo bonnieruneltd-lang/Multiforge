@@ -141,16 +141,19 @@ mod-mod interaction, not a MultiForge ownership failure, and is recorded in
 7. **`/forceload` is not a reliable way to create a shared chunk while Ksyxis is loaded**
    (see above). Use the harness's spawn-chunk discovery instead.
 
-## 6. Still missing (updated session 4)
+## 6. Still missing (updated session 5)
 
 1. **Live entity mirroring** (TODO 1) - **done** in session 4. The owner forwards movement,
    metadata, equipment, passenger/leash/pickup and removal packets; mirrors create copies
    from NBT; damage is forwarded to the owner. Evidence:
-   `compat/evidence/entity-mirroring-20261111T212200Z.md`. Players are still excluded.
-2. **External player mirroring** (TODO 2), including tab list presence and packet
-   forwarding; depends on the entity representation.
+   `compat/evidence/entity-mirroring-20261111T212200Z.md`.
+2. **Player mirroring** (TODO 2) - **done** in session 5. `ExternalPlayer` copies are in the
+   vanilla `PlayerList`/level (tab list and `/list`), `PlayerCreatePacket`/
+   `PlayerRemovePacket` carry profile/position/game mode/player data, movement and metadata
+   use the entity stream, and hits are forwarded before local invulnerability checks.
+   Evidence: `compat/evidence/player-mirroring-20261115T030505Z.md`.
 3. **Inventory / ender chest / experience / hunger / effects live sync** (TODO 3). Player
-   data files work; live changes do not.
+   data files work; live changes do not. This is now the largest functional gap.
 4. **Live user list application** (TODO 7): files are synced, the running `PlayerList` is
    not reloaded.
 5. **Chunk generation lease**: implemented (`ChunkGenerationManager`, four integration
@@ -165,9 +168,9 @@ mod-mod interaction, not a MultiForge ownership failure, and is recorded in
 1. **Player-driven compatibility tests.** A real client (or a fake-player harness) unlocks
    most LOADING rows: minecarts, tree felling, leaf decay, head drops, item merging, combat
    log, TPA, chat, xray, anti-seed datapack, and MultiForge's own player transfer.
-2. **Player mirroring** (`ExternalPlayer`), the natural next step after entity mirroring;
-   mobs are already mirrored.
-3. **Inventory/experience sync** — second largest.
+2. **Inventory/experience/effects sync** — now the largest functional gap; player mirroring
+   is done.
+3. **Display-name/team sync and attacker attribution** for cross-server player interactions.
 4. **Client matrix** for the 15 client targets on a GPU machine, using the pinned manifest
    and the plan in `REQUIRED_MOD_COMPATIBILITY.md`.
 5. **Reliability**: reconnect re-upload queue, protocol fuzz tests,

@@ -32,6 +32,7 @@ public abstract class EntityMixin {
     private void multiforge$onRemoved(Entity.RemovalReason reason, CallbackInfo callbackInfo) {
         MultiForgeServer server = MultiForgeServer.instanceOrNull();
         if (server != null) {
+            server.playerMirrors().onMirrorRemoved((Entity) (Object) this);
             server.entities().onEntityRemoved((Entity) (Object) this, reason);
         }
     }

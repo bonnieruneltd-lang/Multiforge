@@ -5,33 +5,29 @@ the mitigation.
 
 ## Functional gaps
 
-### 1. Players cannot see players on other servers
-
-**Symptom:** a player on server A does not see a player connected to server B, even though
-both servers have the chunk loaded and mobs in it are mirrored.
-
-**Cause:** MultiForge mirrors ordinary entities (M1, see
-[SYNCHRONIZATION.md](SYNCHRONIZATION.md#entities)) but not player entities yet. MultiPaper's
-`ExternalPlayer`/`PlayerCreatePacket` representation and per-player packet forwarding are
-TODO 2. Mobs, items and vehicles are visible, moving and damageable on every server that has
-the chunk.
-
-**Mitigation:** keep players of one area on the same server (the master gives ownership to
-the server that needs to tick the chunk, so the area a player is in is normally owned by
-their server). Tracked in TODO.md item 2.
-
-### 1a. Entity mirroring edge cases
+### 1. Entity and player mirroring edge cases
 
 * **Cross-server damage attribution:** `EntityHurtPacket` carries the damage type and amount,
-  not the attacking entity. Damage applies correctly on the owner, but death messages and
-  kill credit do not name a player who hit the mob from another server. Full
-  `DamageSource` serialization is tracked in TODO item 5.
+  not the attacking entity. Damage applies correctly on the owner (including hits on a
+  mirrored player), but death messages and kill credit do not name a player who hit from
+  another server. Full `DamageSource` serialization is tracked in TODO item 5.
 * **Ownership boundary crossings:** an entity that walks from a chunk owned by A into one
   owned by B can freeze for a moment. A stops broadcasting when its chunk is no longer the
   entity's chunk, and B starts once it ticks and owns the new chunk; there is no full NBT
   resync on the crossing yet.
-* **Players are skipped** by every mirroring path (`ServerPlayer`), so a player entity is
-  never spawned twice. This is deliberate until TODO 2 lands.
+* **Players use the player stream.** A mirrored player is an `ExternalPlayer` registered in
+  the vanilla `PlayerList` and level; `EntitySyncManager` forwards its movement, metadata and
+  equipment but never treats it as an ordinary NBT entity. The copy is not saved and is not
+  ticked, and a hit on it is forwarded to the origin server before local invulnerability
+  checks. A logout packet removes the copy; a peer disconnect removes everything that came
+  from that server.
+* **Live effects, display names, death animation and inventory are not fully mirrored.**
+  Health and movement do sync, but potion particles on other players, a changed tab-list
+  display name or game-mode icon, the death animation (`tick death` is not simulated on the
+  copy) and live inventory/hunger changes need MultiPaper's separate handlers (TODO 3 and
+  10). Player data files are still authoritative on the master at save/load time, and the
+  mirror uses the profile properties sent with `PlayerCreatePacket`, so skins work when the
+  origin has them.
 
 ### 2. Live inventory/experience changes are not synchronized
 
