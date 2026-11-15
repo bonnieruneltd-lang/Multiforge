@@ -58,6 +58,23 @@ python3 tools/compat/client_matrix.py host --instance .runtime/client
 `glxinfo missing (install mesa-utils)` or `no /dev/dri` means the machine will not
 produce usable client evidence.
 
+## One command on the GPU machine
+
+The whole procedure below is wrapped in one script; run it from the repository root and
+it aborts before starting Minecraft if the host cannot produce usable evidence:
+
+```bash
+./tools/compat/run_client_matrix.sh --java /path/to/java17
+# software-only machine (evidence is labelled SOFTWARE, shader rows stay open):
+./tools/compat/run_client_matrix.sh --allow-software
+```
+
+It probes the host, builds the mod jar, downloads and hash-verifies the pinned client
+artifacts, assembles the instance, installs the production client, then runs one client
+per shader pack (`bsl-shaders`, `complementary-reimagined`, `sildurs-vibrant-lite`) and
+writes one `compat/evidence/client-matrix-<utc>.{md,json}` per run. `--dry-run` prints the
+commands without executing them.
+
 ## One matrix run
 
 ```bash
