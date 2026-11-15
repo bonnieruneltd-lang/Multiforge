@@ -74,7 +74,12 @@ coding.
   (`tools/compat/mcbot.js`, used by `player_state_check.py`) and can be extended for those
   interactions; until then those rows stay LOADING in `REQUIRED_MOD_COMPATIBILITY.md`.
 * **Client matrix** (highest for the 15 client targets): run the pinned client set on a GPU
-  machine, one shader pack at a time, and append the results to the matrix.
+  machine, one shader pack at a time, and append the results to the matrix. The run is now
+  automated: `tools/compat/client_matrix.py` probes the host, assembles and hash-verifies the
+  Prism instance, launches it, judges `latest.log` per target and writes the evidence file.
+  The machine specification and the three shader runs are in `docs/CLIENT_MATRIX.md`; what is
+  missing is a GPU host, not code. Software GL (`llvmpipe`) is supported and labelled
+  `SOFTWARE`, but it cannot stand in for the shader-pack rows.
 
 ## Medium priority
 

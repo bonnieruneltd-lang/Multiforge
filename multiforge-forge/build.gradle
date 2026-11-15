@@ -42,6 +42,21 @@ minecraft {
             jvmArg '-Djava.awt.headless=true'
             args '--nogui'
         }
+        // Client run used by the client compatibility matrix. The 15 client mods in
+        // compat/required-mods.json hook rendering, so they can only be judged with a
+        // real Minecraft client; this run makes that reproducible:
+        //   xvfb-run -a ./gradlew :multiforge-forge:runClient
+        // On a GPU machine the same task runs against the real driver. Run with
+        // LIBGL_ALWAYS_SOFTWARE=1 to get a software-GL smoke test without a GPU; a
+        // software run never counts as shader-pack evidence (see docs/CLIENT_MATRIX.md).
+        client {
+            workingDirectory project.file('run-client')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+            jvmArg '-Xmx2G'
+        }
         // Second server for cluster verification. ForgeGradle only assigns a main
         // class/args to the run types it knows (`client`, `server`, `data`), so a
         // custom run must inherit from one via `parent`; without that it fails with

@@ -92,7 +92,9 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   check because force-loaded tickets disappear while it is installed.
 * Compatibility score: 0/35 FULLY COMPATIBLE. 2 server targets FUNCTIONAL, 8 PARTIAL,
   10 LOADING, 15 client targets NOT TESTED (no GPU). Do not inflate this; the matrix and
-  evidence are in `docs/REQUIRED_MOD_COMPATIBILITY.md`.
+  evidence are in `docs/REQUIRED_MOD_COMPATIBILITY.md`. The client run is automated
+  (`tools/compat/client_matrix.py`, `docs/CLIENT_MATRIX.md`); it needs a GPU host, not code,
+  and a software-GL run is labelled `SOFTWARE` and cannot fill the shader rows.
 * Entity mirroring (TODO 1) and player mirroring (TODO 2) are implemented and verified on a
   two-server cluster; player evidence is in
   `compat/evidence/player-mirroring-20261115T030505Z.md`. Live inventory, ender chest,

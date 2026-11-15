@@ -176,7 +176,7 @@ change the support matrix and must not be hidden:
 
 | Area | Remaining work |
 | --- | --- |
-| Client mods (15) | Run the manual client matrix on a machine with a GPU. Automate launch + log checks if a headless client with software GL is available; shader compilation still needs a real GL context. |
+| Client mods (15) | Run the automated client matrix on a GPU machine: `docs/CLIENT_MATRIX.md`. `tools/compat/client_matrix.py` probes the host, hash-verifies the instance, launches the client (`tools/compat/launch_client.py` if there is no Prism), judges the run log per target and writes `compat/evidence/client-matrix-<utc>.md`; one run per shader pack. A software-GL (`llvmpipe`) run is supported and labelled `SOFTWARE`: valid for mixin/mod-load checks, not for shader rows. |
 | Server gameplay | Player-driven tests for minecarts, tree felling, leaf decay, head drops, item merging, combat log, TPA, chat, xray and the anti-seed datapack. These all need at least one real client or a fake-player harness. |
 | Cross-server gameplay | Chunk ownership transfer while a player walks, player mirroring (see `compat/evidence/player-mirroring-20261115T030505Z.md`), inventory sync (TODO 3), server switch and reconnect. |
 | Radium/ServerCore | Decide on a supported combination and add a documented config profile; do not claim both optimisations active. |
@@ -199,3 +199,27 @@ matrix deliberately keeps most rows below that bar.
 The server-side collection is therefore *integrated* (all 20 installed together and the
 cluster runs), but it is not yet *fully compatible*. The next session should attack the
 player-driven server tests first: they unlock most LOADING rows without needing a GPU.
+
+## 8. Software-OpenGL client run (2026-11-15)
+
+The client set has now been launched once end to end without a GPU, so the remaining gap
+is a hardware host and not an untested code path. Evidence:
+`compat/evidence/client-matrix-20261115T234229Z.md` (plus the `.json`).
+
+| Item | Value |
+| --- | --- |
+| Host | Debian 12 container, no `/dev/dri`, Xvfb `:99`, Mesa `llvmpipe` OpenGL 4.5 core |
+| Client | production Forge 47.4.29 installed from the official version JSONs (`tools/compat/launch_client.py`), Java 17.0.21, 3072 MiB |
+| Instance | assembled by `tools/compat/client_matrix.py prepare`, 15/15 client targets SHA-512 verified |
+| Verdict | `STARTED` - no crash, reached the first fully rendered frame with all mods |
+| Mods accepted by Forge | 14/14 client mods (`Found valid mod file <jar>`) |
+| Resource pack | Anti Cords Leaker installed |
+| Shader pack | `Oculus: Using shaderpack: BSL_v10.1.8.zip`, no compile error; the other two packs installed but not selected |
+| Not covered | hardware driver behaviour, shader performance, in-world rendering, gameplay interactions |
+
+The scoreboard above is deliberately unchanged: 0/35 FULLY COMPATIBLE. A `SOFTWARE` run
+proves that the pinned jars load, that their mixins apply and that the client starts; it
+says nothing about driver compatibility or frame times, and the harness labels its own
+evidence accordingly. Running the same command on an Ubuntu GPU machine (see
+[`CLIENT_MATRIX.md`](CLIENT_MATRIX.md)) turns these rows into the evidence that can move a
+target to FULLY COMPATIBLE.

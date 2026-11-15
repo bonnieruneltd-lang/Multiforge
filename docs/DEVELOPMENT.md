@@ -120,6 +120,27 @@ entity` output on both servers. It exits non-zero when a check fails and prints 
 used as evidence in `compat/evidence/`. See
 `compat/evidence/player-state-20261115T054356Z.md` for a recorded run.
 
+## Client run and the client matrix
+
+The client targets (Embeddium, Oculus, Entity Culling, ...) hook rendering, so they need a
+real Minecraft client. Two entry points:
+
+```bash
+# development smoke test of the mod itself (no compatibility set)
+./gradlew :multiforge-forge:runClient
+LIBGL_ALWAYS_SOFTWARE=1 xvfb-run -a ./gradlew :multiforge-forge:runClient  # headless
+
+# the compatibility matrix: pinned mods, hash verification, launch, log judgement
+python3 tools/compat/client_matrix.py host
+python3 tools/compat/client_matrix.py prepare --instance .runtime/client \
+    --source .runtime/client-mods --multiforge-jar <built jar>
+python3 tools/compat/client_matrix.py run --instance .runtime/client --shader bsl-shaders
+```
+
+The dev run uses `multiforge-forge/run-client/` (git-ignored like `run/`) and proves only
+that the mod's own client mixins apply. The machine specification, the per-shader-pack
+procedure and the evidence rules are in [`CLIENT_MATRIX.md`](CLIENT_MATRIX.md).
+
 ## Configuration files
 
 * Master: `multiforge-master.properties` next to the process (created on first start).

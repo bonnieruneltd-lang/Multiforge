@@ -18,6 +18,7 @@ bin/
 # Forge / Minecraft runtime output
 /run/
 /multiforge-forge/run/
+/multiforge-forge/run-client/
 /runs/
 /logs/
 *.log
