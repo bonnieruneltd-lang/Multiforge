@@ -106,6 +106,9 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   (`ContainerSyncManager`, peer packets 27-29), master ownership epochs on
   block/block-entity packets, attacker attribution in `EntityHurtPacket`, live
   whitelist/ops/ban reload, and true-zlib master region files with a round-trip test.
+  Container open/click/close, live op/whitelist/ban reload and the region bytes were
+  verified on a master + two-server cluster; see
+  `compat/evidence/containers-epochs-userlists-20261115T074200Z.md`.
 * Performance pass done and verified on a live master + two servers (20 TPS, entity,
   block and block-entity sync, graceful stop): see `docs/PERFORMANCE.md`. Per-tick paths
   no longer allocate a world string/`ChunkPos` per call, entity forwarding has an O(1)
