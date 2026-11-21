@@ -624,6 +624,11 @@ public final class FileSyncer {
      * @param message announcement of the pushed file and its stream id
      */
     public void onFileContent(FileContentMessage message) {
+        if (message.streamId < 0) {
+            // The master could not resolve the file (missing or outside the sync root).
+            LOGGER.debug("Shared file '{}' is not available on the master", message.path);
+            return;
+        }
         String path = normalizeSharedPath(message.path);
         if (path == null || shouldSkip(path)) {
             return;
@@ -775,6 +780,10 @@ public final class FileSyncer {
         try {
             FileContentMessage content = server.master().request(new DownloadFileMessage(path),
                     FileContentMessage.class).get(server.config().ioTimeoutSeconds(), TimeUnit.SECONDS);
+            if (content.streamId < 0) {
+                LOGGER.debug("Shared file '{}' is not available on the master", path);
+                return;
+            }
             downloadStream(resolve(path), path, lastModified > 0 ? lastModified : content.lastModified,
                     content.streamId);
         } catch (Exception e) {
@@ -799,6 +808,10 @@ public final class FileSyncer {
      */
     private void downloadStream(Path destination, String relative, long lastModified, int streamId) {
         if (!server.master().isConnected()) {
+            return;
+        }
+        if (streamId < 0) {
+            LOGGER.debug("Shared file '{}' is not available on the master", relative);
             return;
         }
         Path parent = destination.getParent();

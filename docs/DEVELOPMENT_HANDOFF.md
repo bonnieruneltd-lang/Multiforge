@@ -279,7 +279,7 @@ two processes.
   swapped. The config is now COMMON at `config/multiforge-server.toml` with a legacy migration.
   `/reload` does not fire config reload events on this Forge version, so restart for configs.
 * Test counts after this session: `./gradlew build :multiforge-protocol:test
-  :multiforge-master:test :multiforge-api:test` passes (protocol 36, master 41, api 4). Next
+  :multiforge-master:test :multiforge-api:test` passes (protocol 36, master 42, api 4). Next
   non-GPU work: live-verify the forge features above, Velocity modern forwarding, per-chunk
   sequence numbers/acks and the remaining performance items.
 

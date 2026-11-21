@@ -109,9 +109,10 @@ Read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before running a production wo
 ## Commands
 
 `/multiforge status`, `/multiforge servers`, `/multiforge players`, `/multiforge chunk`,
-`/multiforge chunks`, `/multiforge map [radius]`, `/multiforge borders`, `/multiforge compat`,
-`/multiforge download <path>` (aliases `/mfservers`, `/mfslist`). `/multiforge borders`
-requires `debug.chunkBorders = true`.
+`/multiforge chunks`, `/multiforge map [radius]`, `/multiforge borders`, `/multiforge reload`,
+`/multiforge compat`, `/multiforge download <path>` (aliases `/mfservers`, `/mfslist`).
+`/multiforge borders` requires `debug.chunkBorders = true`; `/multiforge reload` re-reads
+`config/multiforge-server.toml` without a restart.
 
 ## Documentation
 

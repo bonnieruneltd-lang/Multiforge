@@ -115,12 +115,56 @@ standby never binds while the previous term still owns a socket.
 ## Automated suites
 
 `./gradlew build :multiforge-protocol:test :multiforge-master:test :multiforge-api:test`
-passes 72 tests (protocol 30, master 38, api 4). Re-run after the live-test fixes:
-protocol 36 (new Bungee parser/fuzz/progress tests), master 41 (leader election and download
-progress), api 4.
+passes 82 tests (protocol 36, master 42, api 4) after the live-test fixes: Bungee parser,
+protocol fuzzing and bounds guards, leader election, download progress, missing-file reply
+and the scoreboard checks.
+
+## Second pass: reload, entity sync, download progress
+
+`/reload` on Forge 47.4.29 does not fire config reload events, so MultiForge now has its own
+command. Live result (player connected to `live1`):
+
+```
+[live1] execute as BungeeTest run multiforge borders  -> Chunk border visualization on.
+[live1] execute as BungeeTest run multiforge borders  -> Chunk border visualization off.
+(local file: debug.chunkBorders=false)
+[live1] multiforge reload -> MultiForge configuration reloaded from disk (restart-only values are logged).
+[live1] execute as BungeeTest run multiforge borders  -> Chunk border visualization is disabled (set debug.chunkBorders=true).
+[live1] MultiForge configuration reloaded
+```
+
+Entity mirroring, damage forwarding and removal across the cluster:
+
+```
+[live1] summon minecraft:cow 5 -59 5            -> Summoned new Cow
+[live2] execute if entity @e[type=minecraft:cow] -> Test passed, count: 1
+[live2] data get entity @e[type=minecraft:cow,limit=1] Pos
+        -> [5.205078125d, -60.0d, 5.794921875d]
+[live1] damage @e[type=minecraft:cow,limit=1] 2 -> Applied 2.0 damage to Cow
+[live2] ... Health -> 8.0f (from 10.0f)
+[live1] kill @e[type=minecraft:cow]              -> Killed Cow
+[live2] execute if entity @e[type=minecraft:cow] -> Test failed
+```
+
+Download progress (6 MiB shared file, `/multiforge download progress-test.bin`):
+
+```
+Downloading 'progress-test.bin': 16% (1048576 of 6291456 bytes)
+Downloading 'progress-test.bin': 33% (2097152 of 6291456 bytes)
+Downloading 'progress-test.bin': 50% (3145728 of 6291456 bytes)
+Downloading 'progress-test.bin': 66% (4194304 of 6291456 bytes)
+Downloading 'progress-test.bin': 83% (5242880 of 6291456 bytes)
+Downloading 'progress-test.bin': 100% (6291456 of 6291456 bytes)
+```
+
+The downloaded file was exactly 6,291,456 bytes. A missing file now returns
+`FileContentMessage(..., streamId=-1)` immediately instead of a master stack trace and a
+requester timeout; a `../../etc/passwd` request is rejected by the master's normalized shared
+root (`Shared path escapes the sync root`). Covered by
+`MasterIntegrationTest.missingSharedFileIsReportedWithoutHanging` and the master log.
 
 ## Known caveat from this run
 
-`/reload` on Forge 47.4.29 did not fire `ModConfigEvent.Reloading` for the mod config, so
-`onConfigReloaded` was not exercised live. The code path is wired to that event and covered by
-compilation; in practice a config change still needs a restart on this Forge version.
+The Forge `/reload` command does not reload mod configs on 47.4.29; use
+`/multiforge reload` (verified live). Values bound/negotiated once (peer port, server name,
+existing peer compression, scheduler periods) still need a restart and are logged as such.

@@ -1,5 +1,6 @@
 package com.multiforge.master.handlers;
 
+import com.multiforge.master.util.Log;
 import com.multiforge.master.util.MasterStorage;
 
 import com.multiforge.protocol.datastream.OutboundDataStream;
@@ -20,8 +21,21 @@ public class DownloadFileHandler {
     private static final long PROGRESS_INTERVAL_BYTES = 1024L * 1024L;
 
     public static void handle(ServerConnection connection, DownloadFileMessage message) {
+        File file;
+        try {
+            file = MasterStorage.sharedFile(message.path);
+        } catch (IllegalArgumentException e) {
+            Log.warn("Rejected shared-file download: " + e.getMessage());
+            sendUnavailable(connection, message);
+            return;
+        }
+        if (!file.isFile()) {
+            // Reply instead of throwing: the requester used to wait for its IO timeout
+            // while the master logged a stack trace. streamId -1 means "not available".
+            sendUnavailable(connection, message);
+            return;
+        }
         OutboundDataStream dataStream = connection.getDataStreamManager().createOutboundDataStream(connection.getChannel());
-        File file = MasterStorage.sharedFile(message.path);
         FileLocker.createLockAsync(file).thenAcceptAsync(lock -> {
             try {
                 long total = file.length();
@@ -48,5 +62,15 @@ public class DownloadFileHandler {
                 e.printStackTrace();
             }
         });
+    }
+
+    /**
+     * Tells the requester that a shared file is not available on the master.
+     *
+     * @param connection requester
+     * @param message    download request
+     */
+    private static void sendUnavailable(ServerConnection connection, DownloadFileMessage message) {
+        connection.sendReply(new FileContentMessage(message.path, -1L, -1), message);
     }
 }

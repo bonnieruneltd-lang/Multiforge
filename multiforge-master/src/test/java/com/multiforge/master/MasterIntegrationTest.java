@@ -37,6 +37,7 @@ import com.multiforge.protocol.messages.serverbound.ChunkLoadedOnAnotherServerMe
 import com.multiforge.protocol.messages.serverbound.ChunkSubscribersSyncMessage;
 import com.multiforge.protocol.messages.serverbound.DataMessageReply;
 import com.multiforge.protocol.messages.serverbound.DataUpdateMessage;
+import com.multiforge.protocol.messages.serverbound.FileContentMessage;
 import com.multiforge.protocol.messages.serverbound.FilesToSyncMessage;
 import com.multiforge.protocol.messages.serverbound.IntegerPairMessageReply;
 import com.multiforge.protocol.messages.serverbound.NullableStringMessageReply;
@@ -738,6 +739,25 @@ class MasterIntegrationTest {
                 5000L);
         assertEquals(data.length, progress.total);
         assertEquals(100, progress.percent());
+    }
+
+    /**
+     * A download request for a missing file (or a path escaping the shared root) must get an
+     * immediate "unavailable" reply instead of making the requester wait for its IO timeout
+     * while the master logs a stack trace.
+     *
+     * @throws Exception when the request or reply fails
+     */
+    @Test
+    void missingSharedFileIsReportedWithoutHanging() throws Exception {
+        TestServerClient a = client("missing-file");
+        FileContentMessage missing = a.request(
+                new DownloadFileMessage("does/not/exist.bin")).get();
+        assertEquals(-1, missing.streamId, "missing files must be marked unavailable");
+
+        FileContentMessage traversal = a.request(
+                new DownloadFileMessage("../../etc/passwd")).get();
+        assertEquals(-1, traversal.streamId, "paths outside the sync root must be rejected");
     }
 
     @Test

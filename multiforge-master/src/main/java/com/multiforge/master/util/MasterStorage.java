@@ -99,7 +99,15 @@ public final class MasterStorage {
      * @return file below {@code synced-server-files}
      */
     public static File sharedFile(String relative) {
-        return file("synced-server-files/" + relative);
+        if (relative == null || relative.isBlank()) {
+            throw new IllegalArgumentException("Empty shared-file path");
+        }
+        Path root = sharedRoot().toPath().toAbsolutePath().normalize();
+        Path resolved = root.resolve(relative).normalize();
+        if (!resolved.startsWith(root)) {
+            throw new IllegalArgumentException("Shared path escapes the sync root: " + relative);
+        }
+        return resolved.toFile();
     }
 
     /** @return directory that holds files synchronized between servers */

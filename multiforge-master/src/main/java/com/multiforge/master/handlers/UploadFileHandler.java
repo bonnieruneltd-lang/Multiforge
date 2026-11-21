@@ -1,5 +1,6 @@
 package com.multiforge.master.handlers;
 
+import com.multiforge.master.util.Log;
 import com.multiforge.master.util.MasterStorage;
 
 import com.multiforge.protocol.datastream.OutboundDataStream;
@@ -16,7 +17,14 @@ import java.util.concurrent.CompletableFuture;
 
 public class UploadFileHandler {
     public static void handle(ServerConnection connection, UploadFileMessage message) {
-        File file = MasterStorage.sharedFile(message.path);
+        File file;
+        try {
+            file = MasterStorage.sharedFile(message.path);
+        } catch (IllegalArgumentException e) {
+            Log.warn("Rejected shared-file upload: " + e.getMessage());
+            connection.sendReply(new BooleanMessageReply(false), message);
+            return;
+        }
         FileLocker.createLockAsync(file).thenAcceptAsync(lock -> {
             try {
                 FileLocker.writeBytes(file, message.data);

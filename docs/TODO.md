@@ -114,9 +114,10 @@ coding.
     exercised manually (start two masters on one storage).
 14. **Built-in proxy player balancing**: the proxy currently picks a live server by load; the
     original can also use BungeeCord/Velocity. Verify reconnects and protocol edge cases.
-15. **Config hot reload** - implemented but not reachable through `/reload` on Forge 47.4.29
-    (the event does not fire for mod configs), so a restart is still needed in practice.
-    Details: `MultiForgeServer.config` is volatile and
+15. **Config hot reload** - done and verified live (session 6): `/multiforge reload` re-reads
+    `config/multiforge-server.toml` directly (because Forge 47.4.29 does not fire config
+    reload events), applies the snapshot and logs restart-only values. A changed
+    `master.address` reconnects; disabling `debug.chunkBorders` clears viewers. Details: `MultiForgeServer.config` is volatile and
     `onConfigReloaded` swaps the snapshot on `ModConfigEvent.Reloading`, so every manager that
     reads `config()` sees the new values immediately; a changed `master.address` closes the
     control channel and reconnects, and disabling `debug.chunkBorders` clears the viewers.
@@ -134,11 +135,13 @@ coding.
     `/metrics` on `metrics-port` (disabled with -1, default) with uptime, online
     servers/players, owned/subscribed chunks, pending entity writes and the next entity id.
     Bind it to a private interface with `metrics-address` in production.
-18. Structured progress reporting for large file downloads - done (session 6): the master
-    sends `DownloadProgressMessage` (path, stream id, transferred, total) at least once per
-    MiB and once with `transferred == total`; `FileSyncer` tracks active downloads, logs
-    25% milestones for files >= 4 MiB and shows them in `/multiforge status`. Covered by a
-    master integration test.
+18. Structured progress reporting for large file downloads - done and verified live (session
+    6): the master sends `DownloadProgressMessage` (path, stream id, transferred, total) at
+    least once per MiB and once with `transferred == total`; a 6 MiB live download logged
+    16/33/50/66/83/100% and produced the exact file. `FileSyncer` tracks active downloads and
+    `/multiforge status` lists them. A missing or out-of-root file now gets a `-1`
+    "unavailable" reply instead of a master stack trace and a requester timeout; the shared
+    root rejects paths escaping it.
 19. Protocol fuzz tests - done (session 6). `ProtocolFuzzTest` feeds malformed and random
     bodies to every registered message id and checks announced byte/string/array lengths are
     rejected before allocation. It found a remote OOM in `readString` and the array readers;

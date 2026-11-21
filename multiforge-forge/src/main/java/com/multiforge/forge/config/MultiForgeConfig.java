@@ -254,6 +254,33 @@ public final class MultiForgeConfig {
     }
 
     /**
+     * Re-reads the TOML file directly and replaces the snapshot.
+     *
+     * <p>Forge 47.4.29 does not fire {@code ModConfigEvent.Reloading} for mod configs on
+     * {@code /reload}, so the event-based path alone leaves operators without a way to apply
+     * a changed file. `/multiforge reload` calls this method, which parses the same file the
+     * start-up reader uses, publishes the new snapshot and lets the runtime apply it. The
+     * Forge spec values stay at their loaded values until the next config event, so this is
+     * the authoritative path for live changes on this Forge version.</p>
+     *
+     * @param serverDirectory server working directory (contains {@code config})
+     * @return the new snapshot, empty when the file is missing or unreadable
+     */
+    public static java.util.Optional<Snapshot> reloadFromDisk(Path serverDirectory) {
+        Path file = serverDirectory.resolve("config").resolve("multiforge-server.toml");
+        if (!Files.isRegularFile(file)) {
+            return java.util.Optional.empty();
+        }
+        try {
+            Snapshot parsed = parseToml(Files.readString(file, StandardCharsets.UTF_8));
+            snapshot = parsed;
+            return java.util.Optional.of(parsed);
+        } catch (IOException | RuntimeException e) {
+            return java.util.Optional.empty();
+        }
+    }
+
+    /**
      * Copies a config written by an older MultiForge build to the new location.
      *
      * <p>Earlier builds registered the config as a Forge {@code SERVER} config, so

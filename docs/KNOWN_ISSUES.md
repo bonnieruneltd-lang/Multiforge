@@ -126,9 +126,9 @@ as corrupt until they are rewritten (re-save the chunk through the master).
 
 ### 9. Config hot reload is partial
 
-On Forge 47.4.29 `/reload` does not fire `ModConfigEvent.Reloading` for mod configs, so the
-live path below is only reachable on a Forge version that does. If the event fires,
-`MultiForgeServer.onConfigReloaded` swaps the snapshot, so tick,
+On Forge 47.4.29 `/reload` does not fire `ModConfigEvent.Reloading` for mod configs, so
+`/multiforge reload` re-reads the TOML file directly and applies it. If the event ever fires,
+`MultiForgeServer.onConfigReloaded` also swaps the snapshot, so tick,
 file, world and player paths use the new values immediately; a changed `master.address`
 reconnects the control channel. Values that are bound or negotiated once still need a
 restart: `server.peerPort`, `server.name`, the peer compression threshold of an existing peer
@@ -247,11 +247,11 @@ The config is registered as a Forge `COMMON` config and lives at
 `config/multiforge-server.toml`, the path the documentation and the early start-up reader use.
 Earlier builds registered it as `SERVER`, which Forge stores in
 `<world>/serverconfig/multiforge-server.toml`; those settings are migrated once on start-up
-(`MultiForgeConfig.migrateLegacyConfig`). On Forge 47.4.29 `/reload` does not fire
-`ModConfigEvent.Reloading` for mod configs, so `MultiForgeServer.onConfigReloaded` is wired but
-not reachable through `/reload`; a changed config needs a restart in practice. If a future
-Forge version fires the event, the hot-reload path applies tick/file/world/player values and
-reconnects when `master.address` changed.
+(`MultiForgeConfig.migrateLegacyConfig`). Forge 47.4.29 does not fire config reload events on
+`/reload`, so `/multiforge reload` re-reads the TOML file directly and applies it (verified
+live). Values bound or negotiated once still need a restart: `server.peerPort`,
+`server.name`, existing peer compression and scheduler periods; the server logs which value
+was not applied. A changed `master.address` reconnects the control channel.
 
 ## Fixed issues worth knowing about (regression tests cover them)
 
@@ -284,6 +284,10 @@ reconnects when `master.address` changed.
   master-connection gates were removed from `LevelChunkMixin` and `ChunkManager`.
 * A two-server reconnect threw `ConcurrentModificationException` in the chunk status handler;
   `getSubscribers` returns an immutable snapshot (`subscriberSnapshotsAreImmutableAcrossChanges`).
+* A download request for a missing shared file made the master log a `FileNotFoundException`
+  and never reply, so the server waited for its IO timeout; it now replies with
+  `FileContentMessage(..., streamId=-1)` immediately. Shared paths are also normalized and
+  rejected when they escape `synced-server-files` (`MasterStorage.sharedFile`).
 * The documented `config/multiforge-server.toml` was ignored after start-up because the config
   was registered as a Forge `SERVER` config (which lives in `world/serverconfig/`); Forge then
   reset `bungeeCord` to its default. The config is now `COMMON` with a legacy migration.

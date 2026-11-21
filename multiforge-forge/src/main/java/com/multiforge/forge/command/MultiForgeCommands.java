@@ -60,6 +60,7 @@ public final class MultiForgeCommands {
                                 .executes(context -> map(context.getSource(),
                                         com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "radius")))))
                 .then(Commands.literal("borders").executes(context -> borders(context.getSource())))
+                .then(Commands.literal("reload").executes(context -> reload(context.getSource())))
                 .then(Commands.literal("compat").executes(context -> compat(context.getSource())))
                 .then(Commands.literal("download")
                         .then(Commands.argument("path", StringArgumentType.greedyString())
@@ -135,6 +136,31 @@ public final class MultiForgeCommands {
             source.sendSuccess(() -> Component.literal(row.toString()), false);
         }
         return foreign;
+    }
+
+    /**
+     * Re-reads {@code config/multiforge-server.toml} and applies it without a restart.
+     *
+     * <p>Forge 47.4.29 does not fire config reload events on `/reload`, so this command
+     * parses the file directly. Values that are bound or negotiated once (peer port, server
+     * name, existing peer compression, scheduler periods) are logged as restart-only.</p>
+     *
+     * @param source command source
+     * @return 1 when a config was loaded, 0 otherwise
+     */
+    private static int reload(CommandSourceStack source) {
+        MultiForgeServer runtime = runtime(source);
+        if (runtime == null) {
+            return 0;
+        }
+        if (!runtime.reloadConfigFromDisk()) {
+            source.sendFailure(Component.literal(
+                    "Could not read config/multiforge-server.toml; keeping the current settings."));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal(
+                "MultiForge configuration reloaded from disk (restart-only values are logged)."), false);
+        return 1;
     }
 
     private static int borders(CommandSourceStack source) {

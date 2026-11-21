@@ -297,6 +297,23 @@ public final class MultiForgeServer {
     }
 
     /**
+     * Re-reads the config file and applies it without a restart.
+     *
+     * <p>Used by `/multiforge reload` because Forge does not fire config reload events on
+     * `/reload` in 47.4.29. Returns {@code false} when the file is missing/unreadable.</p>
+     *
+     * @return {@code true} when a snapshot was loaded and applied
+     */
+    public boolean reloadConfigFromDisk() {
+        boolean loaded = MultiForgeConfig.reloadFromDisk(server.getServerDirectory().toPath())
+                .isPresent();
+        if (loaded) {
+            onConfigReloaded();
+        }
+        return loaded;
+    }
+
+    /**
      * Applies a configuration reload without a restart.
      *
      * <p>Called by {@code ForgeEventHandlers} after {@link MultiForgeConfig#bake()}. Every
