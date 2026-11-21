@@ -41,6 +41,10 @@ public final class MultiForgeConfig {
     public static final ForgeConfigSpec.ConfigValue<String> ADVERTISE_HOST;
     /** Accept BungeeCord/Velocity legacy IP/UUID/profile forwarding from a trusted proxy. */
     public static final ForgeConfigSpec.BooleanValue BUNGEE_CORD;
+    /** Accept Velocity modern forwarding (HMAC-signed login plugin message). */
+    public static final ForgeConfigSpec.BooleanValue VELOCITY_MODERN;
+    /** Shared secret from Velocity's forwarding.secret. */
+    public static final ForgeConfigSpec.ConfigValue<String> VELOCITY_SECRET;
 
     public static final ForgeConfigSpec.IntValue COMPRESSION_THRESHOLD;
     public static final ForgeConfigSpec.IntValue PING_INTERVAL_SECONDS;
@@ -117,6 +121,14 @@ public final class MultiForgeConfig {
                         "Requires server.properties online-mode=false and ip_forward/bungeecord=true on the proxy.",
                         "Firewall the backend port so players cannot connect directly.")
                 .define("bungeeCord", false);
+        VELOCITY_MODERN = builder
+                .comment("Accept Velocity modern forwarding (velocity:player_info login plugin).",
+                        "Mutually exclusive with bungeeCord; the proxy must use modern forwarding.",
+                        "Requires server.properties online-mode=false and a trusted proxy.")
+                .define("velocityModern", false);
+        VELOCITY_SECRET = builder
+                .comment("Velocity forwarding.secret (never commit this value).")
+                .define("velocitySecret", "");
         COMPRESSION_THRESHOLD = builder
                 .comment("Compress peer packets larger than this many bytes. 0 disables peer compression.")
                 .defineInRange("compressionThreshold", 0, 0, 1 << 20);
@@ -193,6 +205,8 @@ public final class MultiForgeConfig {
                 PEER_PORT.get(),
                 ADVERTISE_HOST.get(),
                 BUNGEE_CORD.get(),
+                VELOCITY_MODERN.get(),
+                VELOCITY_SECRET.get(),
                 COMPRESSION_THRESHOLD.get(),
                 PING_INTERVAL_SECONDS.get(),
                 RECONNECT_DELAY_SECONDS.get(),
@@ -359,6 +373,8 @@ public final class MultiForgeConfig {
                 integer(values, "server.peerPort", defaults.peerPort()),
                 string(values, "server.advertiseHost", defaults.advertiseHost()),
                 bool(values, "server.bungeeCord", defaults.bungeeCord()),
+                bool(values, "server.velocityModern", defaults.velocityModern()),
+                string(values, "server.velocitySecret", defaults.velocitySecret()),
                 integer(values, "server.compressionThreshold", defaults.compressionThreshold()),
                 integer(values, "master.pingIntervalSeconds", defaults.pingIntervalSeconds()),
                 integer(values, "master.reconnectDelaySeconds", defaults.reconnectDelaySeconds()),
@@ -448,6 +464,8 @@ public final class MultiForgeConfig {
             int peerPort,
             String advertiseHost,
             boolean bungeeCord,
+            boolean velocityModern,
+            String velocitySecret,
             int compressionThreshold,
             int pingIntervalSeconds,
             int reconnectDelaySeconds,
@@ -478,7 +496,7 @@ public final class MultiForgeConfig {
 
         /** @return snapshot with the documented defaults, used before the config is loaded */
         public static Snapshot defaults() {
-            return new Snapshot("localhost:35353", "", 0, "", false, 0, 5, 2, 30, 20,
+            return new Snapshot("localhost:35353", "", 0, "", false, false, "", 0, 5, 2, 30, 20,
                     true, true, true, true, false, 10, 100,
                     true, true, true, true, true, true, true, true, true, true,
                     List.of(), List.of(), List.of("logs", "crash-reports"), false, false);

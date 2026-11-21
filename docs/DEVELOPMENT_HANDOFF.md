@@ -263,10 +263,17 @@ two processes.
 * **Download progress.** `DownloadProgressMessage` is sent per MiB plus an exact final message;
   `FileSyncer` tracks active downloads and logs 25% milestones; `/multiforge status` lists
   them. Covered by the file round-trip integration test.
+* **Velocity modern forwarding.** `VelocityForwardingSupport` requests
+  `velocity:player_info`, verifies the HMAC-SHA256 answer against `server.velocitySecret`,
+  pauses the login tick until it arrives, and applies the forwarded address/UUID/properties.
+  Verified live with a simulated proxy (`tools/compat/velocity_forwarding_check.py`); the run
+  also documented that the login plugin answer has no length prefix. Versions 2-4 (player
+  key) are not requested.
 * **BungeeCord/Velocity legacy forwarding.** `BungeeCordForwarding` parses
   `host\0ip[\0uuid\0properties]`; `BungeeCordSupport` plus handshake/login/connection mixins
   apply the IP and forwarded UUID/textures when `server.bungeeCord=true`. Parser unit tested;
-  mixins compile-verified, no live proxy here. Velocity modern forwarding is not implemented.
+  mixins were exercised with a simulated proxy; modern forwarding is implemented and verified
+  (see above).
 * **`/multiforge map [radius]`** prints a text chunk-ownership grid (partial `/mpmap`), and
   entity ownership resyncs serialize NBT once per entity instead of once per subscriber.
 * **Live verified** on two headless Forge 47.4.29 dev servers plus a master: scoreboard
@@ -280,6 +287,6 @@ two processes.
   `/reload` does not fire config reload events on this Forge version, so restart for configs.
 * Test counts after this session: `./gradlew build :multiforge-protocol:test
   :multiforge-master:test :multiforge-api:test` passes (protocol 36, master 43, api 4). Next
-  non-GPU work: live-verify the forge features above, Velocity modern forwarding, per-chunk
-  sequence numbers/acks and the remaining performance items.
+  non-GPU work: live-verify the forge features above, per-chunk sequence numbers/acks and the
+  remaining performance items.
 

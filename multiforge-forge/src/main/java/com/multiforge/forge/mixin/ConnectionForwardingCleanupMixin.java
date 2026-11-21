@@ -28,6 +28,7 @@ public abstract class ConnectionForwardingCleanupMixin {
         MultiForgeServer server = MultiForgeServer.instanceOrNull();
         if (server != null) {
             server.bungee().onDisconnected((Connection) (Object) this);
+            server.velocity().onDisconnected((Connection) (Object) this);
         }
     }
 }

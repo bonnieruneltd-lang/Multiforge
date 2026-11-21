@@ -56,7 +56,7 @@ touching code, then read the architecture document of the subsystem you change.
 | Master metrics | `master/util/MetricsServer`, `MultiForgeMaster.snapshotMetrics`, `MasterConfig` metrics keys |
 | Master leader election | `master/LeaderElection`, `MultiForgeMaster.acquireLeadership`, `leader-election` config |
 | Download progress | `DownloadProgressMessage`, `OutboundDataStream.copyFromAsync(InputStream, LongConsumer)`, `DownloadFileHandler`, `FileSyncer.onDownloadProgress` |
-| BungeeCord/Velocity forwarding | `protocol/proxy/BungeeCordForwarding`, `forge/connect/BungeeCordSupport`, `BungeeHandshakeMixin`, `BungeeLoginMixin`, `ConnectionAddressAccessor`, `server.bungeeCord` |
+| BungeeCord/Velocity forwarding | `protocol/proxy/BungeeCordForwarding`, `forge/connect/BungeeCordSupport` + `VelocityForwardingSupport`, `BungeeHandshakeMixin`/`BungeeLoginMixin`/`VelocityLoginMixin`, `ConnectionAddressAccessor`, `server.bungeeCord` / `server.velocityModern` |
 | Container window forwarding | `container/ContainerSyncManager`, `ServerPlayerMenuMixin`, `AbstractContainerMenuClickMixin`, `OpenContainerPacket`/`ContainerClickPacket`/`ContainerClosePacket` |
 | Live user lists | `StoredUserListMixin`, `FileSyncer.onUserListChanged/onDataUpdate`, `PlayerSyncManager.reloadUserList`, `WriteJsonHandler` |
 | Ownership epochs | `ChunkSubscriptionManager`, `SetChunkOwnerMessage`, `ChunkSubscribersSyncMessage`, `ChunkState`, `ChunkManager`, `BlockChangePacket`, `BlockEntityUpdatePacket` |
@@ -129,8 +129,9 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   to generate for a busy one is not implemented.
 * This session (6) also added the master leader lock (`leader-election`, opt-in), download
   progress reporting, `/multiforge map`, BungeeCord/Velocity legacy IP+UUID+profile
-  forwarding (`server.bungeeCord`, opt-in with a firewall requirement) and single-encode
-  entity resyncs. **Verified live** on two headless Forge dev servers plus a master: objectives,
+  forwarding (`server.bungeeCord`, opt-in with a firewall requirement), Velocity modern
+  forwarding (`server.velocityModern` + HMAC login plugin, verified with a simulated proxy)
+  and single-encode entity resyncs. **Verified live** on two headless Forge dev servers plus a master: objectives,
   scores, teams and sidebar slots, block/time sync, player mirroring, `/multiforge map`,
   forwarded BungeeCord login (IP+UUID) and two-process leader takeover. Evidence:
   `compat/evidence/server-features-20261121T065500Z.md`. Protocol/master/api suites pass

@@ -175,12 +175,11 @@ coding.
     to the connection and replaces the login profile with the forwarded UUID/textures
     (`BungeeCordSupport`, handshake/login/connection mixins). Parser is unit tested; the
     mixins were exercised with a raw forwarded login (UUID applied, IP logged) and through the
-    built-in proxy (IP-only forwarding preserved the offline UUID).
-    Remaining: Velocity **modern**
-    forwarding (login plugin channel + secret); currently configure Velocity for legacy
-    `bungeecord` forwarding. Also not ported: MultiPaper's BungeeCord/Velocity plugin that
-    runs the master inside the proxy and balances players itself - MultiForge relies on the
-    proxy's own balancing or the built-in proxy.
+    built-in proxy (IP-only forwarding preserved the offline UUID). Velocity **modern**
+    forwarding (login plugin + HMAC) is implemented and verified with a simulated proxy;
+    versions 2-4 (player key) are not requested. Remaining: MultiPaper's BungeeCord/Velocity
+    plugin that runs the master inside the proxy and balances players itself - MultiForge
+    relies on the proxy's own balancing or the built-in proxy.
 
 ## Done (for reference)
 

@@ -91,7 +91,8 @@ public final class BungeeCordSupport {
      * @param hostName   raw host name from the handshake packet
      */
     public void onHandshake(Connection connection, String hostName) {
-        if (connection == null) {
+        if (connection == null || server.config().velocityModern()) {
+            // Modern Velocity forwarding is negotiated in the login phase instead.
             return;
         }
         String raw = RAW_HOST.get();

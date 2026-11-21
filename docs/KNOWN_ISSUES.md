@@ -217,9 +217,13 @@ the handshake. The format is not authenticated, so anyone who can reach the back
 can impersonate any player. This is inherent to legacy forwarding (the same is true of
 Paper's `bungeecord: true`); the mitigation is a firewall or private network that only
 admits the proxy, plus `online-mode=false` on the backend because the proxy authenticates.
-Velocity's modern forwarding is not implemented; configure Velocity for legacy
-`bungeecord` forwarding. Malformed forwarding data is rejected and logged rather than
-used, and the connection falls back to the proxy address and an offline UUID.
+Velocity **modern** forwarding is now supported separately (`server.velocityModern` +
+`server.velocitySecret`): the backend sends the `velocity:player_info` login plugin request,
+verifies the HMAC-SHA256 answer and pauses the login until it arrives. Only forwarding
+version 1 is requested; versions 2-4 (player key/respawn data) are not negotiated. The
+two forwarding modes are mutually exclusive. Malformed legacy forwarding data is rejected
+and logged rather than used, and the connection falls back to the proxy address and an
+offline UUID.
 
 ### 21. Leader election is a failover lock, not live migration
 

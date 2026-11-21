@@ -129,14 +129,20 @@ used as evidence in `compat/evidence/`. See
 
 ## Running behind BungeeCord or Velocity
 
-MultiForge servers can sit behind an external proxy. The proxy must use **legacy
-IP forwarding**, which BungeeCord calls `ip_forward` and Velocity calls
-`bungeecord: true` under `[advanced]`; Velocity's modern forwarding (login plugin
-channel + secret) is not implemented yet.
+MultiForge servers can sit behind an external proxy. Two forwarding modes are supported:
+
+* **Velocity modern forwarding** (recommended): set `player-info-forwarding-mode = "modern"`
+in `velocity.toml`, copy `forwarding.secret` into `server.velocitySecret`, and set
+`server.velocityModern = true`. The backend sends the `velocity:player_info` login plugin
+request and verifies the HMAC-SHA256 answer (address, UUID, name, properties) before
+accepting the login. Forwarding version 1 is requested; the key-bearing versions 2-4 are
+not negotiated.
+* **Legacy IP forwarding**: BungeeCord `ip_forward` or Velocity `bungeecord: true`, with
+`server.bungeeCord = true` (see below). The two options are mutually exclusive.
 
 1. Set `online-mode=false` in each backend `server.properties`. The proxy
 authenticates the player; a backend in online mode would overwrite the forwarded
-UUID during its own authentication.
+UUID during its own authentication. This applies to legacy forwarding too.
 2. Set `server.bungeeCord = true` in each `config/multiforge-server.toml`.
 3. Firewall the backend ports so only the proxy can reach them. Legacy forwarding
    is not authenticated: anyone who can connect directly can claim any IP/UUID.

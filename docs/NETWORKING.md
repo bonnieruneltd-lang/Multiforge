@@ -234,6 +234,8 @@ name = "server1"       # empty = auto generated
 peerPort = 0           # 0 = ephemeral
 advertiseHost = ""
 bungeeCord = false     # accept legacy BungeeCord/Velocity forwarding (trusted proxy only)
+velocityModern = false # accept Velocity modern forwarding (HMAC login plugin)
+velocitySecret = ""    # Velocity forwarding.secret; required for modern forwarding
 compressionThreshold = 0
 
 [synchronization]

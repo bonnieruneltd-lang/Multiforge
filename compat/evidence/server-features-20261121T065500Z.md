@@ -196,3 +196,20 @@ carries the game port and `SetPortMessage`/`ServerStartedMessage` carry the peer
 forwarding also rebuilt the login profile with the null UUID that vanilla has before
 `handleAcceptedLogin`; it now leaves the profile alone (or uses vanilla's offline UUID when
 properties are forwarded), which fixed player-data transfer.
+
+## Velocity modern forwarding
+
+`tools/compat/velocity_forwarding_check.py` simulated Velocity's modern forwarding:
+
+```
+login plugin request channel=velocity:player_info transaction=2
+requested forwarding version=1
+sent signed answer (72 bytes, uuid 730c6503-3592-4391-8efd-53ee997988e4)
+LOGIN_SUCCESS uuid=730c6503-3592-4391-8efd-53ee997988e4 name=VelocityBot
+PASS Velocity modern forwarding applied
+```
+
+The run found that `ServerboundCustomQueryPacket` carries the answer as **all remaining
+bytes** after the presence flag, without a length prefix; the simulated proxy initially sent
+one and the HMAC shifted by a byte. The backend pauses `ServerLoginPacketListenerImpl.tick`
+until the signed answer is verified, then applies the address, UUID and properties.

@@ -8,6 +8,7 @@ import com.multiforge.forge.chunk.ChunkStorageRegistry;
 import com.multiforge.forge.chunk.ChunkSyncIo;
 import com.multiforge.forge.compat.ModCompatibilityManager;
 import com.multiforge.forge.connect.BungeeCordSupport;
+import com.multiforge.forge.connect.VelocityForwardingSupport;
 import com.multiforge.forge.config.MultiForgeConfig;
 import com.multiforge.forge.container.ContainerSyncManager;
 import com.multiforge.forge.entity.EntitySyncManager;
@@ -104,6 +105,7 @@ public final class MultiForgeServer {
     private final ModCompatibilityManager compat;
     private final MultiForgeApiImpl api;
     private final BungeeCordSupport bungee;
+    private final VelocityForwardingSupport velocity;
 
     private final Map<String, ServerLevel> levels = new ConcurrentHashMap<>();
     private final AtomicBoolean stopping = new AtomicBoolean();
@@ -135,6 +137,7 @@ public final class MultiForgeServer {
         this.compat = new ModCompatibilityManager(this);
         this.api = new MultiForgeApiImpl(this);
         this.bungee = new BungeeCordSupport(this);
+        this.velocity = new VelocityForwardingSupport(this);
         this.entityIds = new EntityIdAllocator(
                 () -> master.request(new RequestEntityIdBlock(), IntegerPairMessageReply.class),
                 message -> LOGGER.warn("Entity id allocation: {}", message));
@@ -530,6 +533,7 @@ public final class MultiForgeServer {
         scoreboards.clear();
         progress.clear();
         bungee.clear();
+        velocity.clear();
         entityIds.clear();
         chunks.clear();
         borders.clear();
@@ -665,6 +669,11 @@ public final class MultiForgeServer {
     /** @return BungeeCord/Velocity legacy forwarding support */
     public BungeeCordSupport bungee() {
         return bungee;
+    }
+
+    /** @return Velocity modern forwarding support */
+    public VelocityForwardingSupport velocity() {
+        return velocity;
     }
 
     /** @return public API implementation */
