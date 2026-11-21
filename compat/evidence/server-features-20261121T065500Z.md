@@ -115,7 +115,7 @@ standby never binds while the previous term still owns a socket.
 ## Automated suites
 
 `./gradlew build :multiforge-protocol:test :multiforge-master:test :multiforge-api:test`
-passes 83 tests (protocol 36, master 43, api 4) after the live-test fixes: Bungee parser,
+passes 87 tests (protocol 36, master 44, api 4, example 3) after the live-test fixes: Bungee parser,
 protocol fuzzing and bounds guards, leader election, download progress, missing-file reply
 and the scoreboard checks.
 

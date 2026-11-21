@@ -51,6 +51,32 @@ class RegionFileCacheTest {
     }
 
     /**
+     * The sharded cache must still open exactly one handle per region file when many
+     * chunk reads race for it (the previous global lock made this trivial; per-shard
+     * locks must not introduce duplicate handles).
+     *
+     * @param root temporary directory supplied by JUnit
+     * @throws Exception when a worker fails
+     */
+    @Test
+    void concurrentAccessReturnsOneHandle(@TempDir Path root) throws Exception {
+        File regionDir = root.resolve("concurrent/region").toFile();
+        java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(8);
+        try {
+            java.util.List<java.util.concurrent.Future<RegionFile>> futures = new java.util.ArrayList<>();
+            for (int i = 0; i < 32; i++) {
+                futures.add(pool.submit(() -> RegionFileCache.getRegionFile(regionDir, 0, 0)));
+            }
+            RegionFile first = futures.get(0).get();
+            for (java.util.concurrent.Future<RegionFile> future : futures) {
+                assertSame(first, future.get(), "all threads must share one handle");
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    /**
      * @param root temporary directory supplied by JUnit
      * @throws IOException when the round trip fails
      */

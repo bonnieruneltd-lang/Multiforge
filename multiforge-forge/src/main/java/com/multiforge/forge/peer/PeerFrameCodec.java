@@ -28,8 +28,11 @@ import java.util.zip.Inflater;
  * connection negotiated zlib via {@code SetCompressionPacket}.</p>
  *
  * <p>Both codecs are stateful per connection (the encoder reads the negotiated
- * compression setting) and must be added to exactly one pipeline. They run on
- * the connection's event loop, so no additional synchronization is required.</p>
+ * compression setting and both reuse a resettable {@code Deflater}/{@code Inflater})
+ * and must be added to exactly one pipeline. The wire format stays stateless: a
+ * non-zero uncompressed length is still the only signal to inflate. They run on the
+ * connection's event loop, so no additional synchronization is required; the native
+ * compressor state is released when the handler is removed.</p>
  */
 public final class PeerFrameCodec {
 
@@ -40,6 +43,9 @@ public final class PeerFrameCodec {
     public static final class Encoder extends MessageToByteEncoder<PeerPacket> {
 
         private final PeerConnection connection;
+        /** Reused per connection; Deflater is native state and must be ended on removal. */
+        private final Deflater deflater = new Deflater();
+        private boolean ended;
 
         /**
          * @param connection connection whose negotiated compression state is used
@@ -58,7 +64,7 @@ public final class PeerFrameCodec {
                 int rawLength = payload.readableBytes();
                 boolean compress = connection.isCompressionEnabled() && rawLength >= connection.compressionThreshold();
                 if (compress) {
-                    byte[] compressed = deflate(payload, rawLength);
+                    byte[] compressed = deflate(payload, rawLength, deflater);
                     int headerLength = varIntSize(rawLength);
                     writeVarInt(out, headerLength + compressed.length);
                     writeVarInt(out, rawLength);
@@ -72,10 +78,23 @@ public final class PeerFrameCodec {
                 payload.release();
             }
         }
+
+        @Override
+        public void handlerRemoved(ChannelHandlerContext context) throws Exception {
+            if (!ended) {
+                ended = true;
+                deflater.end();
+            }
+            super.handlerRemoved(context);
+        }
     }
 
     /** Decoder half of the peer framing protocol. */
     public static final class Decoder extends ByteToMessageDecoder {
+
+        /** Reused per connection; Inflater is native state and must be ended on removal. */
+        private final Inflater inflater = new Inflater();
+        private boolean ended;
 
         @Override
         protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
@@ -123,55 +142,56 @@ public final class PeerFrameCodec {
             }
         }
 
-        private static void inflate(ByteBuf source, int compressedLength, ByteBuf target, int uncompressedLength)
+        private void inflate(ByteBuf source, int compressedLength, ByteBuf target, int uncompressedLength)
                 throws DataFormatException {
-            Inflater inflater = new Inflater();
-            try {
-                byte[] input = new byte[compressedLength];
-                source.readBytes(input);
-                inflater.setInput(input);
-                byte[] output = new byte[uncompressedLength];
-                int written = 0;
-                while (written < uncompressedLength && !inflater.finished()) {
-                    int count = inflater.inflate(output, written, uncompressedLength - written);
-                    if (count == 0 && inflater.needsInput()) {
-                        break;
-                    }
-                    written += count;
+            inflater.reset();
+            byte[] input = new byte[compressedLength];
+            source.readBytes(input);
+            inflater.setInput(input);
+            byte[] output = new byte[uncompressedLength];
+            int written = 0;
+            while (written < uncompressedLength && !inflater.finished()) {
+                int count = inflater.inflate(output, written, uncompressedLength - written);
+                if (count == 0 && inflater.needsInput()) {
+                    break;
                 }
-                if (written != uncompressedLength) {
-                    throw new DataFormatException("Expected " + uncompressedLength + " bytes, inflated " + written);
-                }
-                target.writeBytes(output);
-            } finally {
+                written += count;
+            }
+            if (written != uncompressedLength) {
+                throw new DataFormatException("Expected " + uncompressedLength + " bytes, inflated " + written);
+            }
+            target.writeBytes(output);
+        }
+
+        @Override
+        protected void handlerRemoved0(ChannelHandlerContext context) throws Exception {
+            if (!ended) {
+                ended = true;
                 inflater.end();
             }
+            super.handlerRemoved0(context);
         }
     }
 
-    private static byte[] deflate(FriendlyByteBuf payload, int rawLength) {
+    private static byte[] deflate(FriendlyByteBuf payload, int rawLength, Deflater deflater) {
         byte[] input = new byte[rawLength];
         payload.getBytes(payload.readerIndex(), input);
-        Deflater deflater = new Deflater();
-        try {
-            deflater.setInput(input);
-            deflater.finish();
-            // Deflate can expand incompressible input by a few bytes per block.
-            byte[] buffer = new byte[rawLength + rawLength / 16 + 128];
-            int length = 0;
-            while (!deflater.finished()) {
-                int written = deflater.deflate(buffer, length, buffer.length - length);
-                if (written == 0) {
-                    break;
-                }
-                length += written;
+        deflater.reset();
+        deflater.setInput(input);
+        deflater.finish();
+        // Deflate can expand incompressible input by a few bytes per block.
+        byte[] buffer = new byte[rawLength + rawLength / 16 + 128];
+        int length = 0;
+        while (!deflater.finished()) {
+            int written = deflater.deflate(buffer, length, buffer.length - length);
+            if (written == 0) {
+                break;
             }
-            byte[] result = new byte[length];
-            System.arraycopy(buffer, 0, result, 0, length);
-            return result;
-        } finally {
-            deflater.end();
+            length += written;
         }
+        byte[] result = new byte[length];
+        System.arraycopy(buffer, 0, result, 0, length);
+        return result;
     }
 
     /**

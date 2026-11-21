@@ -37,7 +37,28 @@ public class RegionFileCache {
 
     private static final int MAX_CACHE_SIZE = Integer.getInteger("max.regionfile.cache.size", 256);
 
-    private static final LinkedHashMap<File, Reference<RegionFile>> cache = new LinkedHashMap<>(16, 0.75f, true);
+    /**
+     * Number of independently locked cache shards.
+     *
+     * <p>A single {@code synchronized} LRU serialized every chunk access in the
+     * whole master. The file IO still happens under the per-region lock inside
+     * {@link RegionFile}, so only the cache lookup was contendable; sharding by
+     * region file path removes that contention without changing the maximum number
+     * of open files (each shard evicts its own oldest entry).</p>
+     */
+    private static final int SEGMENTS = Math.max(1,
+            Integer.getInteger("multiforge.regionfile.segments", 16));
+
+    /** Maximum entries per shard; the total stays close to {@link #MAX_CACHE_SIZE}. */
+    private static final int MAX_PER_SEGMENT = Math.max(1, MAX_CACHE_SIZE / SEGMENTS);
+
+    private static final Segment[] segments = new Segment[SEGMENTS];
+
+    static {
+        for (int i = 0; i < SEGMENTS; i++) {
+            segments[i] = new Segment();
+        }
+    }
 
     /**
      * Canonical form of each region directory, resolved once per directory.
@@ -53,16 +74,9 @@ public class RegionFileCache {
     private RegionFileCache() {
     }
 
-    public static synchronized boolean isRegionFileOpen(File regionDir, int chunkX, int chunkZ) {
+    public static boolean isRegionFileOpen(File regionDir, int chunkX, int chunkZ) {
         File file = getFileForRegionFile(regionDir, chunkX, chunkZ);
-
-        Reference<RegionFile> ref = cache.get(file);
-
-        if (ref != null && ref.get() != null) {
-            return true;
-        }
-
-        return false;
+        return segment(file).isOpen(file);
     }
 
     /**
@@ -92,54 +106,82 @@ public class RegionFileCache {
                 "r." + (chunkX >> 5) + "." + (chunkZ >> 5) + ".mca");
     }
 
-    public static synchronized RegionFile getRegionFileIfExists(File regionDir, int chunkX, int chunkZ) {
+    public static RegionFile getRegionFileIfExists(File regionDir, int chunkX, int chunkZ) {
         File file = getFileForRegionFile(regionDir, chunkX, chunkZ);
-
-        Reference<RegionFile> ref = cache.get(file);
-
-        if (ref != null && ref.get() != null) {
-            return ref.get();
-        }
-
-        if (file.isFile()) {
-            return getRegionFile(regionDir, chunkX, chunkZ);
-        } else {
-            return null;
-        }
-    }
-
-    public static synchronized RegionFile getRegionFile(File regionDir, int chunkX, int chunkZ) {
-        File file = getFileForRegionFile(regionDir, chunkX, chunkZ);
-
-        Reference<RegionFile> ref = cache.get(file);
-
-        if (ref != null && ref.get() != null) {
-            return ref.get();
-        }
-
-        if (!regionDir.exists()) {
-            regionDir.mkdirs();
-        }
-
-        if (cache.size() >= MAX_CACHE_SIZE) {
-            clearOne();
-        }
-
-        RegionFile reg = new RegionFile(file);
-        cache.put(file, new SoftReference<>(reg));
-        return reg;
-    }
-
-    private static synchronized void clearOne() {
-        Map.Entry<File, Reference<RegionFile>> clearEntry = cache.entrySet().iterator().next();
-        cache.remove(clearEntry.getKey());
-        try {
-            RegionFile removeFile = clearEntry.getValue().get();
-            if (removeFile != null) {
-                removeFile.close();
+        Segment segment = segment(file);
+        synchronized (segment) {
+            RegionFile open = segment.get(file);
+            if (open != null) {
+                return open;
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+            if (!file.isFile()) {
+                return null;
+            }
+            return getRegionFile(regionDir, chunkX, chunkZ);
+        }
+    }
+
+    public static RegionFile getRegionFile(File regionDir, int chunkX, int chunkZ) {
+        File file = getFileForRegionFile(regionDir, chunkX, chunkZ);
+        Segment segment = segment(file);
+        synchronized (segment) {
+            RegionFile open = segment.get(file);
+            if (open != null) {
+                return open;
+            }
+            if (!regionDir.exists()) {
+                regionDir.mkdirs();
+            }
+            segment.evictIfFull();
+            RegionFile reg = new RegionFile(file);
+            segment.cache.put(file, new SoftReference<>(reg));
+            return reg;
+        }
+    }
+
+    /**
+     * @param file region file
+     * @return shard that owns the file's cache entry
+     */
+    private static Segment segment(File file) {
+        int index = (file.getPath().hashCode() & Integer.MAX_VALUE) % SEGMENTS;
+        return segments[index];
+    }
+
+    /**
+     * One independently locked LRU shard.
+     *
+     * <p>All access happens while holding the shard monitor, including construction of
+     * a new {@link RegionFile}, so two threads can never open two handles for the same
+     * file.</p>
+     */
+    private static final class Segment {
+        private final LinkedHashMap<File, Reference<RegionFile>> cache =
+                new LinkedHashMap<>(16, 0.75f, true);
+
+        private RegionFile get(File file) {
+            Reference<RegionFile> ref = cache.get(file);
+            return ref == null ? null : ref.get();
+        }
+
+        private boolean isOpen(File file) {
+            return get(file) != null;
+        }
+
+        private void evictIfFull() {
+            if (cache.size() < MAX_PER_SEGMENT) {
+                return;
+            }
+            Map.Entry<File, Reference<RegionFile>> entry = cache.entrySet().iterator().next();
+            cache.remove(entry.getKey());
+            try {
+                RegionFile removed = entry.getValue().get();
+                if (removed != null) {
+                    removed.close();
+                }
+            } catch (IOException e) {
+                Log.error("Could not close an evicted region file", e);
+            }
         }
     }
 

@@ -167,9 +167,10 @@ Ordered by expected value. None of these are required for correctness.
 3. **Ownership epochs + packet sequence numbers** (already in TODO.md): delayed
    packets from a previous owner can still overwrite newer state. This is a
    correctness feature, not a speed one.
-4. **Inline `Inflater` per peer connection.** `PeerFrameCodec.Decoder` allocates a
-   new `Inflater` for every compressed frame (chunk transfers). Chunk transfers
-   are rare compared to entity traffic, so this is a low priority.
+4. ~~Inline `Inflater` per peer connection~~ - done. `PeerFrameCodec.Decoder` and
+   `Encoder` keep one resettable `Inflater`/`Deflater` per connection and end them
+   when the handler is removed, instead of allocating native compressor state per
+   compressed frame.
 5. ~~Gamerule diff without `createTag`~~ - done. `WorldSyncManager.pollGameRules` now
    walks `GameRules.visitGameRuleTypes` and calls `Value.serialize()`, which is the same
    string `/gamerule` accepts, so no `CompoundTag` is built per second per level.
@@ -177,10 +178,10 @@ Ordered by expected value. None of these are required for correctness.
    `onChunkOwnershipGained` serializes each entity once and sends the same packet to
    every subscriber. A single new subscriber still gets its own snapshot, which is
    one encoding by definition.
-7. **Master region cache granularity.** `RegionFileCache` is a single
-   `synchronized` `LinkedHashMap`. It only serializes cache lookups (the IO itself
-   happens under the per-file lock), but a segmented cache would remove that
-   contention at high chunk rates.
+7. ~~Master region cache granularity~~ - done. `RegionFileCache` uses 16 independently
+   locked LRU shards (`-Dmultiforge.regionfile.segments`), so cache lookups for
+   different region files no longer serialize. `concurrentAccessReturnsOneHandle`
+   covers duplicate-handle safety.
 
 ## 5. Verifying a performance change
 

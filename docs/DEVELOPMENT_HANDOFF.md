@@ -276,6 +276,11 @@ two processes.
   (see above).
 * **`/multiforge map [radius]`** prints a text chunk-ownership grid (partial `/mpmap`), and
   entity ownership resyncs serialize NBT once per entity instead of once per subscriber.
+* **Performance pass:** gamerule diffing now uses `GameRules.visitGameRuleTypes` instead of
+  `createTag`, `RegionFileCache` is split into 16 independently locked LRU shards
+  (`concurrentAccessReturnsOneHandle`), and peer framing reuses one resettable
+  `Inflater`/`Deflater` per connection. Only chunk-NBT compression off the server thread and
+  the tiny `ChunkKey` allocation cache remain from PERFORMANCE.md.
 * **Live verified** on two headless Forge 47.4.29 dev servers plus a master: scoreboard
   objectives/scores/teams/display, block and time sync, player mirroring (`/list` on the peer),
   `/multiforge map`, a forwarded BungeeCord login (IP `127.0.0.9` and UUID applied) and a
@@ -286,7 +291,7 @@ two processes.
   swapped. The config is now COMMON at `config/multiforge-server.toml` with a legacy migration.
   `/reload` does not fire config reload events on this Forge version, so restart for configs.
 * Test counts after this session: `./gradlew build :multiforge-protocol:test
-  :multiforge-master:test :multiforge-api:test` passes (protocol 36, master 43, api 4). Next
+  :multiforge-master:test :multiforge-api:test` passes (protocol 36, master 44, api 4, example 3). Next
   non-GPU work: live-verify the forge features above, per-chunk sequence numbers/acks and the
   remaining performance items.
 
