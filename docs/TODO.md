@@ -112,8 +112,12 @@ coding.
     metrics endpoint only start on the leader. This is a failover lock, not live migration:
     servers reconnect and replay pending requests. Unit tested; live two-process takeover is
     exercised manually (start two masters on one storage).
-14. **Built-in proxy player balancing**: the proxy currently picks a live server by load; the
-    original can also use BungeeCord/Velocity. Verify reconnects and protocol edge cases.
+14. **Built-in proxy player balancing** - verified live (session 6): the proxy picks the
+    least loaded live server by tick time, forwards the handshake with the client IP, and
+    accepted a raw 1.20.1 login end to end. Verification also found that servers advertised
+    their peer port in `StartMessage` (the proxy dialled the peer protocol); it now advertises
+    the game port and keeps the peer port in `SetPortMessage`/`ServerStartedMessage`.
+    Reconnects use the normal TCP path; deeper protocol edge cases remain untested.
 15. **Config hot reload** - done and verified live (session 6): `/multiforge reload` re-reads
     `config/multiforge-server.toml` directly (because Forge 47.4.29 does not fire config
     reload events), applies the snapshot and logs restart-only values. A changed
@@ -170,7 +174,8 @@ coding.
     `server.bungeeCord=true` parses `host\0ip[\0uuid\0properties]`, applies the player IP
     to the connection and replaces the login profile with the forwarded UUID/textures
     (`BungeeCordSupport`, handshake/login/connection mixins). Parser is unit tested; the
-    mixins were exercised with a raw forwarded login on a dev server (UUID applied, IP logged).
+    mixins were exercised with a raw forwarded login (UUID applied, IP logged) and through the
+    built-in proxy (IP-only forwarding preserved the offline UUID).
     Remaining: Velocity **modern**
     forwarding (login plugin channel + secret); currently configure Velocity for legacy
     `bungeecord` forwarding. Also not ported: MultiPaper's BungeeCord/Velocity plugin that

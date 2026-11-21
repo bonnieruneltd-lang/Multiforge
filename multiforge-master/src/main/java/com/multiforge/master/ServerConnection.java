@@ -27,7 +27,10 @@ public class ServerConnection extends MasterBoundMessageHandler {
     public final HashSet<UUID> playerUUIDs = new HashSet<>();
     private final List<Player> players = new ArrayList<>();
     private double tps;
+    /** Game server port, used by the built-in proxy. */
     private int port = -1;
+    /** Peer-to-peer listener port announced with SetPortMessage. */
+    private int peerPort = -1;
     private String host;
     private UUID uuid;
 
@@ -135,8 +138,12 @@ public class ServerConnection extends MasterBoundMessageHandler {
         // announces itself). Replay them so peer-to-peer chunk transfers work
         // immediately instead of waiting for the next start announcement.
         for (ServerConnection other : connections) {
-            if (other != this && other.name != null && other.port > 0 && other.host != null) {
-                send(new ServerStartedMessage(other.name, other.host, other.port));
+            if (other != this && other.name != null && other.host != null
+                    && (other.peerPort > 0 || other.port > 0)) {
+                // Older peers only sent StartMessage with their peer port; fall back
+                // to it so a mixed cluster still connects.
+                send(new ServerStartedMessage(other.name, other.host,
+                        other.peerPort > 0 ? other.peerPort : other.port));
             }
         }
     }
@@ -222,6 +229,18 @@ public class ServerConnection extends MasterBoundMessageHandler {
 
     public void setPort(int port) {
         this.port = port;
+    }
+
+    /** @return peer-to-peer listener port, or {@code -1} before SetPortMessage */
+    public int getPeerPort() {
+        return peerPort;
+    }
+
+    /**
+     * @param peerPort peer-to-peer listener port announced by the server
+     */
+    public void setPeerPort(int peerPort) {
+        this.peerPort = peerPort;
     }
 
     public String getHost() {

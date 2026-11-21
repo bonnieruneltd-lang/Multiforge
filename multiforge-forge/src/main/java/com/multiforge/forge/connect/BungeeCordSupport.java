@@ -171,6 +171,13 @@ public final class BungeeCordSupport {
             return;
         }
         GameProfile current = listener.gameProfile;
+        if (data.uuid() == null && data.propertiesJson() == null) {
+            // IP-only forwarding (MultiForge's built-in proxy): leave the profile to
+            // vanilla. Rebuilding it here would use the null UUID that
+            // ServerLoginPacketListenerImpl has before handleAcceptedLogin and break
+            // the player data file/registry lookup.
+            return;
+        }
         UUID uuid = current.getId();
         if (data.uuid() != null) {
             try {
@@ -178,6 +185,12 @@ public final class BungeeCordSupport {
             } catch (IllegalArgumentException e) {
                 LOGGER.warn("Ignoring invalid forwarded UUID '{}'", data.uuid());
             }
+        }
+        if (uuid == null) {
+            // Vanilla's offline UUID algorithm; a properties-only forwarding entry
+            // still needs a complete profile.
+            uuid = UUID.nameUUIDFromBytes(("OfflinePlayer:" + current.getName())
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8));
         }
         GameProfile profile = new GameProfile(uuid, current.getName());
         profile.getProperties().putAll(current.getProperties());

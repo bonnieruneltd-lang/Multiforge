@@ -134,7 +134,7 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   scores, teams and sidebar slots, block/time sync, player mirroring, `/multiforge map`,
   forwarded BungeeCord login (IP+UUID) and two-process leader takeover. Evidence:
   `compat/evidence/server-features-20261121T065500Z.md`. Protocol/master/api suites pass
-  (protocol 36, master 42, api 4). Live testing found four bugs that compile checks missed:
+  (protocol 36, master 43, api 4). Live testing found six bugs that compile checks missed:
   the config was a Forge SERVER config (wrong directory), Forge strips the forwarded host
   before the handshake handler, vanilla does not broadcast objective add/remove, and
   `ClientboundSetScorePacket` takes `(method, objectiveName, owner, score)`.

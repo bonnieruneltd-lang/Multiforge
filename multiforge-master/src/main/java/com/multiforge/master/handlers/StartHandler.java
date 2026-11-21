@@ -37,8 +37,11 @@ public class StartHandler {
             connection.setHost(message.host);
         }
 
-        Log.info(connection.getBungeeCordName() + " (" + connection.getHost() + ":" + message.port
-                + ") has started, broadcasting start to other servers...");
-        connection.broadcastOthers(new ServerStartedMessage(connection.getBungeeCordName(), connection.getHost(), message.port));
+        connection.setPort(message.port);
+        int peerPort = connection.getPeerPort() > 0 ? connection.getPeerPort() : message.port;
+        Log.info(connection.getBungeeCordName() + " (game port " + message.port
+                + ", peer port " + peerPort + ") has started, broadcasting start to other servers...");
+        connection.broadcastOthers(new ServerStartedMessage(connection.getBungeeCordName(),
+                connection.getHost(), peerPort));
     }
 }

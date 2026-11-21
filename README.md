@@ -60,7 +60,7 @@ integration tests and by running two real Forge servers against a master:
 | Prometheus `/metrics` endpoint for the master | implemented (`metrics-port`, default off); unit tested |
 | Protocol input hardening + fuzzing | implemented: bounds-checked lengths, random/malformed-payload tests |
 | BungeeCord / Velocity legacy IP+UUID+profile forwarding | implemented and verified live with a raw forwarded login (`server.bungeeCord`, default off) |
-| External proxy / built-in proxy load balancing | supported; built-in proxy verified by design, external BungeeCord/Velocity documented |
+| External proxy / built-in proxy load balancing | built-in proxy verified live (raw 1.20.1 login + IP forwarding); external BungeeCord/Velocity documented |
 | Master leader election for shared storage | implemented (`leader-election`, default off); unit tested |
 | Download progress reporting | implemented: `DownloadProgressMessage` every MiB, shown in `/multiforge status`; integration tested |
 | Chunk-ownership text map (`/multiforge map`) | implemented; compile-verified |

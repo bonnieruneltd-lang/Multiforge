@@ -284,6 +284,14 @@ was not applied. A changed `master.address` reconnects the control channel.
   master-connection gates were removed from `LevelChunkMixin` and `ChunkManager`.
 * A two-server reconnect threw `ConcurrentModificationException` in the chunk status handler;
   `getSubscribers` returns an immutable snapshot (`subscriberSnapshotsAreImmutableAcrossChanges`).
+* The built-in proxy connected to the peer listener because servers sent their peer port in
+  `StartMessage`; the game port now travels in `StartMessage` and the peer port in
+  `SetPortMessage`/`ServerStartedMessage` (`startAndPeerPortsAreSeparate`).
+* IP-only BungeeCord forwarding (the built-in proxy) rebuilt the login profile with the
+  null UUID that vanilla holds before `handleAcceptedLogin`, breaking player data; the
+  profile is now left untouched for IP-only forwarding and uses the offline UUID only
+  when properties are forwarded. Player data then followed a live transfer between
+  servers (5/5 proxy/transfer checks).
 * A download request for a missing shared file made the master log a `FileNotFoundException`
   and never reply, so the server waited for its IO timeout; it now replies with
   `FileContentMessage(..., streamId=-1)` immediately. Shared paths are also normalized and

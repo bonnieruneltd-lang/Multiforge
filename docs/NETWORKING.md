@@ -47,8 +47,8 @@ server (`ServerBoundProtocol`).
 | --- | --- |
 | `HelloMessage(name, uuid)` | register the connection |
 | `PingMessage` | heartbeat; master answers implicitly by updating liveness |
-| `StartMessage(host, port)` | announce the peer listener |
-| `SetPortMessage(port)` | announce the peer port only |
+| `StartMessage(host, port)` | announce the game server host/port (used by the built-in proxy) |
+| `SetPortMessage(port)` | announce the peer-to-peer listener port (used by `ServerStartedMessage`) |
 | `WriteTickTimeMessage(tickTime, tps)` | report server health |
 | `PlayerConnectMessage(uuid, name)` | claim a player (reply boolean: allowed) |
 | `PlayerDisconnectMessage(uuid)` | release a player |
@@ -86,7 +86,7 @@ server (`ServerBoundProtocol`).
 | `EntitySubscribersSyncMessage(subscribers[])` | full entity subscriber state |
 | `ServerChangedChunkStatusMessage` | another server reported a chunk status |
 | `ServerInfoUpdateMessage(name, tickTime, tps, playerCount)` | health of a server |
-| `ServerStartedMessage(name, host, port)` | a peer is reachable |
+| `ServerStartedMessage(name, host, port)` | a peer is reachable at its peer port |
 | `PlayerUpdateMessage(uuid, name, server, online)` | cluster player list |
 | `DataUpdateMessage(path, data)` | another server wrote a shared/user-list file; receivers reload it |
 | `DataMessageReply`, `BooleanMessageReply`, `NullableStringMessageReply`, `KeyValueStringMapMessageReply`, `IntegerPairMessageReply` | replies |

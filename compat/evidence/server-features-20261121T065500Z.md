@@ -115,7 +115,7 @@ standby never binds while the previous term still owns a socket.
 ## Automated suites
 
 `./gradlew build :multiforge-protocol:test :multiforge-master:test :multiforge-api:test`
-passes 82 tests (protocol 36, master 42, api 4) after the live-test fixes: Bungee parser,
+passes 83 tests (protocol 36, master 43, api 4) after the live-test fixes: Bungee parser,
 protocol fuzzing and bounds guards, leader election, download progress, missing-file reply
 and the scoreboard checks.
 
@@ -174,3 +174,25 @@ existing peer compression, scheduler periods) still need a restart and are logge
 `tools/compat/cluster_check.py --skip-mod-checks` ran against this dev cluster and passed
 **17/17** checks, including the new scoreboard objective/score/team and entity
 mirror/damage/removal checks: `compat/evidence/cluster-20261121T070338Z.md`.
+
+## Proxy and player-data transfer
+
+`tools/compat/proxy_transfer_check.py` logged in a raw 1.20.1 client through the built-in
+proxy, gave it diamonds, disconnected, reconnected directly to the other server and read the
+inventory back:
+
+```
+[PASS] proxy-login: cluster owner=live1
+[PASS] inventory-on-first-server: [{Slot: 0b, id: "minecraft:diamond", Count: 3b}]
+[PASS] logout-releases-claim: cluster registry no longer lists the player
+[PASS] reconnect-other-server: cluster owner=live2 (port 25566)
+[PASS] player-data-follows-transfer: [{Slot: 0b, id: "minecraft:diamond", Count: 3b}]
+RESULT 5/5 checks passed
+```
+
+This found two more bugs: servers advertised their **peer** listener port in `StartMessage`, so
+the proxy connected to the peer protocol (`Unknown peer packet id 763`); `StartMessage` now
+carries the game port and `SetPortMessage`/`ServerStartedMessage` carry the peer port. IP-only
+forwarding also rebuilt the login profile with the null UUID that vanilla has before
+`handleAcceptedLogin`; it now leaves the profile alone (or uses vanilla's offline UUID when
+properties are forwarded), which fixed player-data transfer.

@@ -205,15 +205,19 @@ public final class MultiForgeServer {
             return;
         }
         announced = true;
-        int port = peerServer.getBoundPort();
-        if (port > 0) {
-            master.send(new SetPortMessage(port));
+        int peerPort = peerServer.getBoundPort();
+        if (peerPort > 0) {
+            // SetPort is the peer-to-peer listener other servers connect to.
+            master.send(new SetPortMessage(peerPort));
         }
         String host = config.advertiseHost();
         if (host == null || host.isBlank()) {
             host = server.getLocalIp();
         }
-        master.send(new StartMessage(host, port));
+        // Start announces the Minecraft game port: the master's built-in proxy
+        // connects players there. The peer port travels in SetPortMessage /
+        // ServerStartedMessage so the two are never confused.
+        master.send(new StartMessage(host, server.getPort()));
     }
 
     private boolean awaitMaster() {

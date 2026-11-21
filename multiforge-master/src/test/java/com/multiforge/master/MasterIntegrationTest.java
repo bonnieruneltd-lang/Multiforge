@@ -21,6 +21,8 @@ import com.multiforge.protocol.messages.masterbound.ReadUidMessage;
 import com.multiforge.protocol.messages.masterbound.RequestChunkOwnershipMessage;
 import com.multiforge.protocol.messages.masterbound.RequestEntityIdBlock;
 import com.multiforge.protocol.messages.masterbound.RequestFilesToSyncMessage;
+import com.multiforge.protocol.messages.masterbound.StartMessage;
+import com.multiforge.protocol.messages.masterbound.SetPortMessage;
 import com.multiforge.protocol.messages.masterbound.SubscribeChunkMessage;
 import com.multiforge.protocol.messages.masterbound.UnlockChunkMessage;
 import com.multiforge.protocol.messages.masterbound.UnsubscribeChunkMessage;
@@ -43,6 +45,7 @@ import com.multiforge.protocol.messages.serverbound.IntegerPairMessageReply;
 import com.multiforge.protocol.messages.serverbound.NullableStringMessageReply;
 import com.multiforge.protocol.messages.serverbound.PlayerUpdateMessage;
 import com.multiforge.protocol.messages.serverbound.RemoveChunkSubscriberMessage;
+import com.multiforge.protocol.messages.serverbound.ServerStartedMessage;
 import com.multiforge.protocol.messages.serverbound.ServerBoundMessage;
 import com.multiforge.protocol.messages.serverbound.SetChunkOwnerMessage;
 import org.junit.jupiter.api.AfterAll;
@@ -758,6 +761,30 @@ class MasterIntegrationTest {
         FileContentMessage traversal = a.request(
                 new DownloadFileMessage("../../etc/passwd")).get();
         assertEquals(-1, traversal.streamId, "paths outside the sync root must be rejected");
+    }
+
+    /**
+     * The game port announced by {@code StartMessage} is what the built-in proxy connects to;
+     * the peer listener announced by {@code SetPortMessage} is what peers get in
+     * {@code ServerStartedMessage}. Mixing them made the proxy dial the peer protocol.
+     *
+     * @throws Exception when the request or reply fails
+     */
+    @Test
+    void startAndPeerPortsAreSeparate() throws Exception {
+        TestServerClient a = client("ports-a");
+        TestServerClient b = client("ports-b");
+
+        a.send(new SetPortMessage(40001));
+        a.send(new StartMessage("127.0.0.1", 25565));
+
+        ServerStartedMessage started = b.await(ServerStartedMessage.class,
+                message -> message.name.equals("ports-a"), 5000L);
+        assertEquals(40001, started.port, "peers must receive the peer port");
+
+        ServerConnection connection = ServerConnection.getConnection("ports-a");
+        assertEquals(25565, connection.getPort(), "proxy must use the game port");
+        assertEquals(40001, connection.getPeerPort(), "peer port is stored separately");
     }
 
     @Test

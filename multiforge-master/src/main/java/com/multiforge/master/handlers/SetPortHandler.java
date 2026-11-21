@@ -5,6 +5,7 @@ import com.multiforge.master.ServerConnection;
 
 public class SetPortHandler {
     public static void handle(ServerConnection connection, SetPortMessage message) {
-        connection.setPort(message.port);
+        // This is the peer-to-peer listener; the game port comes from StartMessage.
+        connection.setPeerPort(message.port);
     }
 }

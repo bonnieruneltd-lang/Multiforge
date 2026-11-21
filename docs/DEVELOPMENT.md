@@ -98,7 +98,10 @@ python3 tools/compat/cluster_check.py --a-port 25575 --b-port 25576 \
 Use `--expected-targets 18` when Ksyxis is removed. The harness needs both servers to hold
 one common chunk; it reads `/multiforge chunks` to find it. It also verifies scoreboard
 objectives, scores and teams, plus entity mirroring, forwarded damage and removal; add
-`--skip-mod-checks` to run it on a dev cluster without the pinned server mods. The transcript it writes is the
+`--skip-mod-checks` to run it on a dev cluster without the pinned server mods.
+`tools/compat/proxy_transfer_check.py` logs a headless client in through the master's
+built-in proxy, gives it an item, moves it to the other server and asserts the item follows;
+it also found and covers the game-port/peer-port split. The transcript it writes is the
 evidence for `docs/REQUIRED_MOD_COMPATIBILITY.md`.
 
 **Never copy a new jar into `mods/` while the server is running.** Stop it, copy, start it;
