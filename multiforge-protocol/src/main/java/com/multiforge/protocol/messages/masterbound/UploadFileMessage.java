@@ -20,8 +20,7 @@ public class UploadFileMessage extends MasterBoundMessage {
         immediatelySyncToOtherServers = byteBuf.readBoolean();
         path = byteBuf.readString();
         lastModified = byteBuf.readLong();
-        data = new byte[byteBuf.readVarInt()];
-        byteBuf.readBytes(data);
+        data = byteBuf.readByteArray();
     }
 
     @Override

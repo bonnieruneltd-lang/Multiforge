@@ -19,8 +19,7 @@ public class DataStreamMessage<T extends MessageHandler<? extends Message<?>>> e
 
     public DataStreamMessage(ExtendedByteBuf byteBuf) {
         streamId = byteBuf.readVarInt();
-        data = new byte[byteBuf.readVarInt()];
-        byteBuf.readBytes(data);
+        data = byteBuf.readByteArray();
         offset = 0;
         length = data.length;
     }

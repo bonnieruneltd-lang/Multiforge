@@ -11,8 +11,7 @@ public class DataMessageReply extends ServerBoundMessage {
     }
 
     public DataMessageReply(ExtendedByteBuf byteBuf) {
-        data = new byte[byteBuf.readVarInt()];
-        byteBuf.readBytes(data);
+        data = byteBuf.readByteArray();
     }
 
     @Override

@@ -17,8 +17,7 @@ public class WritePlayerMessage extends MasterBoundMessage {
     public WritePlayerMessage(ExtendedByteBuf byteBuf) {
         world = byteBuf.readString();
         uuid = byteBuf.readString();
-        data = new byte[byteBuf.readVarInt()];
-        byteBuf.readBytes(data);
+        data = byteBuf.readByteArray();
     }
 
     @Override

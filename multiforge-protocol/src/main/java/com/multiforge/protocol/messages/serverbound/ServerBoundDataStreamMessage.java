@@ -17,8 +17,7 @@ public class ServerBoundDataStreamMessage extends ServerBoundMessage {
 
     public ServerBoundDataStreamMessage(ExtendedByteBuf byteBuf) {
         streamId = byteBuf.readVarInt();
-        data = new byte[byteBuf.readVarInt()];
-        byteBuf.readBytes(data);
+        data = byteBuf.readByteArray();
         offset = 0;
         length = data.length;
     }

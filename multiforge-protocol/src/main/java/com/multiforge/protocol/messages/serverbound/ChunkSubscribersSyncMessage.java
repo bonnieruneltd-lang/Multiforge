@@ -63,10 +63,7 @@ public class ChunkSubscribersSyncMessage extends ServerBoundMessage {
         cx = byteBuf.readInt();
         cz = byteBuf.readInt();
         owner = byteBuf.readString();
-        subscribers = new String[byteBuf.readVarInt()];
-        for (int i = 0; i < subscribers.length; i++) {
-            subscribers[i] = byteBuf.readString();
-        }
+        subscribers = byteBuf.readStringArray();
         epoch = byteBuf.readableBytes() >= Long.BYTES ? byteBuf.readLong() : 0L;
     }
 

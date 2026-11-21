@@ -29,8 +29,7 @@ public class WriteChunkMessage extends MasterBoundMessage {
         path = byteBuf.readString();
         cx = byteBuf.readInt();
         cz = byteBuf.readInt();
-        data = new byte[byteBuf.readVarInt()];
-        byteBuf.readBytes(data);
+        data = byteBuf.readByteArray();
         isTransientEntities = byteBuf.readBoolean();
     }
 

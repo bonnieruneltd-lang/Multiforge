@@ -14,8 +14,7 @@ public class DataUpdateMessage extends ServerBoundMessage {
 
     public DataUpdateMessage(ExtendedByteBuf byteBuf) {
         path = byteBuf.readString();
-        data = new byte[byteBuf.readVarInt()];
-        byteBuf.readBytes(data);
+        data = byteBuf.readByteArray();
     }
 
     @Override

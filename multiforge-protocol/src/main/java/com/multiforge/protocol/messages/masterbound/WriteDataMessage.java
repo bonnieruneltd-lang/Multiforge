@@ -14,8 +14,7 @@ public class WriteDataMessage extends MasterBoundMessage {
 
     public WriteDataMessage(ExtendedByteBuf byteBuf) {
         path = byteBuf.readString();
-        data = new byte[byteBuf.readVarInt()];
-        byteBuf.readBytes(data);
+        data = byteBuf.readByteArray();
     }
 
     @Override

@@ -14,8 +14,7 @@ public class WriteLevelMessage extends MasterBoundMessage {
 
     public WriteLevelMessage(ExtendedByteBuf byteBuf) {
         world = byteBuf.readString();
-        data = new byte[byteBuf.readVarInt()];
-        byteBuf.readBytes(data);
+        data = byteBuf.readByteArray();
     }
 
     @Override

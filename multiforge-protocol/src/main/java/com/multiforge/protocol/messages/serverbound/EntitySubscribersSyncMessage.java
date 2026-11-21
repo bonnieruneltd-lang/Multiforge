@@ -20,10 +20,7 @@ public class EntitySubscribersSyncMessage extends ServerBoundMessage {
         world = byteBuf.readString();
         cx = byteBuf.readInt();
         cz = byteBuf.readInt();
-        subscribers = new String[byteBuf.readVarInt()];
-        for (int i = 0; i < subscribers.length; i ++) {
-            subscribers[i] = byteBuf.readString();
-        }
+        subscribers = byteBuf.readStringArray();
     }
 
     @Override

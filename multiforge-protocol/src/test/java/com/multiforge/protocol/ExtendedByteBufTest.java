@@ -62,4 +62,70 @@ class ExtendedByteBufTest {
         out.readBytes(read);
         org.junit.jupiter.api.Assertions.assertArrayEquals(data, read);
     }
+
+    @Test
+    void readByteArrayUsesTheSafeReader() {
+        byte[] data = { 1, 2, 3 };
+        ByteBuf buffer = Unpooled.buffer();
+        ExtendedByteBuf out = new ExtendedByteBuf(buffer);
+        out.writeVarInt(data.length);
+        out.writeBytes(data);
+        org.junit.jupiter.api.Assertions.assertArrayEquals(data, out.readByteArray());
+        assertEquals(0, buffer.readableBytes());
+    }
+
+    @Test
+    void announcedLengthsAreRejectedBeforeAllocation() {
+        // A byte array that claims far more bytes than the frame contains.
+        ByteBuf buffer = Unpooled.buffer();
+        ExtendedByteBuf out = new ExtendedByteBuf(buffer);
+        out.writeVarInt(Integer.MAX_VALUE);
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, out::readByteArray);
+
+        // A string with a multi-gigabyte length used to reach Netty's temporary
+        // decode buffer before the bounds check, which is the remote OOM that
+        // ProtocolFuzzTest caught.
+        ByteBuf stringBuffer = Unpooled.buffer();
+        ExtendedByteBuf stringOut = new ExtendedByteBuf(stringBuffer);
+        stringOut.writeVarInt(Integer.MAX_VALUE);
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, stringOut::readString);
+
+        // Negative lengths are invalid for both readers.
+        ByteBuf negative = Unpooled.buffer();
+        ExtendedByteBuf negativeOut = new ExtendedByteBuf(negative);
+        negativeOut.writeVarInt(-1);
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, negativeOut::readByteArray);
+        negativeOut.writeVarInt(-1);
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, negativeOut::readString);
+    }
+
+    @Test
+    void announcedArrayCountsAreRejectedBeforeAllocation() {
+        // Every string needs at least one byte, so a count above the readable
+        // bytes cannot be satisfied by any valid frame.
+        ByteBuf strings = Unpooled.buffer();
+        ExtendedByteBuf stringsOut = new ExtendedByteBuf(strings);
+        stringsOut.writeVarInt(1_000_000);
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                stringsOut::readStringArray);
+
+        // A chunk key is at least nine bytes (empty world + X + Z).
+        ByteBuf keys = Unpooled.buffer();
+        ExtendedByteBuf keysOut = new ExtendedByteBuf(keys);
+        keysOut.writeVarInt(1_000_000);
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                keysOut::readChunkKeyArray);
+    }
+
+    @Test
+    void stringArraysRoundTrip() {
+        ByteBuf buffer = Unpooled.buffer();
+        ExtendedByteBuf out = new ExtendedByteBuf(buffer);
+        out.writeVarInt(3);
+        out.writeString("survival1");
+        out.writeString("");
+        out.writeString("survival2");
+        org.junit.jupiter.api.Assertions.assertArrayEquals(
+                new String[] { "survival1", "", "survival2" }, out.readStringArray());
+    }
 }

@@ -15,10 +15,7 @@ public class RequestChunkOwnershipMessage extends MasterBoundMessage {
 
     public RequestChunkOwnershipMessage(ExtendedByteBuf byteBuf) {
         world = byteBuf.readString();
-        chunks = new ChunkKey[byteBuf.readVarInt()];
-        for (int i = 0; i < chunks.length; i++) {
-            chunks[i] = byteBuf.readChunkKey();
-        }
+        chunks = byteBuf.readChunkKeyArray();
     }
 
     @Override

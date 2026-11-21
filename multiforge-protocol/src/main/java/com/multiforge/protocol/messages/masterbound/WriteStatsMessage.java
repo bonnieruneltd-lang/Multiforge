@@ -17,8 +17,7 @@ public class WriteStatsMessage extends MasterBoundMessage {
     public WriteStatsMessage(ExtendedByteBuf byteBuf) {
         world = byteBuf.readString();
         uuid = byteBuf.readString();
-        data = new byte[byteBuf.readVarInt()];
-        byteBuf.readBytes(data);
+        data = byteBuf.readByteArray();
     }
 
     @Override

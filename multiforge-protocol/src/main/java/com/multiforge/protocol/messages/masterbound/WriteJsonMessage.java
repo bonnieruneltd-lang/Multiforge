@@ -14,8 +14,7 @@ public class WriteJsonMessage extends MasterBoundMessage {
 
     public WriteJsonMessage(ExtendedByteBuf byteBuf) {
         file = byteBuf.readString();
-        data = new byte[byteBuf.readVarInt()];
-        byteBuf.readBytes(data);
+        data = byteBuf.readByteArray();
     }
 
     @Override

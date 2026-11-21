@@ -50,8 +50,26 @@ public class ExtendedByteBuf extends ByteBuf {
         return this;
     }
 
+    /**
+     * Upper bound for a single decoded string.
+     *
+     * <p>MultiForge strings are server names, world names, file keys and similar
+     * identifiers; 1 MiB is far above anything the protocol produces. The cap
+     * bounds the temporary buffer Netty allocates while decoding a malformed
+     * length, independent of {@code MAX_FRAME_BYTES}.</p>
+     */
+    public static final int MAX_STRING_BYTES = 1 << 20;
+
     public String readString() {
         int length = readVarInt();
+        if (length < 0) {
+            throw new IllegalArgumentException("Negative string length " + length);
+        }
+        if (length > MAX_STRING_BYTES || length > readableBytes()) {
+            throw new IllegalArgumentException("String length " + length
+                    + " exceeds " + MAX_STRING_BYTES + " or the " + readableBytes()
+                    + " readable bytes");
+        }
         String string = this.toString(this.readerIndex(), length, StandardCharsets.UTF_8);
         this.readerIndex(this.readerIndex() + length);
         return string;
@@ -76,6 +94,78 @@ public class ExtendedByteBuf extends ByteBuf {
 
     public ChunkKey readChunkKey() {
         return new ChunkKey(readString(), readInt(), readInt());
+    }
+
+    /**
+     * Reads a length-prefixed byte array.
+     *
+     * <p>The naive {@code new byte[readVarInt()]} allocates whatever the sender
+     * announces before checking that the bytes exist. A corrupted or hostile frame
+     * could therefore ask for a multi-gigabyte array and take the process down
+     * with an {@link OutOfMemoryError}. The announced length must fit in the
+     * remaining frame, otherwise the frame is rejected without allocating.</p>
+     *
+     * @return the declared bytes
+     * @throws IllegalArgumentException when the length is negative or larger than
+     *                                  the unread part of the frame
+     */
+    public byte[] readByteArray() {
+        int length = readVarInt();
+        if (length < 0) {
+            throw new IllegalArgumentException("Negative array length " + length);
+        }
+        if (length > readableBytes()) {
+            throw new IllegalArgumentException("Array length " + length
+                    + " exceeds the " + readableBytes() + " readable bytes");
+        }
+        byte[] data = new byte[length];
+        readBytes(data);
+        return data;
+    }
+
+    /**
+     * Reads a length-prefixed string array.
+     *
+     * <p>Every element takes at least one byte (the length prefix), so a count
+     * larger than the unread part of the frame is rejected before the array is
+     * allocated.</p>
+     *
+     * @return decoded strings
+     * @throws IllegalArgumentException when the count is negative or impossible
+     */
+    public String[] readStringArray() {
+        int count = readVarInt();
+        if (count < 0 || count > readableBytes()) {
+            throw new IllegalArgumentException("String array count " + count
+                    + " does not fit in " + readableBytes() + " readable bytes");
+        }
+        String[] strings = new String[count];
+        for (int i = 0; i < count; i++) {
+            strings[i] = readString();
+        }
+        return strings;
+    }
+
+    /**
+     * Reads a length-prefixed chunk key array.
+     *
+     * <p>A chunk key is at least nine bytes (empty world name, X and Z), so the
+     * count is bounded by {@code readableBytes / 9} before allocation.</p>
+     *
+     * @return decoded chunk keys
+     * @throws IllegalArgumentException when the count is negative or impossible
+     */
+    public ChunkKey[] readChunkKeyArray() {
+        int count = readVarInt();
+        if (count < 0 || count > readableBytes() / 9) {
+            throw new IllegalArgumentException("Chunk key array count " + count
+                    + " does not fit in " + readableBytes() + " readable bytes");
+        }
+        ChunkKey[] keys = new ChunkKey[count];
+        for (int i = 0; i < count; i++) {
+            keys[i] = readChunkKey();
+        }
+        return keys;
     }
 
     public ExtendedByteBuf writeChunkKey(ChunkKey chunkKey) {
