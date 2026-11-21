@@ -36,6 +36,8 @@ public final class MasterConfig {
     private long pingTimeoutMillis = 60_000L;
     private long generationLeaseMillis = 15_000L;
     private long generationWaitMillis = 2_000L;
+    private int metricsPort = -1;
+    private String metricsAddress = "";
 
     private MasterConfig() {
     }
@@ -68,6 +70,8 @@ public final class MasterConfig {
                 config.generationLeaseMillis);
         config.generationWaitMillis = Long.getLong("multiforge.master.generationWaitMillis",
                 config.generationWaitMillis);
+        config.metricsPort = Integer.getInteger("multiforge.master.metricsPort", config.metricsPort);
+        config.metricsAddress = System.getProperty("multiforge.master.metricsAddress", config.metricsAddress);
         return config;
     }
 
@@ -91,6 +95,8 @@ public final class MasterConfig {
         pingTimeoutMillis = longValue(properties, "ping-timeout-millis", pingTimeoutMillis);
         generationLeaseMillis = longValue(properties, "generation-lease-millis", generationLeaseMillis);
         generationWaitMillis = longValue(properties, "generation-wait-millis", generationWaitMillis);
+        metricsPort = intValue(properties, "metrics-port", metricsPort);
+        metricsAddress = properties.getProperty("metrics-address", metricsAddress).trim();
     }
 
     /**
@@ -120,6 +126,10 @@ public final class MasterConfig {
                 # How long a second server waits for the generator's copy before it
                 # generates the chunk itself. 0 means "never wait".
                 generation-wait-millis=2000
+                # Prometheus /metrics endpoint. -1 disables it.
+                # Keep it on a private interface (metrics-address) in production.
+                metrics-port=-1
+                metrics-address=
                 """;
         Path parent = file.toAbsolutePath().getParent();
         if (parent != null) {
@@ -181,12 +191,24 @@ public final class MasterConfig {
         return generationWaitMillis;
     }
 
+    /** @return TCP port of the Prometheus endpoint, or {@code -1} when it is disabled */
+    public int getMetricsPort() {
+        return metricsPort;
+    }
+
+    /** @return bind address of the Prometheus endpoint, empty for all interfaces */
+    public String getMetricsAddress() {
+        return metricsAddress;
+    }
+
     @Override
     public String toString() {
         return String.format(Locale.ROOT,
                 "MasterConfig[address=%s, port=%d, proxyPort=%d, allowMultipleConnections=%s, "
-                        + "pingTimeout=%dms, generationLease=%dms, generationWait=%dms]",
+                        + "pingTimeout=%dms, generationLease=%dms, generationWait=%dms, "
+                        + "metrics=%s:%d]",
                 address.isEmpty() ? "0.0.0.0" : address, port, proxyPort, allowMultipleConnections,
-                pingTimeoutMillis, generationLeaseMillis, generationWaitMillis);
+                pingTimeoutMillis, generationLeaseMillis, generationWaitMillis,
+                metricsAddress.isEmpty() ? "0.0.0.0" : metricsAddress, metricsPort);
     }
 }

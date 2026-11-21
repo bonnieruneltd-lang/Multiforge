@@ -2,6 +2,7 @@ package com.multiforge.master;
 
 import com.multiforge.master.proxy.ProxyServer;
 import com.multiforge.master.util.Log;
+import com.multiforge.master.util.MetricsServer;
 import com.multiforge.protocol.MessageBootstrap;
 import com.multiforge.protocol.messages.masterbound.MasterBoundMessage;
 import com.multiforge.protocol.messages.masterbound.MasterBoundProtocol;
@@ -37,6 +38,10 @@ public class MultiForgeMaster extends MessageBootstrap<MasterBoundMessage, Serve
 
     private static volatile MultiForgeMaster instance;
     private static volatile MasterConfig config;
+    /** Prometheus endpoint, {@code null} when {@code metrics-port} is negative. */
+    private static volatile MetricsServer metricsServer;
+    /** Wall-clock start of the process, used by the uptime metric. */
+    private static final long STARTED_AT = System.currentTimeMillis();
 
     /**
      * Starts the master process.
@@ -96,6 +101,8 @@ public class MultiForgeMaster extends MessageBootstrap<MasterBoundMessage, Serve
             ProxyServer.openServer(proxyPort);
         }
 
+        startMetricsEndpoint();
+
         instance = new MultiForgeMaster(address, port);
 
         if (new CommandLineInput().run()) {
@@ -127,6 +134,59 @@ public class MultiForgeMaster extends MessageBootstrap<MasterBoundMessage, Serve
                         + (address == null || address.isEmpty() ? "0.0.0.0" : address) + ":" + boundPort);
             }
         });
+    }
+
+    /**
+     * Starts the optional Prometheus endpoint.
+     *
+     * <p>Disabled by default ({@code metrics-port=-1}). A bind failure is logged
+     * and does not stop the master: losing monitoring must never take the cluster
+     * down.</p>
+     */
+    private static void startMetricsEndpoint() {
+        MasterConfig snapshot = config;
+        if (snapshot == null || snapshot.getMetricsPort() < 0) {
+            return;
+        }
+        try {
+            metricsServer = new MetricsServer(snapshot.getMetricsAddress(),
+                    snapshot.getMetricsPort(), MultiForgeMaster::snapshotMetrics);
+            Log.info("Prometheus metrics listening on "
+                    + (snapshot.getMetricsAddress().isEmpty() ? "0.0.0.0" : snapshot.getMetricsAddress())
+                    + ":" + metricsServer.port() + MetricsServer.PATH);
+        } catch (java.io.IOException e) {
+            Log.error("Could not start the metrics endpoint on port " + snapshot.getMetricsPort(), e);
+        }
+    }
+
+    /**
+     * Takes one consistent-enough snapshot of the master counters for a scrape.
+     *
+     * <p>Every value is an independent, cheap read; the endpoint is a monitoring
+     * aid, so a scrape that races a connect or a chunk unlock can show two
+     * counters from slightly different instants. Nothing here blocks on IO.</p>
+     *
+     * @return values for one Prometheus scrape
+     */
+    public static MetricsServer.Snapshot snapshotMetrics() {
+        int serversOnline = 0;
+        int playersOnline = 0;
+        for (ServerConnection connection : ServerConnection.getConnections()) {
+            if (connection.isOnline()) {
+                serversOnline++;
+                // getPlayerCount() synchronizes on the UUID set; reading the HashSet
+                // field directly from the metrics thread would race the Netty threads.
+                playersOnline += connection.getPlayerCount();
+            }
+        }
+        return new MetricsServer.Snapshot(
+                (System.currentTimeMillis() - STARTED_AT) / 1000L,
+                serversOnline,
+                playersOnline,
+                ChunkSubscriptionManager.ownedChunkCount(),
+                ChunkSubscriptionManager.subscribedChunkCount(),
+                EntitiesLockManager.pendingWriteCount(),
+                com.multiforge.master.handlers.RequestEntityIdBlockHandler.nextEntityId());
     }
 
     /**
@@ -172,6 +232,9 @@ public class MultiForgeMaster extends MessageBootstrap<MasterBoundMessage, Serve
     private static void setupGracefulShutdown() {
         Thread shutdownListener = new Thread(() -> {
             Log.info("Exiting safely...");
+            if (metricsServer != null) {
+                metricsServer.close();
+            }
             ServerConnection.shutdown();
             awaitAsyncTasks();
             Log.info("Shutting down event loop...");

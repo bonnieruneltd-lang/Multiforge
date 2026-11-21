@@ -10,6 +10,7 @@ import com.multiforge.protocol.messages.masterbound.ChunkChangedStatusMessage;
 import com.multiforge.protocol.messages.masterbound.DownloadFileMessage;
 import com.multiforge.protocol.messages.masterbound.ForceReadChunkMessage;
 import com.multiforge.protocol.messages.masterbound.LockChunkMessage;
+import com.multiforge.protocol.messages.masterbound.PingMessage;
 import com.multiforge.protocol.messages.masterbound.PlayerConnectMessage;
 import com.multiforge.protocol.messages.masterbound.PlayerDisconnectMessage;
 import com.multiforge.protocol.messages.masterbound.ReadChunkMessage;
@@ -28,6 +29,7 @@ import com.multiforge.protocol.messages.masterbound.WriteChunkMessage;
 import com.multiforge.protocol.messages.masterbound.WriteJsonMessage;
 import com.multiforge.protocol.messages.masterbound.WriteLevelMessage;
 import com.multiforge.protocol.messages.masterbound.WritePlayerMessage;
+import com.multiforge.protocol.messages.masterbound.WriteTickTimeMessage;
 import com.multiforge.protocol.messages.masterbound.WriteUidMessage;
 import com.multiforge.protocol.messages.serverbound.BooleanMessageReply;
 import com.multiforge.protocol.messages.serverbound.ChunkLoadedOnAnotherServerMessage;
@@ -104,6 +106,34 @@ class MasterIntegrationTest {
         clients.clear();
         ChunkGenerationManager.clear();
         ChunkGenerationManager.configure(15_000L, 2_000L);
+    }
+
+    /**
+     * Verifies the Prometheus counters against real master state instead of a
+     * mocked snapshot: one connected, pinging server and one claimed player must
+     * appear in {@link MultiForgeMaster#snapshotMetrics()}.
+     *
+     * @throws Exception when the client or the reply fails
+     */
+    @Test
+    void metricsReportOnlineServersAndPlayers() throws Exception {
+        TestServerClient server = client("metrics-server");
+        server.send(new PingMessage());
+        server.send(new WriteTickTimeMessage(1L, 20.0F));
+        UUID player = UUID.randomUUID();
+        BooleanMessageReply reply = server.request(new PlayerConnectMessage(player, "MetricAlex")).get();
+        assertTrue(reply.result, "the player claim must succeed on an empty cluster");
+
+        long deadline = System.currentTimeMillis() + 5_000L;
+        com.multiforge.master.util.MetricsServer.Snapshot snapshot = MultiForgeMaster.snapshotMetrics();
+        while ((snapshot.serversOnline() < 1 || snapshot.playersOnline() < 1)
+                && System.currentTimeMillis() < deadline) {
+            Thread.sleep(20L);
+            snapshot = MultiForgeMaster.snapshotMetrics();
+        }
+        assertTrue(snapshot.serversOnline() >= 1, "connected pinging server must be counted");
+        assertTrue(snapshot.playersOnline() >= 1, "claimed player must be counted");
+        assertTrue(snapshot.uptimeSeconds() >= 0L);
     }
 
     @AfterAll

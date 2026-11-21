@@ -37,4 +37,11 @@ public class EntitiesLockManager {
         }
     }
 
+    /**
+     * @return number of entity chunks a peer is currently waiting to read, for metrics
+     */
+    public static int pendingWriteCount() {
+        return locks.size();
+    }
+
 }

@@ -47,6 +47,16 @@ public final class RequestEntityIdBlockHandler {
     private static final Object ALLOCATION_LOCK = new Object();
     private static final Object SAVE_LOCK = new Object();
 
+    /**
+     * Serializes the actual file replacement. Two concurrent writes would race on
+     * the shared {@code .tmp} name, and a write that read an older counter can
+     * otherwise land after a newer one.
+     */
+    private static final Object WRITE_LOCK = new Object();
+
+    /** Highest counter ever written to disk. Guarded by {@link #WRITE_LOCK}. */
+    private static int lastWritten = -1;
+
     /** Next unallocated id, {@code -1} until loaded. Guarded by {@link #ALLOCATION_LOCK}. */
     private static int nextId = -1;
 
@@ -98,10 +108,32 @@ public final class RequestEntityIdBlockHandler {
     }
 
     /**
+     * @return next entity id the master will hand out, or {@code -1} before the
+     *         first block was allocated, for the metrics endpoint
+     */
+    public static int nextEntityId() {
+        synchronized (ALLOCATION_LOCK) {
+            return nextId;
+        }
+    }
+
+    /**
      * Writes the current counter synchronously. Called from the shutdown hook and
      * from tests; idempotent and safe to call while a request is allocating.
      */
     public static void flush() {
+        // Wait for every write that was already queued. Without this, a task that
+        // read an older counter before this call could replace the file after the
+        // synchronous write below (the regression test failed exactly that way).
+        CompletableFuture<Void> pending;
+        synchronized (SAVE_LOCK) {
+            pending = lastSave;
+        }
+        try {
+            pending.get(30, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (Exception e) {
+            Log.error("Could not wait for the pending entity id write", e);
+        }
         int value;
         synchronized (ALLOCATION_LOCK) {
             if (nextId < 0) {
@@ -119,6 +151,9 @@ public final class RequestEntityIdBlockHandler {
     public static void resetForTests() {
         synchronized (ALLOCATION_LOCK) {
             nextId = -1;
+        }
+        synchronized (WRITE_LOCK) {
+            lastWritten = -1;
         }
     }
 
@@ -189,6 +224,21 @@ public final class RequestEntityIdBlockHandler {
     }
 
     private static void write(int value) {
+        synchronized (WRITE_LOCK) {
+            writeLocked(value);
+        }
+    }
+
+    /**
+     * Writes the counter and atomically replaces the file.
+     *
+     * @param value counter to store
+     */
+    private static void writeLocked(int value) {
+        if (value < lastWritten) {
+            // A write that read an older counter must never move the file backwards.
+            return;
+        }
         File file = MasterStorage.file("lastblock.txt");
         Path target = file.toPath().toAbsolutePath();
         try {
@@ -198,24 +248,23 @@ public final class RequestEntityIdBlockHandler {
             return;
         }
         Path temp = target.resolveSibling(target.getFileName() + ".tmp");
-        synchronized (SAVE_LOCK) {
+        try {
+            // Write-then-rename: a concurrent reader (or a crash) must never see a
+            // truncated counter file.
+            Files.writeString(temp, Integer.toString(value));
             try {
-                // Write-then-rename: a concurrent reader (or a crash) must never see a
-                // truncated counter file.
-                Files.writeString(temp, Integer.toString(value));
-                try {
-                    Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING,
-                            StandardCopyOption.ATOMIC_MOVE);
-                } catch (java.nio.file.AtomicMoveNotSupportedException e) {
-                    Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
-                }
-            } catch (IOException e) {
-                Log.error("Could not persist the entity id counter to " + file, e);
-                try {
-                    Files.deleteIfExists(temp);
-                } catch (IOException ignored) {
-                    // best effort cleanup
-                }
+                Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.ATOMIC_MOVE);
+            } catch (java.nio.file.AtomicMoveNotSupportedException e) {
+                Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING);
+            }
+            lastWritten = value;
+        } catch (IOException e) {
+            Log.error("Could not persist the entity id counter to " + file, e);
+            try {
+                Files.deleteIfExists(temp);
+            } catch (IOException ignored) {
+                // best effort cleanup
             }
         }
     }

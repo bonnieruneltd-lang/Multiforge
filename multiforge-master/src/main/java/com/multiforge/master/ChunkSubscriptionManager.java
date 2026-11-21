@@ -319,4 +319,18 @@ public class ChunkSubscriptionManager {
             return subscribers == null ? List.of() : List.copyOf(subscribers);
         }
     }
+
+    /**
+     * @return number of chunks that currently have an owner, for metrics
+     */
+    public static int ownedChunkCount() {
+        return chunkLocks.size();
+    }
+
+    /**
+     * @return number of chunks that currently have at least one subscriber, for metrics
+     */
+    public static int subscribedChunkCount() {
+        return chunkSubscribers.size();
+    }
 }
