@@ -164,8 +164,8 @@ coding.
     protocol/master/API suites on a clean runner and uploads the jars.
     `tools/compat/cluster_check.py` now also verifies scoreboard objectives/scores/teams
     and entity mirror/damage/removal, and `--skip-mod-checks` lets it run on a dev
-    cluster; a live dev run recorded 17/17 checks
-    (`compat/evidence/cluster-20261121T070338Z.md`). The live check still needs a
+    cluster; a live dev run recorded 18/18 checks
+    (`compat/evidence/cluster-20261121T072841Z.md`). The live check still needs a
     Minecraft server download, RCON and a disposable world, so it remains a manual step
     rather than a CI job.
 

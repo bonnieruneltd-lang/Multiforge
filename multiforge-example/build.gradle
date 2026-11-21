@@ -1,0 +1,9 @@
+/*
+ * Smallest possible API consumer: a mod/library that depends only on
+ * :multiforge-api. It is compiled and tested with the normal build, so an API
+ * change that breaks a third-party consumer shows up immediately.
+ */
+
+dependencies {
+    api project(':multiforge-api')
+}

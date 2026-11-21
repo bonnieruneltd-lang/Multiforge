@@ -35,6 +35,8 @@ from rcon import RconError, command  # noqa: E402
 
 CHUNK_PATTERN = re.compile(r"world,(-?\d+),(-?\d+)")
 OWNER_PATTERN = re.compile(r"world,(-?\d+),(-?\d+) owner=([^ ]+)")
+OWNER_HEADER = re.compile(r"Chunks owned by (\S+):")
+CHUNK_LINE = re.compile(r"world,(-?\d+),(-?\d+)")
 
 
 class Cluster:
@@ -72,8 +74,25 @@ def parse_chunks(text: str) -> set[tuple[int, int]]:
 
 
 def parse_owners(text: str) -> dict[tuple[int, int], str]:
-    """Extract chunk -> owner pairs from the loaded-chunk section."""
-    return {(int(x), int(z)): owner for x, z, owner in OWNER_PATTERN.findall(text)}
+    """Extract chunk -> owner pairs from /multiforge chunks.
+
+    The command prints one section per owner ("Chunks owned by live1: N" followed
+    by " - world,x,z" lines), with a legacy "world,x,z owner=..." form kept as a
+    fallback for older builds/tests.
+    """
+    owners: dict[tuple[int, int], str] = {}
+    current = None
+    for line in text.splitlines():
+        header = OWNER_HEADER.search(line)
+        if header:
+            current = header.group(1)
+            continue
+        chunk = CHUNK_LINE.search(line)
+        if chunk and current:
+            owners[(int(chunk.group(1)), int(chunk.group(2)))] = current
+    for x, z, owner in OWNER_PATTERN.findall(text):
+        owners[(int(x), int(z))] = owner
+    return owners
 
 
 def main(argv=None) -> int:
@@ -131,7 +150,13 @@ def main(argv=None) -> int:
         return finish(cluster, results, args)
     check(results, "shared-loaded-chunk", True, f"{len(common)} common chunks, using {common[0]}")
 
-    chunk_x, chunk_z = common[0]
+    # Prefer a chunk that is loaded on both servers *and* has an owner: entity
+    # damage/removal must be applied on the authoritative server, and "loaded on
+    # both, owned by neither" can exist briefly during ownership handover.
+    owners_initial = parse_owners(cluster.run("A", "multiforge chunks"))
+    owned_common = [key for key in chunks_b
+                    if key in chunks_a and owners_initial.get(key) in ("live1", "live2")]
+    chunk_x, chunk_z = (owned_common or common)[0]
     block_x = chunk_x * 16 + 8
     block_z = chunk_z * 16 + 8
 
@@ -174,26 +199,46 @@ def main(argv=None) -> int:
     team_b = cluster.run("B", f"team list {team}")
     check(results, "scoreboard-team-a-to-b", "1 member" in team_b, team_b.strip())
 
+    # Damage and removal must be applied on the chunk's authoritative owner; a
+    # mirror only forwards the hit. The chosen common chunk can belong to either
+    # server, so select the owner dynamically.
+    owners_for_chunk = parse_owners(cluster.run("A", "multiforge chunks"))
+    chunk_owner = owners_for_chunk.get((chunk_x, chunk_z))
+    owner_side = "A" if chunk_owner == "live1" else "B"
+    mirror_side = "B" if owner_side == "A" else "A"
     cow = f"{block_x} 100 {block_z}"
     cluster.run("A", "kill @e[type=minecraft:cow,tag=mfcheck]")
+    cluster.run("B", "kill @e[type=minecraft:cow,tag=mfcheck]")
+    time.sleep(args.wait_seconds)
     cow_nbt = '{NoGravity:1b,Tags:["mfcheck"]}'
-    cluster.run("A", f"summon minecraft:cow {cow} {cow_nbt}")
+    cluster.run(owner_side, f"summon minecraft:cow {cow} {cow_nbt}")
     time.sleep(args.wait_seconds)
-    mirrored = cluster.run("B", "execute if entity @e[type=minecraft:cow,tag=mfcheck]")
-    check(results, "entity-mirror-a-to-b", "Test passed" in mirrored, mirrored.strip())
+    mirrored = cluster.run(mirror_side, "execute if entity @e[type=minecraft:cow,tag=mfcheck]")
+    check(results, f"entity-mirror-{owner_side}-to-{mirror_side}",
+          "Test passed" in mirrored, f"owner={chunk_owner} {mirrored.strip()}")
 
-    cluster.run("A", "damage @e[type=minecraft:cow,tag=mfcheck,limit=1] 2")
+    cluster.run(owner_side, "damage @e[type=minecraft:cow,tag=mfcheck,limit=1] 2")
     time.sleep(args.wait_seconds)
-    health = cluster.run("B", "data get entity @e[type=minecraft:cow,tag=mfcheck,limit=1] Health")
-    check(results, "entity-damage-a-to-b", "8.0" in health, health.strip())
+    health = cluster.run(mirror_side,
+                         "data get entity @e[type=minecraft:cow,tag=mfcheck,limit=1] Health")
+    check(results, f"entity-damage-{owner_side}-to-{mirror_side}", "8.0" in health, health.strip())
 
-    cluster.run("A", "kill @e[type=minecraft:cow,tag=mfcheck]")
+    cluster.run(owner_side, "kill @e[type=minecraft:cow,tag=mfcheck]")
     time.sleep(args.wait_seconds)
-    removed = cluster.run("B", "execute if entity @e[type=minecraft:cow,tag=mfcheck]")
-    check(results, "entity-remove-a-to-b", "Test failed" in removed, removed.strip())
+    removed = cluster.run(mirror_side, "execute if entity @e[type=minecraft:cow,tag=mfcheck]")
+    check(results, f"entity-remove-{owner_side}-to-{mirror_side}",
+          "Test failed" in removed, removed.strip())
 
     cluster.run("A", f"scoreboard objectives remove {objective}")
     cluster.run("A", f"team remove {team}")
+
+    sign = f"{block_x + 3} 64 {block_z}"
+    cluster.run("A", f"setblock {sign} minecraft:oak_sign")
+    sign_nbt = '{front_text:{messages:[\'"mf-sign"\',\'"line2"\',\'""\',\'""\']}}'
+    cluster.run("A", f"data merge block {sign} {sign_nbt}")
+    time.sleep(args.wait_seconds)
+    sign_b = cluster.run("B", f"data get block {sign} front_text.messages[0]")
+    check(results, "sign-text-a-to-b", "mf-sign" in sign_b, sign_b.strip())
 
     cluster.run("A", "gamerule doDaylightCycle false")
     cluster.run("A", "time set 6000")

@@ -172,8 +172,7 @@ existing peer compression, scheduler periods) still need a restart and are logge
 ## Automated harness
 
 `tools/compat/cluster_check.py --skip-mod-checks` ran against this dev cluster and passed
-**17/17** checks, including the new scoreboard objective/score/team and entity
-mirror/damage/removal checks: `compat/evidence/cluster-20261121T070338Z.md`.
+**18/18** checks, including scoreboard, entity and sign checks: `compat/evidence/cluster-20261121T072841Z.md`.
 
 ## Proxy and player-data transfer
 
