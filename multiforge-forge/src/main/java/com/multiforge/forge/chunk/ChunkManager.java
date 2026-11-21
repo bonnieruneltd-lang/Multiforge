@@ -370,6 +370,9 @@ public final class ChunkManager {
             // The request bookkeeping is only needed while a request is pending.
             lastOwnershipRequest.remove(key);
             LOGGER.debug("Acquired ownership of {} (epoch {}, was {})", key, epoch, previous);
+            // Re-send entity snapshots so this server's copy becomes authoritative
+            // on every mirror (ownership-boundary resync).
+            server.entities().onChunkOwnershipGained(key);
         } else {
             ownedLocally.remove(key);
             if (previous != null && previous.equals(server.serverName())) {
@@ -750,17 +753,16 @@ public final class ChunkManager {
     /**
      * Handles a peer notification that entity data changed.
      *
-     * <p>Entity data lives in the master's storage. A server that has the chunk
-     * loaded re-reads it the next time the chunk is loaded, so the notification is
-     * currently recorded for diagnostics only. Live entity movement replication is
-     * tracked in {@code docs/KNOWN_ISSUES.md}.</p>
+     * <p>Entity data lives in the master's storage. A server that owns the chunk
+     * is the authoritative simulation, so it re-sends NBT snapshots to the entity
+     * subscribers; a server that only mirrors the chunk has nothing to do because
+     * the owner keeps sending live updates. This replaced the previous log-only
+     * stub (see {@code docs/KNOWN_ISSUES.md}).</p>
      *
      * @param packet notification
      */
     public void onRemoteEntityChunkChanged(EntityChunkChangedPacket packet) {
-        if (server.config().debugLogging()) {
-            LOGGER.info("Entity data for {} {},{},{} changed on a peer", packet.world, packet.x, packet.z);
-        }
+        server.entities().onRemoteEntityDataChanged(packet.world, packet.x, packet.z);
     }
 
     // ------------------------------------------------------------------

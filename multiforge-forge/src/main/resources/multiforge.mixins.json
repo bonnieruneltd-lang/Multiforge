@@ -16,13 +16,16 @@
     "LivingEntityHurtMixin",
     "MinecraftServerMixin",
     "MobAccessor",
+    "PlayerAdvancementsAwardMixin",
     "PlayerAdvancementsMixin",
     "PlayerListAccessor",
+    "PlayerListBroadcastMixin",
     "PlayerListMixin",
     "ServerLevelMixin",
     "ServerPlayerHurtMixin",
     "ServerPlayerMenuMixin",
     "ServerStatsCounterMixin",
+    "StatsCounterIncrementMixin",
     "StoredUserListMixin"
   ],
   "injectors": {

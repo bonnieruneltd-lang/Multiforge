@@ -110,8 +110,10 @@ Implemented:
   (`EntityUpdatePacket`), passenger/leash/pickup links
   (`EntityUpdateWithDependenciesPacket`) and removals (`EntityRemovePacket`). A server that
   has the chunk but not the entity gets an NBT snapshot (`EntityUpdateNBTPacket`) when the
-  entity spawns or when a new server subscribes; the copy is added to the level but is not
-  ticked because the chunk belongs to another server. Position and synched data are applied
+  entity spawns, when a new server subscribes, and when a server gains ownership of the chunk
+  (the ownership-boundary resync); the copy is added to the level but is not ticked because
+  the chunk belongs to another server. A peer's `EntityChunkChangedPacket` makes the owning
+  server re-send the chunk's snapshots, so the previous log-only stub is gone. Position and synched data are applied
   on the mirror, so its tracker sends the changes to its own players.
 * Damage on a mirrored entity is forwarded to the owner (`EntityHurtPacket`), so a mob can
   be hit from any server and its health stays authoritative on the owner. The packet carries
@@ -178,6 +180,29 @@ attacker/direct UUIDs above. See [TODO.md](TODO.md) and [KNOWN_ISSUES.md](KNOWN_
   banned (user or IP). No restart is needed.
 * **Chat**: `ServerChatEvent` is forwarded to peers as JSON and shown locally on every
   server (MultiPaper's cluster-wide `broadcastMessage`).
+
+## Scoreboards, statistics and advancements
+
+* **Main scoreboard.** `PlayerList.broadcastAll` is hooked by
+  `PlayerListBroadcastMixin`. When vanilla broadcasts one of the four clientbound scoreboard
+  packets (`SetObjective`, `SetScore`, `SetDisplayObjective`, `SetPlayerTeam`),
+  `ScoreboardSyncManager` serializes it (wire id plus body) into
+  `ScoreboardUpdatePacket` (peer id 30) and the receiving server replays the mutation through
+  the vanilla `ServerScoreboard` API. The packet also carries the objective criteria for a
+  new objective, because the clientbound packet does not. Only the main scoreboard is
+  synchronized; per-player sidebars, boss bars and modded scoreboards are not world state.
+  A thread-local `APPLYING` flag suppresses echo, and a replayed mutation still broadcasts to
+  the local clients.
+* **Statistics.** `StatsCounterIncrementMixin` records every increase at
+  `StatsCounter.increment`; `PlayerProgressSyncManager` accumulates deltas per player and
+  sends `PlayerStatsIncreasePacket` (id 31) every ten seconds. The receiver adds the delta to
+  its own `StatsCounter` with saturation, using registry ids for the type and value so modded
+  statistics transfer when both servers know them.
+* **Advancements.** `PlayerAdvancementsAwardMixin` reports a criterion only when
+  `award` returned `true`; the owning server sends `AdvancementProgressPacket` (id 32)
+  immediately. The receiver awards the same criterion on a locally hosted player under an
+  echo guard. Both features close the handover window (a player transferring before the next
+  player-data save); the files on the master remain authoritative at save/load time.
 
 ## World state
 

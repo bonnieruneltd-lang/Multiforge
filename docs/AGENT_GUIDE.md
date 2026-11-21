@@ -50,6 +50,10 @@ touching code, then read the architecture document of the subsystem you change.
 | Block/block entity sync | `LevelChunkMixin`, `BlockEntityMixin`, `ChunkManager` |
 | Player data / login | `PlayerSyncManager`, `PlayerListMixin`, `ServerStatsCounterMixin`, `PlayerAdvancementsMixin` |
 | Player mirroring | `player/PlayerMirrorManager`, `player/ExternalPlayer`, `PlayerListAccessor`, `ServerPlayerHurtMixin`, `EntitySyncManager` |
+| Main scoreboard sync | `scoreboard/ScoreboardSyncManager`, `PlayerListBroadcastMixin`, `ScoreboardUpdatePacket` |
+| Live stats/advancements | `player/PlayerProgressSyncManager`, `StatsCounterIncrementMixin`, `PlayerAdvancementsAwardMixin`, packets 31-32 |
+| Chunk border debug view | `chunk/ChunkBorderVisualizer`, `/multiforge borders` in `MultiForgeCommands` |
+| Master metrics | `master/util/MetricsServer`, `MultiForgeMaster.snapshotMetrics`, `MasterConfig` metrics keys |
 | Container window forwarding | `container/ContainerSyncManager`, `ServerPlayerMenuMixin`, `AbstractContainerMenuClickMixin`, `OpenContainerPacket`/`ContainerClickPacket`/`ContainerClosePacket` |
 | Live user lists | `StoredUserListMixin`, `FileSyncer.onUserListChanged/onDataUpdate`, `PlayerSyncManager.reloadUserList`, `WriteJsonHandler` |
 | Ownership epochs | `ChunkSubscriptionManager`, `SetChunkOwnerMessage`, `ChunkSubscribersSyncMessage`, `ChunkState`, `ChunkManager`, `BlockChangePacket`, `BlockEntityUpdatePacket` |
@@ -118,9 +122,19 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
 * Chunk generation leases are implemented and integration tested; the lease is demand
   driven (the server whose player needs the chunk generates it). Choosing an idle server
   to generate for a busy one is not implemented.
-* Highest-value next work for compatibility: extend the player-driven harness
-  (`tools/compat/mcbot.js` + `player_state_check.py`) with gameplay interactions, because
-  most server rows are waiting on interaction, not code.
+* This session (6) finished the non-GPU items: main-scoreboard sync (peer packet 30),
+  live statistic/advancement deltas (31-32), `/multiforge borders`, the master Prometheus
+  endpoint, entity ownership-boundary resyncs and protocol input hardening/fuzzing. All
+  compile and the protocol/master suites pass (`ProtocolFuzzTest`, `MetricsServerTest`,
+  36 protocol + 36 master tests). Forge-side features are compile-verified only; no live
+  two-server run happened here, so do not describe them as live-verified. Details in
+  TODO.md items 9, 11, 16, 17, 19 and KNOWN_ISSUES.md.
+* Highest-value next work: (1) live-verify the session 6 forge features on a master + two
+  servers, (2) extend the player-driven harness (`tools/compat/mcbot.js` +
+  `player_state_check.py`) with gameplay interactions, because most server rows are waiting
+  on interaction, not code, and (3) run the 15 client targets on a GPU machine. Remaining
+  design/code items are config hot reload, per-chunk sequence numbers/acks, master leader
+  election and the performance leftovers in PERFORMANCE.md.
 * Do not restart or rewrite working subsystems. Read `DEVELOPMENT_HANDOFF.md` for the
   session audit and `KNOWN_ISSUES.md` for the interaction findings (Timber 3.0, Radium ×
   ServerCore, Ksyxis × forceload, master region compression label).

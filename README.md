@@ -52,8 +52,13 @@ integration tests and by running two real Forge servers against a master:
 | Cross-server container windows (chests, furnaces, ...) | implemented; open/click/close verified on a two-server cluster (see [compat/evidence/containers-epochs-userlists-20261115T074200Z.md](compat/evidence/containers-epochs-userlists-20261115T074200Z.md)) |
 | Ownership epochs on block/block-entity packets | implemented, master + protocol + master integration test |
 | Cross-server attacker attribution (death messages, kill credit) | implemented: causing/direct UUIDs + source position |
+| Main scoreboard (objectives, scores, teams, display slots) | implemented: vanilla packets replayed on every server (peer packet 30); compile-verified, live check pending |
+| Live statistics and advancement progress | implemented: 10 s statistic deltas + immediate criterion awards (peer packets 31-32); compile-verified, live check pending |
 | Master region file format | true zlib, readable by vanilla/tooling; legacy gzip transcoded on read (round-trip tested + live master bytes checked) |
 | Required-target detection and `/multiforge compat` | implemented |
+| Chunk-border debug visualization (`/multiforge borders`) | implemented (config `debug.chunkBorders`); compile-verified |
+| Prometheus `/metrics` endpoint for the master | implemented (`metrics-port`, default off); unit tested |
+| Protocol input hardening + fuzzing | implemented: bounds-checked lengths, random/malformed-payload tests |
 | Pinned compatibility manifest and two-server RCON harness | implemented; 35 targets pinned, server set tested together |
 | Required mod compatibility (35 targets) | 0/35 FULLY COMPATIBLE: 2 functional, 8 partial, 10 loading, 15 client targets not tested (no GPU) - see [docs/REQUIRED_MOD_COMPATIBILITY.md](docs/REQUIRED_MOD_COMPATIBILITY.md) |
 
@@ -99,8 +104,9 @@ Read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before running a production wo
 ## Commands
 
 `/multiforge status`, `/multiforge servers`, `/multiforge players`, `/multiforge chunk`,
-`/multiforge chunks`, `/multiforge compat`, `/multiforge download <path>` (aliases
-`/mfservers`, `/mfslist`).
+`/multiforge chunks`, `/multiforge borders`, `/multiforge compat`,
+`/multiforge download <path>` (aliases `/mfservers`, `/mfslist`). `/multiforge borders`
+requires `debug.chunkBorders = true`.
 
 ## Documentation
 

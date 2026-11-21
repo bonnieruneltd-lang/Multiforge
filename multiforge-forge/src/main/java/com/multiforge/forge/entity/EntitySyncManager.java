@@ -609,21 +609,97 @@ public final class EntitySyncManager {
                 }
                 continue;
             }
-            if (entity.isPassenger() || !shouldMirror(entity)) {
+            sendSnapshot(key, subscriber, entity);
+        }
+    }
+
+    /**
+     * Sends the current state of every entity in a chunk to every entity
+     * subscriber.
+     *
+     * <p>Called when this server gains ownership of a chunk: until now another
+     * server simulated the entities, and the mirror may have missed changes that
+     * did not produce a clientbound packet (a mob that died silently, a state
+     * change applied while no subscriber existed). A full NBT snapshot per root
+     * entity makes the new owner's copy authoritative on the mirrors. This is the
+     * ownership-boundary resync tracked in {@code docs/KNOWN_ISSUES.md}.</p>
+     *
+     * @param key chunk that just became locally owned
+     */
+    public void onChunkOwnershipGained(ChunkKey key) {
+        if ((!server.config().entitySync() && !server.config().playerSync())) {
+            return;
+        }
+        Collection<String> subscribers = server.chunks().entitySubscribersOf(key);
+        if (subscribers.isEmpty()) {
+            return;
+        }
+        ServerLevel level = server.level(key.getName());
+        if (level == null || level.getChunkSource().getChunkNow(key.getX(), key.getZ()) == null) {
+            return;
+        }
+        int minX = key.getX() << 4;
+        int minZ = key.getZ() << 4;
+        AABB area = new AABB(minX, level.getMinBuildHeight(), minZ,
+                minX + 16, level.getMaxBuildHeight(), minZ + 16);
+        for (Entity entity : level.getEntities((Entity) null, area,
+                candidate -> Mth.floor(candidate.getX()) >> 4 == key.getX()
+                        && Mth.floor(candidate.getZ()) >> 4 == key.getZ())) {
+            if (entity instanceof ServerPlayer || entity.isPassenger() || !shouldMirror(entity)) {
                 continue;
             }
-            ResourceLocation typeId = EntityType.getKey(entity.getType());
-            if (typeId == null) {
-                continue;
+            for (String subscriber : subscribers) {
+                sendSnapshot(key, subscriber, entity);
             }
-            try {
-                CompoundTag tag = new CompoundTag();
-                entity.saveWithoutId(tag);
-                server.peers().sendTo(List.of(subscriber), new EntityUpdateNBTPacket(
-                        key.getName(), entity, tag, typeId));
-            } catch (RuntimeException e) {
-                LOGGER.warn("Could not snapshot entity {} for {}: {}", entity.getUUID(), subscriber, e.toString());
+        }
+        if (server.config().debugLogging()) {
+            LOGGER.info("Resynchronized entities of {} to {} subscribers", key, subscribers.size());
+        }
+    }
+
+    /**
+     * Handles a peer's notification that the entity data of a chunk changed.
+     *
+     * <p>Entity data lives on the master, so a mirror that does not own the chunk
+     * needs no action: the owner keeps sending live updates and the master copy is
+     * read on the next load. When this server owns the chunk it is authoritative,
+     * so it re-sends NBT snapshots to the entity subscribers. That repairs a
+     * mirror that missed a spawn/removal while it was not subscribed.</p>
+     *
+     * @param world logical world name
+     * @param x     chunk X
+     * @param z     chunk Z
+     */
+    public void onRemoteEntityDataChanged(String world, int x, int z) {
+        ChunkKey key = new ChunkKey(world, x, z);
+        if (!server.chunks().isLocal(key)) {
+            if (server.config().debugLogging()) {
+                LOGGER.info("Entity data for {} changed on a peer; not the owner, nothing to do", key);
             }
+            return;
+        }
+        onChunkOwnershipGained(key);
+    }
+
+    /**
+     * Sends one entity snapshot to one peer.
+     *
+     * @param key        chunk that owns the entity
+     * @param subscriber receiving server
+     * @param entity     entity to snapshot
+     */
+    private void sendSnapshot(ChunkKey key, String subscriber, Entity entity) {
+        ResourceLocation typeId = EntityType.getKey(entity.getType());
+        if (typeId == null) {
+            return;
+        }
+        try {
+            CompoundTag tag = new CompoundTag();
+            entity.saveWithoutId(tag);
+            server.peers().sendTo(List.of(subscriber), new EntityUpdateNBTPacket(
+                    key.getName(), entity, tag, typeId));
+        } catch (RuntimeException e) {
+            LOGGER.warn("Could not snapshot entity {} for {}: {}", entity.getUUID(), subscriber, e.toString());
         }
     }
 

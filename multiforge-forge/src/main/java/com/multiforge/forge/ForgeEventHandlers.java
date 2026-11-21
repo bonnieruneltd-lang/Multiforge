@@ -63,6 +63,10 @@ public final class ForgeEventHandlers {
     public static void onConfigReload(ModConfigEvent.Reloading event) {
         if (event.getConfig().getSpec() == MultiForgeConfig.SPEC) {
             MultiForgeConfig.bake();
+            MultiForgeServer runtime = MultiForgeServer.instanceOrNull();
+            if (runtime != null) {
+                runtime.onConfigReloaded();
+            }
         }
     }
 

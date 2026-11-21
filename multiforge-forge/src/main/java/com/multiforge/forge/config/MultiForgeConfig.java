@@ -58,6 +58,7 @@ public final class MultiForgeConfig {
     public static final ForgeConfigSpec.BooleanValue SYNC_PLAYER_DATA;
     public static final ForgeConfigSpec.BooleanValue SYNC_STATISTICS;
     public static final ForgeConfigSpec.BooleanValue SYNC_ADVANCEMENTS;
+    public static final ForgeConfigSpec.BooleanValue SYNC_SCOREBOARDS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> FILES_TO_SYNC_ON_STARTUP;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> FILES_TO_SYNC_IN_REAL_TIME;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> FILES_TO_NOT_SYNC;
@@ -132,6 +133,9 @@ public final class MultiForgeConfig {
         SYNC_PLAYER_DATA = builder.comment("Read and write player .dat files through the master.").define("playerData", true);
         SYNC_STATISTICS = builder.comment("Synchronize statistics files through the master.").define("statistics", true);
         SYNC_ADVANCEMENTS = builder.comment("Synchronize advancement files through the master.").define("advancements", true);
+        SYNC_SCOREBOARDS = builder
+                .comment("Keep the main scoreboard (objectives, scores, teams, display slots) in sync.")
+                .define("scoreboards", true);
         FILES_TO_SYNC_ON_STARTUP = builder
                 .comment("Extra files (relative to the server directory) uploaded to the master on startup.")
                 .defineListAllowEmpty(List.of("filesToSyncOnStartup"), List::of, o -> o instanceof String);
@@ -145,7 +149,7 @@ public final class MultiForgeConfig {
 
         builder.comment("Diagnostics.").push("debug");
         DEBUG_LOGGING = builder.comment("Log every synchronization decision (very verbose).").define("logging", false);
-        DEBUG_CHUNK_BORDERS = builder.comment("Reserved: visualize chunk ownership in game.").define("chunkBorders", false);
+        DEBUG_CHUNK_BORDERS = builder.comment("Enable /multiforge borders: particle lines showing the current chunk owner (green=this server, red=another, white=unowned).").define("chunkBorders", false);
         builder.pop();
 
         SPEC = builder.build();
@@ -196,6 +200,7 @@ public final class MultiForgeConfig {
                 SYNC_PLAYER_DATA.get(),
                 SYNC_STATISTICS.get(),
                 SYNC_ADVANCEMENTS.get(),
+                SYNC_SCOREBOARDS.get(),
                 List.copyOf(FILES_TO_SYNC_ON_STARTUP.get()),
                 List.copyOf(FILES_TO_SYNC_IN_REAL_TIME.get()),
                 List.copyOf(FILES_TO_NOT_SYNC.get()),
@@ -296,6 +301,7 @@ public final class MultiForgeConfig {
                 bool(values, "synchronization.playerData", defaults.syncPlayerData()),
                 bool(values, "synchronization.statistics", defaults.syncStatistics()),
                 bool(values, "synchronization.advancements", defaults.syncAdvancements()),
+                bool(values, "synchronization.scoreboards", defaults.syncScoreboards()),
                 list(values, "synchronization.filesToSyncOnStartup", defaults.filesToSyncOnStartup()),
                 list(values, "synchronization.filesToSyncInRealTime", defaults.filesToSyncInRealTime()),
                 list(values, "synchronization.filesToNotSync", defaults.filesToNotSync()),
@@ -382,6 +388,7 @@ public final class MultiForgeConfig {
             boolean syncPlayerData,
             boolean syncStatistics,
             boolean syncAdvancements,
+            boolean syncScoreboards,
             List<String> filesToSyncOnStartup,
             List<String> filesToSyncInRealTime,
             List<String> filesToNotSync,
@@ -392,7 +399,7 @@ public final class MultiForgeConfig {
         public static Snapshot defaults() {
             return new Snapshot("localhost:35353", "", 0, "", 0, 5, 2, 30, 20,
                     true, true, true, true, false, 10, 100,
-                    true, true, true, true, true, true, true, true, true,
+                    true, true, true, true, true, true, true, true, true, true,
                     List.of(), List.of(), List.of("logs", "crash-reports"), false, false);
         }
 

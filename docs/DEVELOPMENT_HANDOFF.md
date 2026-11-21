@@ -152,10 +152,11 @@ mod-mod interaction, not a MultiForge ownership failure, and is recorded in
    `PlayerRemovePacket` carry profile/position/game mode/player data, movement and metadata
    use the entity stream, and hits are forwarded before local invulnerability checks.
    Evidence: `compat/evidence/player-mirroring-20261115T030505Z.md`.
-3. **Inventory / ender chest / experience / hunger / effects live sync** (TODO 3). Player
-   data files work; live changes do not. This is now the largest functional gap.
-4. **Live user list application** (TODO 7): files are synced, the running `PlayerList` is
-   not reloaded.
+3. **Inventory / ender chest / experience / hunger / effects live sync** (TODO 3) - **done**
+   in session 5; see the session 5 update below and
+   `compat/evidence/player-state-20261115T054356Z.md`.
+4. **Live user list application** (TODO 7) - **done**: uploads are immediate and the other
+   servers reload whitelist/ops/bans without a restart.
 5. **Chunk generation lease**: implemented (`ChunkGenerationManager`, four integration
    tests). Only one server generates a never-seen chunk; later readers wait a bounded time
    and then read the generator's copy. Remaining work is load-aware assignment (an idle
@@ -207,4 +208,51 @@ mod-mod interaction, not a MultiForge ownership failure, and is recorded in
 * `./gradlew build :multiforge-master:fatJar` passes 49 tests (21 protocol, 28 master).
 * Next milestones from section 7 stay valid except item 2, which is now complete; the
   player-driven harness now exists and should be extended with gameplay interactions.
+
+## 10. Session 6 update (2026-11-21, no GPU)
+
+This session finished the TODO items that do not need a Minecraft client or GPU. No live
+master + two-server run was possible/practical here, so the horizontal rule is: protocol and
+master changes are **test-verified**, forge changes are **compile-verified** (full reobf jar)
+and marked as such in README/TODO.
+
+* **Protocol hardening + fuzzing (TODO 19).** `ProtocolFuzzTest` feeds random and malformed
+  bodies to every registered message id. It found a remote OOM: `ExtendedByteBuf.readString`
+  trusted the announced length before Netty allocated the decode buffer, and
+  `new byte[readVarInt()]` / `new String[readVarInt()]` / `new ChunkKey[readVarInt()]` had the
+  same problem. Added bounds-checked `readByteArray`, `readStringArray`,
+  `readChunkKeyArray` and a 1 MiB `MAX_STRING_BYTES`; every call site now uses them.
+  `ExtendedByteBufTest` covers the guards.
+* **Master Prometheus endpoint (TODO 17).** `MetricsServer` serves `/metrics` on
+  `metrics-port` (default off) with uptime, online servers/players, owned/subscribed chunks,
+  pending entity writes and next entity id. Verified end to end by starting the fat jar with
+  `-Dmultiforge.master.metricsPort=39001` and scraping it, plus `MetricsServerTest` and a
+  `MasterIntegrationTest` case that drives real counters.
+* **Entity ownership resync.** `EntitySyncManager.onChunkOwnershipGained` re-snapshots every
+  entity of a newly owned chunk to its entity subscribers; `EntityChunkChangedPacket` is no
+  longer log-only. This closes the one-tick freeze documented in KNOWN_ISSUES.
+* **Main scoreboard sync (TODO 9).** `PlayerListBroadcastMixin` captures the four vanilla
+  clientbound scoreboard packets; `ScoreboardSyncManager` forwards them as peer packet 30 and
+  replays the vanilla mutation on the receiver (criteria included for a new objective), and
+  sends the full scoreboard to a peer on connect. Boss bars are not synced (upstream parity).
+* **Live statistics/advancements (TODO 11).** `StatsCounterIncrementMixin` batches deltas for
+  ten seconds (packet 31); `PlayerAdvancementsAwardMixin` forwards a successful criterion
+  (packet 32); `PlayerProgressSyncManager` applies them under an echo guard. This closes the
+  player-handover window; files stay authoritative on save/load.
+* **`debug.chunkBorders` (TODO 16).** Implemented as `/multiforge borders`
+  (`ChunkBorderVisualizer`): particles on the current chunk border, green = owned here, red =
+  another server, white = unowned; opt-in through the existing config option.
+* **Config hot reload (TODO 15).** `MultiForgeServer.config` is volatile and swapped on
+  `ModConfigEvent.Reloading`; a changed master address reconnects, disabling chunk borders
+  clears viewers; bound/negotiated values are logged as restart-only.
+* **Op sync (TODO 10)** is documented as done for vanilla operators; Forge has no Bukkit
+  permission plugins.
+* **Bug fixed during verification:** the entity-id counter could be moved backwards by a
+  queued stale write landing after `flush()` (`entityIdBlocksAreDisjointAndPersisted` failed
+  once); writes are now serialized, `flush()` waits for the queue, and a monotonic guard
+  refuses to write a smaller counter.
+* Test counts after this session: `./gradlew build :multiforge-protocol:test
+  :multiforge-master:test :multiforge-api:test` passes (protocol 30, master 38, api 4). Next non-GPU work: live-verify the
+  forge features above, per-chunk sequence numbers/acks, leader election, structured download
+  progress and the remaining performance items.
 

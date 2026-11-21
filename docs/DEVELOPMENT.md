@@ -132,7 +132,16 @@ used as evidence in `compat/evidence/`. See
 ## Debugging
 
 * `debug.logging = true` logs ownership requests/acquisitions, chunk loads and file syncs.
+* `debug.chunkBorders = true` enables `/multiforge borders`; the command toggles particle
+  lines on the current chunk border for the invoking player (green = owned here, red =
+  another server, white = unowned). It is off by default because it sends particles twice a
+  second.
 * `/multiforge status` shows IO counters and peer count.
+* `synchronization.scoreboards = true` (default) mirrors the main scoreboard;
+  `statistics`/`advancements` also push live deltas, not only the save-time files.
+* Master: set `metrics-port` and optionally `metrics-address` in
+  `multiforge-master.properties` to expose Prometheus counters on `/metrics` (default
+  disabled). Scrape it from a private interface; it has no authentication.
 * The master logs every connection, start announcement, chunk lock request and error.
 * If a Mixin fails to apply the server aborts during class transformation; the log names the
   mixin and the injection. Re-run `:multiforge-forge:build` to regenerate the refmap after

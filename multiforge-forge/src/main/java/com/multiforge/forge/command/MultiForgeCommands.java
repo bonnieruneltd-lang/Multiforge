@@ -6,11 +6,13 @@ import com.multiforge.forge.MultiForgeServer;
 import com.multiforge.forge.player.PlayerSyncManager;
 import com.multiforge.protocol.ChunkKey;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -52,6 +54,7 @@ public final class MultiForgeCommands {
                                                 com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "x"),
                                                 com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "z"))))))
                 .then(Commands.literal("chunks").executes(context -> chunks(context.getSource())))
+                .then(Commands.literal("borders").executes(context -> borders(context.getSource())))
                 .then(Commands.literal("compat").executes(context -> compat(context.getSource())))
                 .then(Commands.literal("download")
                         .then(Commands.argument("path", StringArgumentType.greedyString())
@@ -65,6 +68,38 @@ public final class MultiForgeCommands {
         dispatcher.register(Commands.literal("mfslist")
                 .requires(source -> source.hasPermission(2))
                 .executes(context -> players(context.getSource())));
+    }
+
+    /**
+     * Toggles the chunk-border particle visualization for the invoking player.
+     *
+     * <p>{@code debug.chunkBorders} must be enabled in the config; the option is
+     * documented in {@code docs/DEVELOPMENT.md}.</p>
+     *
+     * @param source command source
+     * @return 1 when the state changed, 0 otherwise
+     */
+    private static int borders(CommandSourceStack source) {
+        MultiForgeServer runtime = runtime(source);
+        if (runtime == null) {
+            return 0;
+        }
+        if (!runtime.config().debugChunkBorders()) {
+            source.sendFailure(Component.literal(
+                    "Chunk border visualization is disabled (set debug.chunkBorders=true)."));
+            return 0;
+        }
+        ServerPlayer player;
+        try {
+            player = source.getPlayerOrException();
+        } catch (CommandSyntaxException e) {
+            source.sendFailure(Component.literal("Only a player can toggle chunk borders."));
+            return 0;
+        }
+        boolean enabled = runtime.borders().toggle(player);
+        source.sendSuccess(() -> Component.literal("Chunk border visualization "
+                + (enabled ? "on" : "off") + "."), false);
+        return 1;
     }
 
     private static int servers(CommandSourceStack source) {

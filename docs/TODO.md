@@ -28,8 +28,7 @@ coding.
    client is connected; the owner applies slot deltas). Cross-server damage now carries the
    causing/direct entity UUIDs and source position, and the owner rebuilds a real
    `DamageSource`. Still missing: mob navigation handover, raids, dragon fight, projectile
-   ownership beyond the attacker/direct UUIDs, sign editing, pistons and
-   statistics/advancement live updates.
+   ownership beyond the attacker/direct UUIDs, sign editing and pistons.
 6. **Chunk status protocol** - done: the master records load/unload status
    (`ChunkStatusTracker`) and does not redirect a read to a peer that is unloading; covered by
    `unloadingPeerIsNotChosenForChunkRead`. The client-side status view is still informational.
@@ -81,11 +80,24 @@ coding.
 8. **Run configuration for a second dev server** - done: the `server2` ForgeGradle run inherits
    the resolved launch configuration from `server` (`parent runs.server`) and runs from
    `run2/`; verified with two live servers in this environment. See DEVELOPMENT.md.
-9. **Scoreboards and boss bars** (`MultiPaperConfig.syncScoreboards` in the original).
-10. **Permissions/op synchronization** (`MultiPaperPermissionSyncer`). Ops JSON is synced; live
-    op changes are not broadcast as packets (see item 7).
-11. **Advancement/stat live updates**: files are uploaded on save; MultiPaper also sends
-    incremental updates.
+9. **Scoreboards** - done (session 6): every clientbound scoreboard broadcast
+   (`ClientboundSetObjectivePacket`, `ClientboundSetScorePacket`,
+   `ClientboundSetDisplayObjectivePacket`, `ClientboundSetPlayerTeamPacket`) is forwarded as
+   peer packet 30 and replayed through the vanilla scoreboard API on the other servers
+   (`ScoreboardSyncManager`). Only the main scoreboard is synchronized, matching upstream;
+   boss bars are per-player vanilla state and are **not** synchronized (upstream has no
+   equivalent either).
+10. **Permissions/op synchronization** - done for vanilla operators: `/op` and `/deop` upload
+    `ops.json` immediately and the other servers reload it and re-send permission levels (item
+    7), so there is no restart and no stale op. Bukkit permission plugins (what MultiPaper's
+    `MultiPaperPermissionSyncer` targets) do not exist on Forge; a permission mod would need
+    its own peer packet.
+11. **Advancement/stat live updates** - done (session 6): `PlayerProgressSyncManager`
+    batches `StatsCounter.increment` deltas for ten seconds (peer packet 31) and forwards a
+    successful `PlayerAdvancements.award` immediately (peer packet 32); the receiving server
+    applies them to a locally hosted player under an echo guard. This closes the handover
+    window where a player transfers before the files are saved. Files remain authoritative on
+    the master at save/load time.
 12. **Weather conflict resolution**: weather is last-writer-wins on a state transition; time already
     follows upstream's forced/periodic semantics. A master-owned logical clock would remove the
     remaining one-tick jitter after a lag spike.
@@ -93,18 +105,34 @@ coding.
     locks, but there is no leader election; the built-in proxy would also need it.
 14. **Built-in proxy player balancing**: the proxy currently picks a live server by load; the
     original can also use BungeeCord/Velocity. Verify reconnects and protocol edge cases.
-15. **Config hot reload**: `bake()` updates the snapshot but managers cache values (e.g. peer
-    compression). Recreate affected components on reload.
+15. **Config hot reload** - mostly done (session 6). `MultiForgeServer.config` is volatile and
+    `onConfigReloaded` swaps the snapshot on `ModConfigEvent.Reloading`, so every manager that
+    reads `config()` sees the new values immediately; a changed `master.address` closes the
+    control channel and reconnects, and disabling `debug.chunkBorders` clears the viewers.
+    `server.peerPort`, `server.name`, the ping/reconnect schedulers and the peer compression
+    threshold are fixed per process or per connection and are logged as restart/next
+    connection only.
 
 ## Low priority / polish
 
-16. `debug.chunkBorders` (in-game ownership visualisation) is declared but not implemented.
-    Implement it or remove the option (do not leave it as a silent no-op).
-17. Metrics/observability endpoint (Prometheus) for the master.
+16. `debug.chunkBorders` - done (session 6). `/multiforge borders` toggles particle lines on
+    the current chunk border (green = owned by this server, red = another server, white =
+    unowned). `ChunkBorderVisualizer` refreshes twice per second and sends only to the player
+    who enabled it; the config option is mandatory.
+17. Metrics/observability endpoint (Prometheus) - done (session 6). `MetricsServer` exposes
+    `/metrics` on `metrics-port` (disabled with -1, default) with uptime, online
+    servers/players, owned/subscribed chunks, pending entity writes and the next entity id.
+    Bind it to a private interface with `metrics-address` in production.
 18. Structured progress reporting for large file downloads (the download itself is streamed).
-19. More protocol fuzz tests (invalid message ids are covered, as are truncated and oversized
-    frames; add malformed string/array lengths and random payload fuzzing).
-20. A `multiforge-api` example mod and integration test.
+19. Protocol fuzz tests - done (session 6). `ProtocolFuzzTest` feeds malformed and random
+    bodies to every registered message id and checks announced byte/string/array lengths are
+    rejected before allocation. It found a remote OOM in `readString` and the array readers;
+    `ExtendedByteBuf` now has bounds-checked `readByteArray`, `readStringArray` and
+    `readChunkKeyArray`.
+20. A `multiforge-api` example mod and integration test - partially done (session 6):
+    `MultiForgeApiProviderTest` contains a complete example implementation plus contract
+    tests for registration, reset, the not-initialised error and the value objects. A
+    separate example mod project is still missing.
 21. Port MultiPaper's `/mpmap` and `/mpdebug` visualisations.
 22. Automate the live two-server check (container recipe) so it can run in CI.
 
@@ -129,7 +157,9 @@ coding.
   lost health when damaged from either server, and disappeared on both when killed.
   Players are mirrored by the player stream (TODO 2, done). Remaining (tracked above or in
   KNOWN_ISSUES): attacker attribution for cross-server hits, and a full resync when an entity
-  crosses an ownership boundary.
+  crosses an ownership boundary (session 6: `EntitySyncManager.onChunkOwnershipGained`
+  re-snapshots every entity of a newly owned chunk to its entity subscribers, and
+  `EntityChunkChangedPacket` is no longer log-only).
 
 * Master protocol, master process, proxy, CLI.
 * Master storage refactor (`MasterStorage`) and startup TOML reader.

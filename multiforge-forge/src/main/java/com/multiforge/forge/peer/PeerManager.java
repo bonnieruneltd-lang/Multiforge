@@ -143,6 +143,8 @@ public final class PeerManager {
             // Replay the local player list; a reconnected peer may have lost the
             // copies when its previous connection was reaped.
             server.playerMirrors().onPeerConnected(name);
+            // The peer may have missed scoreboard broadcasts while reconnecting.
+            server.scoreboards().onPeerConnected(name);
         }
     }
 

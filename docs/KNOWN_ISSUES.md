@@ -15,9 +15,12 @@ the mitigation.
   ownership still relies on the owner having a mirror of the shooter; there is no
   entity-handover protocol for a projectile that outlives its shooter's chunk.
 * **Ownership boundary crossings:** an entity that walks from a chunk owned by A into one
-  owned by B can freeze for a moment. A stops broadcasting when its chunk is no longer the
-  entity's chunk, and B starts once it ticks and owns the new chunk; there is no full NBT
-  resync on the crossing yet.
+  owned by B can still miss a packet in the handover tick. The new owner now re-sends an NBT
+  snapshot of every entity in the chunk to all entity subscribers when it gains ownership
+  (`EntitySyncManager.onChunkOwnershipGained`), and a peer's
+  `EntityChunkChangedPacket` triggers the same resync on the owning server, so the window is
+  one tick instead of "until the next spawn/save". A mirror that was already removed is
+  recreated by the snapshot.
 * **Players use the player stream.** A mirrored player is an `ExternalPlayer` registered in
   the vanilla `PlayerList` and level; `EntitySyncManager` forwards its movement, metadata and
   equipment but never treats it as an ordinary NBT entity. The copy is not saved and is not
@@ -123,8 +126,12 @@ as corrupt until they are rewritten (re-save the chunk through the master).
 
 ### 9. Config hot reload is partial
 
-`/reload` re-bakes the config snapshot, but components that cache values at construction (peer
-compression threshold, master address) keep the old values until restart.
+`/reload` re-bakes the snapshot and `MultiForgeServer.onConfigReloaded` swaps it, so tick,
+file, world and player paths use the new values immediately; a changed `master.address`
+reconnects the control channel. Values that are bound or negotiated once still need a
+restart: `server.peerPort`, `server.name`, the peer compression threshold of an existing peer
+connection, and the ping/reconnect schedulers (their period is fixed when they are created).
+The server logs which value was not applied.
 
 ## Operational notes
 
@@ -150,10 +157,13 @@ several MB per minute. Use it only while diagnosing.
 After changing a mixin target or adding a new mixin, rebuild before running, otherwise the
 refmap and the mixin config are out of date and Mixin will fail at class transformation.
 
-### 14. `debug.chunkBorders` is not implemented
+### 14. `debug.chunkBorders` draws only the current chunk
 
-The option exists in the config and is documented as reserved. Either implement it or remove
-it (see TODO.md item 16).
+`/multiforge borders` is implemented (session 6): it draws the border of the chunk the player
+stands in with particles, coloured by owner (green = this server, red = another, white =
+unowned). It intentionally does not draw the whole view distance: that would be hundreds of
+particles per player per refresh. Clients that hide particles (or have them disabled) will not
+see it even though the server sends the packets.
 
 ## Interoperability and compatibility findings (session 3)
 
@@ -184,6 +194,19 @@ The message is cosmetic but confusing; a future adapter could delay the probe or
 Its Modrinth version lists 1.20.1 but its data-pack functions use 1.20.2 `return run`
 syntax; every tree function fails to parse. Pin `timber-strike-1.3.jar`, which loads cleanly.
 This is a target-mod defect, recorded so nobody re-pins 3.0.
+
+### 19. Scoreboards, statistics and advancements are cluster state with a local tail
+
+* The **main scoreboard** is synchronized by replaying vanilla clientbound packets on every
+  server (`ScoreboardSyncManager`, peer packet 30). Per-player sidebars, boss bars and
+  scoreboards created by mods are not synchronized; they are not world state and upstream
+  does not synchronize them either. Two admins changing the same objective on two servers in
+  the same round-trip still last-writer-wins.
+* **Statistics** are sent as batched deltas every ten seconds and **advancements** when a
+  criterion is awarded. They are applied only by the server currently hosting the player, so
+  they close the handover window; they are not mirrored onto other servers' copies of the
+  player. The player data file on the master is still authoritative on save/load, and a
+  statistic earned while no peer connection exists waits for the next save.
 
 ## Fixed issues worth knowing about (regression tests cover them)
 
@@ -216,6 +239,12 @@ This is a target-mod defect, recorded so nobody re-pins 3.0.
   master-connection gates were removed from `LevelChunkMixin` and `ChunkManager`.
 * A two-server reconnect threw `ConcurrentModificationException` in the chunk status handler;
   `getSubscribers` returns an immutable snapshot (`subscriberSnapshotsAreImmutableAcrossChanges`).
+* A malformed frame could announce a multi-gigabyte string or array length and make the
+  decoder allocate it before the bounds check (`readString`, `new byte[readVarInt()]`,
+  `new String[readVarInt()]`, `new ChunkKey[readVarInt()]`). Every reader now validates the
+  announced length against the frame first (`ExtendedByteBuf.readByteArray`,
+  `readStringArray`, `readChunkKeyArray`); `ProtocolFuzzTest` and
+  `ExtendedByteBufTest` cover it.
 * A mirrored player's main hand could land in the wrong inventory slot: `Player.setItemSlot`
   writes `Inventory.items[selected]`, and the owner's `ClientboundSetEquipmentPacket` is sent
   before the live-selected-slot packet in the same tick. `EntitySyncManager.applyEquipment`

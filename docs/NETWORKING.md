@@ -17,6 +17,10 @@ message := varint transactionId, varint messageId, payload
   (`-Dmultiforge.protocol.maxFrameBytes`) are rejected before they are buffered, and a
   partial frame is kept until the rest arrives rather than being consumed.
 * `MessageEncoder/Decoder` write/read the two ids and call `Message#write`/`Message(ExtendedByteBuf)`.
+* Every announced length is validated against the unread frame before allocating:
+  `ExtendedByteBuf.readByteArray`, `readStringArray`, `readChunkKeyArray` and `readString`
+  reject negative or impossibly large values (a malformed frame used to be able to request a
+  multi-gigabyte array and kill the process). `ProtocolFuzzTest` fuzzes every message id.
 * `MessageHandler` keeps a map of transaction id -> callback. A reply is delivered to the
   callback when the ids match. Reply-only messages received without a callback are ignored
   (they happen when a request is retransmitted after a reconnect).
@@ -155,12 +159,17 @@ varint frameLength, varint uncompressedLength, varint packetId, payload
 | 27 | `OpenContainerPacket(world, pos, player)` | a player opened a container owned by the receiver |
 | 28 | `ContainerClickPacket(world, pos, player, changes[])` | changed container slots after a menu click |
 | 29 | `ContainerClosePacket(world, pos, player)` | the forwarded container window closed |
+| 30 | `ScoreboardUpdatePacket(criteria, packetBytes)` | one clientbound scoreboard packet (`SetObjective`, `SetScore`, `SetDisplayObjective`, `SetPlayerTeam`) |
+| 31 | `PlayerStatsIncreasePacket(uuid, entries[])` | batched statistic deltas (type id, value id, delta) |
+| 32 | `AdvancementProgressPacket(uuid, advancement, criterion)` | one advancement criterion was granted |
 
 The entity family (15-19) is the M1 mirroring protocol. Ids 20-21 extend it to players and
 ids 22-26 carry live player state; they are described in
 [SYNCHRONIZATION.md](SYNCHRONIZATION.md#players). Ids 27-29 forward container windows
-([SYNCHRONIZATION.md](SYNCHRONIZATION.md#containers)). Ids were appended, so older peers keep
-their ids.
+([SYNCHRONIZATION.md](SYNCHRONIZATION.md#containers)), id 30 synchronizes the main scoreboard,
+and ids 31-32 carry live statistics/advancement progress
+([SYNCHRONIZATION.md](SYNCHRONIZATION.md#scoreboards-statistics-and-advancements)). Ids were
+appended, so older peers keep their ids.
 
 ### Ownership epochs
 
@@ -203,8 +212,10 @@ it unchanged except for package names and logging.
 
 Master: `multiforge-master.properties` (`address`, `port`, `proxy-port`,
 `allow-multiple-connections`, `ping-timeout-millis`, `generation-lease-millis`,
-`generation-wait-millis`) plus `-Dmultiforge.master.storage` for
-the storage root.
+`generation-wait-millis`, `metrics-port`, `metrics-address`) plus
+`-Dmultiforge.master.storage` for the storage root. `metrics-port=-1` disables the
+Prometheus endpoint; `/metrics` then reports the counters listed in
+[TODO.md](TODO.md#low-priority--polish).
 
 Server: `config/multiforge-server.toml` (see `MultiForgeConfig`):
 
@@ -239,6 +250,7 @@ jsonFiles = true
 playerData = true
 statistics = true
 advancements = true
+scoreboards = true
 filesToSyncOnStartup = []
 filesToSyncInRealTime = []
 filesToNotSync = ["logs", "crash-reports"]

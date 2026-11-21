@@ -2,6 +2,7 @@ package com.multiforge.forge;
 
 import com.multiforge.api.MultiForgeApiProvider;
 import com.multiforge.forge.api.MultiForgeApiImpl;
+import com.multiforge.forge.chunk.ChunkBorderVisualizer;
 import com.multiforge.forge.chunk.ChunkManager;
 import com.multiforge.forge.chunk.ChunkStorageRegistry;
 import com.multiforge.forge.chunk.ChunkSyncIo;
@@ -14,8 +15,10 @@ import com.multiforge.forge.peer.PeerManager;
 import com.multiforge.forge.peer.PeerServer;
 import com.multiforge.forge.peer.packet.EntityChunkChangedPacket;
 import com.multiforge.forge.player.PlayerMirrorManager;
+import com.multiforge.forge.player.PlayerProgressSyncManager;
 import com.multiforge.forge.player.PlayerStateSyncManager;
 import com.multiforge.forge.player.PlayerSyncManager;
+import com.multiforge.forge.scoreboard.ScoreboardSyncManager;
 import com.multiforge.forge.world.FileSyncer;
 import com.multiforge.forge.world.WorldSyncManager;
 import com.multiforge.protocol.ChunkKey;
@@ -77,13 +80,15 @@ public final class MultiForgeServer {
     private static volatile MultiForgeServer instance;
 
     private final MinecraftServer server;
-    private final MultiForgeConfig.Snapshot config;
+    /** Live configuration; replaced on {@code /reload} (see {@link #onConfigReloaded()}). */
+    private volatile MultiForgeConfig.Snapshot config;
     private final String serverName;
 
     private final MasterConnection master;
     private final PeerManager peers;
     private final PeerServer peerServer;
     private final ChunkManager chunks;
+    private final ChunkBorderVisualizer borders;
     private final ChunkSyncIo chunkIo;
     private final WorldSyncManager world;
     private final PlayerSyncManager players;
@@ -92,6 +97,8 @@ public final class MultiForgeServer {
     private final FileSyncer files;
     private final EntitySyncManager entities;
     private final ContainerSyncManager containers;
+    private final ScoreboardSyncManager scoreboards;
+    private final PlayerProgressSyncManager progress;
     private final EntityIdAllocator entityIds;
     private final ModCompatibilityManager compat;
     private final MultiForgeApiImpl api;
@@ -112,6 +119,7 @@ public final class MultiForgeServer {
         this.peers = new PeerManager(this);
         this.peerServer = new PeerServer(this, config.peerPort());
         this.chunks = new ChunkManager(this);
+        this.borders = new ChunkBorderVisualizer(this);
         this.chunkIo = new ChunkSyncIo(this);
         this.world = new WorldSyncManager(this);
         this.players = new PlayerSyncManager(this);
@@ -120,6 +128,8 @@ public final class MultiForgeServer {
         this.files = new FileSyncer(this);
         this.entities = new EntitySyncManager(this);
         this.containers = new ContainerSyncManager(this);
+        this.scoreboards = new ScoreboardSyncManager(this);
+        this.progress = new PlayerProgressSyncManager(this);
         this.compat = new ModCompatibilityManager(this);
         this.api = new MultiForgeApiImpl(this);
         this.entityIds = new EntityIdAllocator(
@@ -283,6 +293,53 @@ public final class MultiForgeServer {
     }
 
     /**
+     * Applies a configuration reload without a restart.
+     *
+     * <p>Called by {@code ForgeEventHandlers} after {@link MultiForgeConfig#bake()}. Every
+     * manager reads {@link #config()} on each use, so the new values take effect immediately
+     * for the tick, file, world and player paths. Components with immutable state are
+     * handled explicitly:</p>
+     *
+     * <ul>
+     *   <li>{@code master.address}: the existing control connection is closed, which makes
+     *       {@code MasterConnection} reconnect to the new address;</li>
+     *   <li>{@code server.peerPort}, {@code server.name}: bound/announced at startup and can
+     *       only change with a restart (logged);</li>
+     *   <li>{@code compressionThreshold}: negotiated per peer connection, so only new peer
+     *       connections use the new value (logged);</li>
+     *   <li>{@code debug.chunkBorders=false}: clears the enabled viewers immediately.</li>
+     * </ul>
+     */
+    public void onConfigReloaded() {
+        MultiForgeConfig.Snapshot updated = MultiForgeConfig.snapshot();
+        MultiForgeConfig.Snapshot previous = config;
+        if (updated.equals(previous)) {
+            return;
+        }
+        config = updated;
+        LOGGER.info("MultiForge configuration reloaded");
+        if (!updated.masterAddress().equals(previous.masterAddress())) {
+            LOGGER.info("Master address changed to {}; reconnecting", updated.masterAddress());
+            io.netty.channel.Channel channel = master.channel();
+            if (channel != null) {
+                channel.close();
+            }
+        }
+        if (updated.peerPort() != previous.peerPort()) {
+            LOGGER.warn("server.peerPort is only applied on restart (current {}).", previous.peerPort());
+        }
+        if (!updated.serverName().isEmpty() && !updated.serverName().equals(previous.serverName())) {
+            LOGGER.warn("server.name is only applied on restart (current {}).", serverName);
+        }
+        if (updated.compressionThreshold() != previous.compressionThreshold()) {
+            LOGGER.info("Peer compression threshold applies to new peer connections only");
+        }
+        if (!updated.debugChunkBorders()) {
+            borders.clear();
+        }
+    }
+
+    /**
      * Called once per server tick by the mod event handler.
      */
     public void tick() {
@@ -291,9 +348,11 @@ public final class MultiForgeServer {
         }
         tickCounter++;
         chunks.tick();
+        borders.tick();
         entities.tick();
         playerMirrors.tick();
         playerState.tick();
+        progress.tick();
         world.tick();
         files.tick();
     }
@@ -443,8 +502,11 @@ public final class MultiForgeServer {
         playerMirrors.clear();
         playerState.clear();
         containers.clear();
+        scoreboards.clear();
+        progress.clear();
         entityIds.clear();
         chunks.clear();
+        borders.clear();
         levels.clear();
         ChunkStorageRegistry.clear();
         instance = null;
@@ -505,6 +567,11 @@ public final class MultiForgeServer {
         return chunks;
     }
 
+    /** @return debug chunk-border visualization */
+    public ChunkBorderVisualizer borders() {
+        return borders;
+    }
+
     /** @return chunk data plane */
     public ChunkSyncIo chunkIo() {
         return chunkIo;
@@ -547,6 +614,16 @@ public final class MultiForgeServer {
     /** @return cross-server container window forwarding */
     public ContainerSyncManager containers() {
         return containers;
+    }
+
+    /** @return main-scoreboard synchronization */
+    public ScoreboardSyncManager scoreboards() {
+        return scoreboards;
+    }
+
+    /** @return live statistics/advancement synchronization */
+    public PlayerProgressSyncManager progress() {
+        return progress;
     }
 
     /** @return cluster-unique entity id allocator backed by the master */
