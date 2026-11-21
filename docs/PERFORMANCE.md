@@ -170,13 +170,13 @@ Ordered by expected value. None of these are required for correctness.
 4. **Inline `Inflater` per peer connection.** `PeerFrameCodec.Decoder` allocates a
    new `Inflater` for every compressed frame (chunk transfers). Chunk transfers
    are rare compared to entity traffic, so this is a low priority.
-5. **Gamerule diff without `createTag`.** `WorldSyncManager.pollGameRules` builds a
-   `CompoundTag` of every gamerule once per second per level. Small, but it could
-   be removed with a direct `GameRules` visitor if the API exposes one.
-6. **Entity snapshots per subscriber.** `onEntitySubscriberAdded` serializes the
-   chunk's entities once per subscriber; with more than two servers that is N-1
-   copies of the same NBT. Encoding once and sending it to all new subscribers
-   would be cheaper on large clusters.
+5. ~~Gamerule diff without `createTag`~~ - done. `WorldSyncManager.pollGameRules` now
+   walks `GameRules.visitGameRuleTypes` and calls `Value.serialize()`, which is the same
+   string `/gamerule` accepts, so no `CompoundTag` is built per second per level.
+6. ~~Entity snapshots per subscriber~~ - done for the ownership resync path:
+   `onChunkOwnershipGained` serializes each entity once and sends the same packet to
+   every subscriber. A single new subscriber still gets its own snapshot, which is
+   one encoding by definition.
 7. **Master region cache granularity.** `RegionFileCache` is a single
    `synchronized` `LinkedHashMap`. It only serializes cache lookups (the IO itself
    happens under the per-file lock), but a segmented cache would remove that

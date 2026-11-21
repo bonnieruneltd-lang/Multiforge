@@ -243,7 +243,8 @@ Done and verified:
 
 Still open (moved from the analysis, in value order): chunk NBT compression off the server
 thread (`respondToChunkRequest`), a `ChunkKey` cache for the entity tick path, a per
-connection `Inflater` for compressed peer frames, gamerule diffing without `createTag`,
-single-encode entity snapshots for many subscribers, and a segmented master region cache.
+connection `Inflater` for compressed peer frames, and a segmented master region cache.
+Gamerule diffing without `createTag` and single-encode entity snapshots for many subscribers
+are done (session 6).
 
 * Forge 47.4.29 build/run verification and the full 20-target server startup.

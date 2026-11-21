@@ -286,19 +286,26 @@ public final class WorldSyncManager {
      * @param state snapshot
      */
     private void pollGameRules(ServerLevel level, String world, LevelState state) {
-        CompoundTag tag = level.getGameRules().createTag();
+        GameRules rules = level.getGameRules();
         boolean baseline = !state.initialized;
-        for (String rule : tag.getAllKeys()) {
-            String value = tag.getString(rule);
-            String previous = state.gameRules.put(rule, value);
-            if (baseline || java.util.Objects.equals(previous, value)) {
-                continue;
+        // Visit the rule table directly instead of materializing a CompoundTag with
+        // createTag() every second and every level. serialize() returns exactly the
+        // string the /gamerule command accepts on the receiving server.
+        rules.visitGameRuleTypes(new GameRules.GameRuleTypeVisitor() {
+            @Override
+            public <T extends GameRules.Value<T>> void visit(GameRules.Key<T> key, GameRules.Type<T> type) {
+                String rule = key.getId();
+                String value = rules.getRule(key).serialize();
+                String previous = state.gameRules.put(rule, value);
+                if (baseline || java.util.Objects.equals(previous, value)) {
+                    return;
+                }
+                server.peers().broadcast(new GameRuleUpdatePacket(world, rule, value));
+                if (server.config().debugLogging()) {
+                    LOGGER.info("Broadcast gamerule {}={} for {}", rule, value, world);
+                }
             }
-            server.peers().broadcast(new GameRuleUpdatePacket(world, rule, value));
-            if (server.config().debugLogging()) {
-                LOGGER.info("Broadcast gamerule {}={} for {}", rule, value, world);
-            }
-        }
+        });
     }
 
     /**
