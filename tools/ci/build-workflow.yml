@@ -1,0 +1,49 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # The JVM-only modules do not need Minecraft; this catches protocol, master and
+      # API regressions in a couple of minutes even when the Forge download is slow.
+      - name: Protocol, master and API tests
+        run: ./gradlew --no-daemon :multiforge-protocol:test :multiforge-master:test :multiforge-api:test
+
+      # ForgeGradle downloads Minecraft and mappings; the cache above makes later runs
+      # fast. This also produces the reobfuscated mod jar and checks the mixin refmap.
+      - name: Full build (Forge mod, master, protocol, API)
+        run: ./gradlew --no-daemon build
+
+      - name: Upload jars
+        uses: actions/upload-artifact@v4
+        with:
+          name: multiforge-jars
+          path: |
+            multiforge-forge/build/libs/multiforge-*.jar
+            multiforge-master/build/libs/multiforge-master-*-all.jar
+          if-no-files-found: warn
+
+  # The two-server live check needs a Minecraft server download, RCON and a disposable
+  # world; it stays a documented manual step (docs/DEVELOPMENT.md) rather than a flaky
+  # workflow. Everything it would catch that is testable without a client is covered by
+  # the integration tests above.

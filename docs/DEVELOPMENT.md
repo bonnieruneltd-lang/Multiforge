@@ -167,7 +167,9 @@ standby waits and takes over when the leader exits.
 
 ## Continuous integration
 
-`.github/workflows/build.yml` runs on every push and pull request: it provisions JDK 17 and
+`tools/ci/build-workflow.yml` is the GitHub Actions workflow (copy it to
+`.github/workflows/build.yml` when adopting it; this repository's automation token cannot
+create workflow files). It runs on every push and pull request: it provisions JDK 17 and
 Gradle, runs `:multiforge-protocol:test :multiforge-master:test :multiforge-api:test`, then
 `./gradlew build` (which includes the Forge reobfuscated jar and mixin refmap) and uploads
 the jars. The live master + two-server check is still manual because it needs a Minecraft
