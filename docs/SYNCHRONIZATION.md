@@ -183,16 +183,19 @@ attacker/direct UUIDs above. See [TODO.md](TODO.md) and [KNOWN_ISSUES.md](KNOWN_
 
 ## Scoreboards, statistics and advancements
 
-* **Main scoreboard.** `PlayerList.broadcastAll` is hooked by
-  `PlayerListBroadcastMixin`. When vanilla broadcasts one of the four clientbound scoreboard
-  packets (`SetObjective`, `SetScore`, `SetDisplayObjective`, `SetPlayerTeam`),
-  `ScoreboardSyncManager` serializes it (wire id plus body) into
-  `ScoreboardUpdatePacket` (peer id 30) and the receiving server replays the mutation through
-  the vanilla `ServerScoreboard` API. The packet also carries the objective criteria for a
-  new objective, because the clientbound packet does not. Only the main scoreboard is
-  synchronized; per-player sidebars, boss bars and modded scoreboards are not world state.
-  A thread-local `APPLYING` flag suppresses echo, and a replayed mutation still broadcasts to
-  the local clients.
+* **Main scoreboard.** `ServerScoreboardObjectiveMixin` hooks the `ServerScoreboard`
+  callbacks (`onObjectiveAdded/Changed/Removed`, `onScoreChanged`, `onPlayerScoreRemoved`,
+  `setDisplayObjective` and the team callbacks). `ScoreboardSyncManager` serializes the
+  equivalent vanilla clientbound packet into `ScoreboardUpdatePacket` (peer id 30) and the
+  receiving server replays the mutation through the vanilla `ServerScoreboard` API. The hooks
+  are required because 1.20.1 does not broadcast objective add/remove and only broadcasts
+  score/display/team packets to players that already track the main scoreboard. A peer that
+  connects receives every objective, its scores, all display slots and all teams. The packet
+  carries the objective criteria for a new objective. Only the main scoreboard is synchronized;
+  per-player sidebars, boss bars and modded scoreboards are not world state. A thread-local
+  `APPLYING` flag suppresses echo, and a replayed mutation still broadcasts to local clients.
+  Verified live on two dev servers (objectives, scores, teams, sidebar display):
+  `compat/evidence/server-features-20261121T065500Z.md`.
 * **Statistics.** `StatsCounterIncrementMixin` records every increase at
   `StatsCounter.increment`; `PlayerProgressSyncManager` accumulates deltas per player and
   sends `PlayerStatsIncreasePacket` (id 31) every ten seconds. The receiver adds the delta to

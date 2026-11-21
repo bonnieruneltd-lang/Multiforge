@@ -50,7 +50,7 @@ touching code, then read the architecture document of the subsystem you change.
 | Block/block entity sync | `LevelChunkMixin`, `BlockEntityMixin`, `ChunkManager` |
 | Player data / login | `PlayerSyncManager`, `PlayerListMixin`, `ServerStatsCounterMixin`, `PlayerAdvancementsMixin` |
 | Player mirroring | `player/PlayerMirrorManager`, `player/ExternalPlayer`, `PlayerListAccessor`, `ServerPlayerHurtMixin`, `EntitySyncManager` |
-| Main scoreboard sync | `scoreboard/ScoreboardSyncManager`, `PlayerListBroadcastMixin`, `ScoreboardUpdatePacket` |
+| Main scoreboard sync | `scoreboard/ScoreboardSyncManager`, `ServerScoreboardObjectiveMixin`, `ScoreboardUpdatePacket` |
 | Live stats/advancements | `player/PlayerProgressSyncManager`, `StatsCounterIncrementMixin`, `PlayerAdvancementsAwardMixin`, packets 31-32 |
 | Chunk border debug view | `chunk/ChunkBorderVisualizer`, `/multiforge borders` in `MultiForgeCommands` |
 | Master metrics | `master/util/MetricsServer`, `MultiForgeMaster.snapshotMetrics`, `MasterConfig` metrics keys |
@@ -130,9 +130,16 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
 * This session (6) also added the master leader lock (`leader-election`, opt-in), download
   progress reporting, `/multiforge map`, BungeeCord/Velocity legacy IP+UUID+profile
   forwarding (`server.bungeeCord`, opt-in with a firewall requirement) and single-encode
-  entity resyncs. All compile; protocol/master/api suites pass (protocol 36, master 41, api
-  4). The BungeeCord mixins are compile-verified only; the parser, leader lock and download
-  progress are unit/integration tested. No live proxy or two-server game run happened here.
+  entity resyncs. **Verified live** on two headless Forge dev servers plus a master: objectives,
+  scores, teams and sidebar slots, block/time sync, player mirroring, `/multiforge map`,
+  forwarded BungeeCord login (IP+UUID) and two-process leader takeover. Evidence:
+  `compat/evidence/server-features-20261121T065500Z.md`. Protocol/master/api suites pass
+  (protocol 36, master 41, api 4). Live testing found four bugs that compile checks missed:
+  the config was a Forge SERVER config (wrong directory), Forge strips the forwarded host
+  before the handshake handler, vanilla does not broadcast objective add/remove, and
+  `ClientboundSetScorePacket` takes `(method, objectiveName, owner, score)`.
+* The config is `COMMON` at `config/multiforge-server.toml`; Forge 47.4.29 `/reload` does not
+  fire config reload events, so config changes still need a restart in practice.
 * It also finished the earlier non-GPU items: main-scoreboard sync (peer packet 30),
   live statistic/advancement deltas (31-32), `/multiforge borders`, the master Prometheus
   endpoint, entity ownership-boundary resyncs and protocol input hardening/fuzzing. All

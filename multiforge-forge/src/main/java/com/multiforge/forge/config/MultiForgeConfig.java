@@ -1,6 +1,7 @@
 package com.multiforge.forge.config;
 
 import net.minecraftforge.common.ForgeConfigSpec;
+import net.minecraftforge.fml.loading.FMLPaths;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * MultiForge server configuration, expressed as a Forge {@code SERVER} config.
+ * MultiForge server configuration, expressed as a Forge {@code COMMON} config.
  *
  * <p>The original MultiPaper read {@code multipaper.yml} through Paper's config
  * system. Forge already provides a config system (TOML + reload support), so the
@@ -20,9 +21,13 @@ import java.util.Map;
  * immutable {@link Snapshot} that the runtime reads without touching the config
  * system on hot paths.</p>
  *
- * <p>Values are only valid while a server is running: {@code SERVER} configs are
- * loaded when a world is opened. {@link #snapshot()} returns the last baked
- * snapshot and is safe to call from any thread (volatile read).</p>
+ * <p>The config is registered as {@code COMMON}, so Forge stores it at
+ * {@code config/multiforge-server.toml} and loads it before the world is opened.
+ * That matters because Forge puts {@code SERVER} configs under
+ * {@code world/serverconfig/}: the file the documentation (and the startup TOML
+ * reader) uses would otherwise be ignored once Forge loaded its own defaults.
+ * {@link #snapshot()} returns the last baked snapshot and is safe to call from any
+ * thread (volatile read).</p>
  */
 public final class MultiForgeConfig {
 
@@ -246,6 +251,44 @@ public final class MultiForgeConfig {
         } catch (IOException | RuntimeException e) {
             return snapshot;
         }
+    }
+
+    /**
+     * Copies a config written by an older MultiForge build to the new location.
+     *
+     * <p>Earlier builds registered the config as a Forge {@code SERVER} config, so
+     * Forge wrote it to {@code <world>/serverconfig/multiforge-server.toml} while the
+     * documentation (and the startup reader) used {@code config/multiforge-server.toml}.
+     * The config is now {@code COMMON}; this one-time migration prevents an operator's
+     * settings from being silently replaced by defaults. Existing target files are
+     * never overwritten.</p>
+     *
+     * @return the legacy file that was copied, empty when no migration happened
+     */
+    public static java.util.Optional<Path> migrateLegacyConfig() {
+        Path target = FMLPaths.CONFIGDIR.get().resolve("multiforge-server.toml");
+        if (Files.exists(target)) {
+            return java.util.Optional.empty();
+        }
+        try (java.util.stream.Stream<Path> stream = Files.walk(FMLPaths.GAMEDIR.get(), 3)) {
+            java.util.Optional<Path> legacy = stream
+                    .filter(Files::isRegularFile)
+                    .filter(path -> "multiforge-server.toml".equals(path.getFileName().toString()))
+                    .filter(path -> path.getParent() != null
+                            && "serverconfig".equals(path.getParent().getFileName().toString()))
+                    .findFirst();
+            if (legacy.isPresent()) {
+                Path parent = target.getParent();
+                if (parent != null) {
+                    Files.createDirectories(parent);
+                }
+                Files.copy(legacy.get(), target);
+                return legacy;
+            }
+        } catch (IOException | RuntimeException e) {
+            // Migration is best effort; Forge will create a default file below.
+        }
+        return java.util.Optional.empty();
     }
 
     /**

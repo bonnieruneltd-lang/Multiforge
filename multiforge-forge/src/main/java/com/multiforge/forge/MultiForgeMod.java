@@ -34,7 +34,9 @@ public final class MultiForgeMod {
 
     /** Registers configuration and event handlers. */
     public MultiForgeMod() {
-        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, MultiForgeConfig.SPEC, "multiforge-server.toml");
+        MultiForgeConfig.migrateLegacyConfig().ifPresent(legacy ->
+                LOGGER.info("Migrated legacy config {} to config/multiforge-server.toml", legacy));
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, MultiForgeConfig.SPEC, "multiforge-server.toml");
         MinecraftForge.EVENT_BUS.register(ForgeEventHandlers.class);
         LOGGER.info("MultiForge {} loaded", VERSION);
     }

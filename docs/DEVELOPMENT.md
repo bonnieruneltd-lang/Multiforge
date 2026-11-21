@@ -55,7 +55,9 @@ and entity id block allocation.
    `[server] name = "server1"`.
 
 3. Second server. The `server2` run inherits the main class, module path, `MOD_CLASSES` and
-   arguments from the `server` run (ForgeGradle only fills those in for inherited runs):
+   arguments from the `server` run (ForgeGradle only fills those in for inherited runs).
+   For two servers in a small container, cap each dev JVM with
+   `-PmultiforgeRunHeap=1200M` (the default is 2 GB per server):
 
    ```bash
    mkdir -p multiforge-forge/run2
@@ -166,8 +168,13 @@ server download, RCON and a disposable world.
   `-Dmultiforge.master.storage=<dir>` sets the world/file root.
   `generation-lease-millis` / `generation-wait-millis` control the chunk generation
   lease (see [CHUNK_MANAGEMENT.md](CHUNK_MANAGEMENT.md)); `0` disables it.
-* Server: `config/multiforge-server.toml` (Forge `SERVER` config). Values are read at
-  start-up and re-baked on `/reload` (`ModConfigEvent`).
+* Server: `config/multiforge-server.toml` (Forge `COMMON` config, so the path is the same on
+  every world; earlier builds registered it as `SERVER`, which Forge stored under
+  `<world>/serverconfig/` and is migrated once on start-up). Values are read at start-up via a
+  small TOML reader because MultiForge connects before Forge loads the config. On Forge
+  47.4.29 `/reload` does not fire `ModConfigEvent.Reloading` for mod configs, so a config
+  change needs a restart in practice; `MultiForgeServer.onConfigReloaded` applies it if the
+  event does fire.
 
 ## Debugging
 

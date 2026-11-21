@@ -218,7 +218,8 @@ Master: `multiforge-master.properties` (`address`, `port`, `proxy-port`,
 Prometheus endpoint; `/metrics` then reports the counters listed in
 [TODO.md](TODO.md#low-priority--polish).
 
-Server: `config/multiforge-server.toml` (see `MultiForgeConfig`):
+Server: `config/multiforge-server.toml` (a Forge `COMMON` config, so it is not world-specific;
+see `MultiForgeConfig`):
 
 ```toml
 [master]

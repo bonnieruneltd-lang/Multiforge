@@ -93,6 +93,11 @@ public final class ScoreboardUpdatePacket extends PeerPacket {
         return criteria;
     }
 
+    /** @return size of the encoded vanilla packet payload, for diagnostics */
+    public int payloadLength() {
+        return payload.length;
+    }
+
     /**
      * @return vanilla packet reconstructed from the payload
      */

@@ -164,9 +164,10 @@ public final class MultiForgeServer {
     }
 
     private void start() {
-        LOGGER.info("Starting MultiForge as '{}' (master {}), sync: chunks={}, entities={}, players={}, world={}",
+        LOGGER.info("Starting MultiForge as '{}' (master {}), sync: chunks={}, entities={}, players={}, "
+                        + "world={}, bungeeCord={}",
                 serverName, config.masterAddress(), config.chunkSync(), config.entitySync(),
-                config.playerSync(), config.worldSync());
+                config.playerSync(), config.worldSync(), config.bungeeCord());
 
         peers.start();
         try {

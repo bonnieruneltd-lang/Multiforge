@@ -126,7 +126,9 @@ as corrupt until they are rewritten (re-save the chunk through the master).
 
 ### 9. Config hot reload is partial
 
-`/reload` re-bakes the snapshot and `MultiForgeServer.onConfigReloaded` swaps it, so tick,
+On Forge 47.4.29 `/reload` does not fire `ModConfigEvent.Reloading` for mod configs, so the
+live path below is only reachable on a Forge version that does. If the event fires,
+`MultiForgeServer.onConfigReloaded` swaps the snapshot, so tick,
 file, world and player paths use the new values immediately; a changed `master.address`
 reconnects the control channel. Values that are bound or negotiated once still need a
 restart: `server.peerPort`, `server.name`, the peer compression threshold of an existing peer
@@ -239,6 +241,18 @@ missing or duplicated progress message cannot corrupt a download. Very large fil
 slow link are throttled to one message per MiB so progress does not add meaningful
 traffic.
 
+### 23. Config location and reload on Forge
+
+The config is registered as a Forge `COMMON` config and lives at
+`config/multiforge-server.toml`, the path the documentation and the early start-up reader use.
+Earlier builds registered it as `SERVER`, which Forge stores in
+`<world>/serverconfig/multiforge-server.toml`; those settings are migrated once on start-up
+(`MultiForgeConfig.migrateLegacyConfig`). On Forge 47.4.29 `/reload` does not fire
+`ModConfigEvent.Reloading` for mod configs, so `MultiForgeServer.onConfigReloaded` is wired but
+not reachable through `/reload`; a changed config needs a restart in practice. If a future
+Forge version fires the event, the hot-reload path applies tick/file/world/player values and
+reconnects when `master.address` changed.
+
 ## Fixed issues worth knowing about (regression tests cover them)
 
 * Data stream downloads were truncated at 64 KiB because the outbound stream reused the
@@ -270,6 +284,17 @@ traffic.
   master-connection gates were removed from `LevelChunkMixin` and `ChunkManager`.
 * A two-server reconnect threw `ConcurrentModificationException` in the chunk status handler;
   `getSubscribers` returns an immutable snapshot (`subscriberSnapshotsAreImmutableAcrossChanges`).
+* The documented `config/multiforge-server.toml` was ignored after start-up because the config
+  was registered as a Forge `SERVER` config (which lives in `world/serverconfig/`); Forge then
+  reset `bungeeCord` to its default. The config is now `COMMON` with a legacy migration.
+* BungeeCord/Velocity forwarding data was invisible because Forge's
+  `ClientIntentionPacket` strips everything after the first NUL; the raw host is now captured
+  at the `readUtf` call site (`HandshakeAddressMixin`).
+* The scoreboard sync used `PlayerList.broadcastAll`, but 1.20.1 does not broadcast objective
+  add/remove at all and only broadcasts score/display/team packets to players that track the
+  main scoreboard; it now hooks the `ServerScoreboard` callbacks and sends a full
+  objective/score snapshot to a connecting peer. `ClientboundSetScorePacket` takes
+  `(method, objectiveName, owner, score)`; the swapped arguments silently dropped scores.
 * A malformed frame could announce a multi-gigabyte string or array length and make the
   decoder allocate it before the bounds check (`readString`, `new byte[readVarInt()]`,
   `new String[readVarInt()]`, `new ChunkKey[readVarInt()]`). Every reader now validates the

@@ -38,7 +38,9 @@ minecraft {
             property 'forge.logging.console.level', 'debug'
             property 'mixin.env.remapRefMap', 'true'
             property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
-            jvmArg '-Xmx2G'
+            // Override with -PmultiforgeRunHeap=1200M when running two dev servers in a
+            // memory-constrained container.
+            jvmArg "-Xmx${project.findProperty('multiforgeRunHeap') ?: '2G'}"
             jvmArg '-Djava.awt.headless=true'
             args '--nogui'
         }

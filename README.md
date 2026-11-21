@@ -52,14 +52,14 @@ integration tests and by running two real Forge servers against a master:
 | Cross-server container windows (chests, furnaces, ...) | implemented; open/click/close verified on a two-server cluster (see [compat/evidence/containers-epochs-userlists-20261115T074200Z.md](compat/evidence/containers-epochs-userlists-20261115T074200Z.md)) |
 | Ownership epochs on block/block-entity packets | implemented, master + protocol + master integration test |
 | Cross-server attacker attribution (death messages, kill credit) | implemented: causing/direct UUIDs + source position |
-| Main scoreboard (objectives, scores, teams, display slots) | implemented: vanilla packets replayed on every server (peer packet 30); compile-verified, live check pending |
+| Main scoreboard (objectives, scores, teams, display slots) | implemented and verified live on two dev servers (peer packet 30; snapshot + incremental) |
 | Live statistics and advancement progress | implemented: 10 s statistic deltas + immediate criterion awards (peer packets 31-32); compile-verified, live check pending |
 | Master region file format | true zlib, readable by vanilla/tooling; legacy gzip transcoded on read (round-trip tested + live master bytes checked) |
 | Required-target detection and `/multiforge compat` | implemented |
 | Chunk-border debug visualization (`/multiforge borders`) | implemented (config `debug.chunkBorders`); compile-verified |
 | Prometheus `/metrics` endpoint for the master | implemented (`metrics-port`, default off); unit tested |
 | Protocol input hardening + fuzzing | implemented: bounds-checked lengths, random/malformed-payload tests |
-| BungeeCord / Velocity legacy IP+UUID+profile forwarding | implemented (`server.bungeeCord`, default off); compile-verified, live check pending |
+| BungeeCord / Velocity legacy IP+UUID+profile forwarding | implemented and verified live with a raw forwarded login (`server.bungeeCord`, default off) |
 | External proxy / built-in proxy load balancing | supported; built-in proxy verified by design, external BungeeCord/Velocity documented |
 | Master leader election for shared storage | implemented (`leader-election`, default off); unit tested |
 | Download progress reporting | implemented: `DownloadProgressMessage` every MiB, shown in `/multiforge status`; integration tested |

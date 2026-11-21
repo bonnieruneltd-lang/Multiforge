@@ -55,6 +55,18 @@ public final class BungeeCordSupport {
 
     private static final Gson GSON = new Gson();
 
+    /**
+     * Raw host name captured while the handshake packet is decoded.
+     *
+     * <p>Forge's {@code ClientIntentionPacket} constructor strips everything after the
+     * first NUL before the packet reaches {@code handleIntention}, so the forwarding data
+     * must be captured at the {@code FriendlyByteBuf.readUtf} call site. Packet decoding
+     * and the handler invocation for one connection run synchronously on the same event
+     * loop thread, so a thread-local is safe and is always consumed/cleared by
+     * {@link #onHandshake(Connection, String)}.</p>
+     */
+    private static final ThreadLocal<String> RAW_HOST = new ThreadLocal<>();
+
     private final MultiForgeServer server;
 
     /** Connection -> forwarding data waiting to be applied at login. */
@@ -79,10 +91,25 @@ public final class BungeeCordSupport {
      * @param hostName   raw host name from the handshake packet
      */
     public void onHandshake(Connection connection, String hostName) {
-        if (!server.config().bungeeCord() || connection == null) {
+        if (connection == null) {
             return;
         }
-        if (hostName == null || hostName.indexOf(BungeeCordForwarding.SEPARATOR) < 0) {
+        String raw = RAW_HOST.get();
+        RAW_HOST.remove();
+        if (raw != null && raw.indexOf(BungeeCordForwarding.SEPARATOR) >= 0) {
+            hostName = raw;
+        }
+        boolean forwarded = hostName != null
+                && hostName.indexOf(BungeeCordForwarding.SEPARATOR) >= 0;
+        if (!server.config().bungeeCord()) {
+            if (forwarded) {
+                LOGGER.warn("Received BungeeCord forwarding data from {} but server.bungeeCord=false; "
+                        + "ignoring it (enable the option behind a trusted proxy)",
+                        connection.getRemoteAddress());
+            }
+            return;
+        }
+        if (!forwarded) {
             return;
         }
         Optional<BungeeCordForwarding.ForwardedData> parsed = BungeeCordForwarding.parse(hostName);
@@ -109,6 +136,17 @@ public final class BungeeCordSupport {
         pending.put(connection, data);
         if (server.config().debugLogging()) {
             LOGGER.info("Forwarded connection from {} (uuid {})", data.address(), data.uuid());
+        }
+    }
+
+    /**
+     * Stores the raw handshake host for the imminent {@code handleIntention} call.
+     *
+     * @param rawHost host name exactly as it arrived (including forwarding data)
+     */
+    public void captureRawHost(String rawHost) {
+        if (rawHost != null && rawHost.indexOf(BungeeCordForwarding.SEPARATOR) >= 0) {
+            RAW_HOST.set(rawHost);
         }
     }
 
@@ -180,6 +218,7 @@ public final class BungeeCordSupport {
      * @param connection closed connection
      */
     public void onDisconnected(Connection connection) {
+        RAW_HOST.remove();
         if (connection != null) {
             pending.remove(connection);
         }

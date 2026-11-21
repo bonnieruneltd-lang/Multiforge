@@ -17,9 +17,7 @@ import net.minecraft.world.scores.criteria.ObjectiveCriteria;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
 import java.util.Optional;
-import java.util.Set;
 
 /**
  * Keeps the cluster's main scoreboard identical on every server.
@@ -31,13 +29,16 @@ import java.util.Set;
  * command on {@code survival1} is invisible on {@code survival2}, and a player who
  * moves between them loses the sidebar, the team colour and the list header.</p>
  *
- * <p>The sync works at the packet level: every clientbound scoreboard packet
- * vanilla broadcasts is also sent to the peers ({@link #onLocalPacket}), and the
- * receiving server replays the same mutation on its own
- * {@link ServerScoreboard} ({@link #onRemotePacket}). Replaying through the
- * vanilla scoreboard API rather than writing a save file means the local dirty
- * listeners, display-slot broadcasts and sidebar ordering behave exactly as if
- * an admin had run the command locally.</p>
+ * <p>The sync works at the packet level: the {@code ServerScoreboard} hooks in
+ * {@code ServerScoreboardObjectiveMixin} report every mutation, the manager sends the
+ * equivalent vanilla clientbound packet to the peers, and the receiving server replays
+ * the mutation on its own {@link ServerScoreboard} ({@link #onRemotePacket}). Hooking the
+ * callbacks instead of {@code PlayerList.broadcastAll} is required on 1.20.1: objective
+ * additions/removals are not broadcast at all and score/display/team packets are only
+ * broadcast to players that already track the main scoreboard, so a peer with no players
+ * would otherwise miss changes. Replaying through the vanilla scoreboard API means the
+ * local dirty listeners, display-slot broadcasts and sidebar ordering behave exactly as
+ * if an admin had run the command locally.</p>
  *
  * <p>Only the main scoreboard is synchronized, matching upstream: per-player
  * sidebars and scoreboards created by mods are not part of the world and would
@@ -45,11 +46,10 @@ import java.util.Set;
  * vanilla keeps them per player and MultiPaper has no equivalent either (see
  * {@code docs/TODO.md}).</p>
  *
- * <p>Threading: {@link #onLocalPacket} runs on the server thread inside the
- * {@code PlayerList.broadcastAll} hook. A remote packet only hops to the server
- * thread and then replays the vanilla mutation. A thread-local
- * {@code APPLYING} flag suppresses echo so a replayed change is not sent back to
- * the peer that produced it. All mutations happen on the server thread; clients
+ * <p>Threading: the {@code ServerScoreboard} hooks run on the server thread. A remote
+ * packet only hops to the server thread and then replays the vanilla mutation. A
+ * thread-local {@code APPLYING} flag suppresses echo so a replayed change is not sent
+ * back to the peer that produced it. All mutations happen on the server thread; clients
  * of this server still receive the vanilla broadcast.</p>
  */
 public final class ScoreboardSyncManager {
@@ -69,30 +69,159 @@ public final class ScoreboardSyncManager {
     }
 
     /**
-     * Forwards a packet vanilla just broadcast to the other servers.
+     * Forwards a newly added objective.
      *
-     * <p>Called from the {@code PlayerList.broadcastAll} mixin. Packets that are
-     * not scoreboard updates, packets replayed from a peer and every packet while
-     * {@code synchronization.scoreboards} is off are ignored.</p>
+     * <p>Mojang's {@code ServerScoreboard.onObjectiveAdded} only marks the scoreboard
+     * dirty in 1.20.1; it does not broadcast a clientbound packet (Paper differs, and
+     * MultiPaper's patch could rely on that broadcast). Without this explicit hook a
+     * new objective would exist only on the server where it was created and every
+     * later score/display packet would be dropped by the receivers.</p>
      *
-     * @param packet packet vanilla broadcast locally
+     * @param objective objective that was added
      */
-    public void onLocalPacket(Packet<?> packet) {
+    public void onObjectiveAdded(Objective objective) {
+        if (!server.config().syncScoreboards() || objective == null
+                || Boolean.TRUE.equals(APPLYING.get())) {
+            return;
+        }
+        broadcast(new ScoreboardUpdatePacket(
+                new ClientboundSetObjectivePacket(objective, ClientboundSetObjectivePacket.METHOD_ADD),
+                objective.getCriteria().getName()));
+    }
+
+    /**
+     * Forwards a removed objective (also not broadcast by vanilla).
+     *
+     * @param objective objective that was removed
+     */
+    public void onObjectiveRemoved(Objective objective) {
+        if (!server.config().syncScoreboards() || objective == null
+                || Boolean.TRUE.equals(APPLYING.get())) {
+            return;
+        }
+        broadcast(new ScoreboardUpdatePacket(
+                new ClientboundSetObjectivePacket(objective, ClientboundSetObjectivePacket.METHOD_REMOVE),
+                null));
+    }
+
+    /**
+     * Forwards an objective edit (display name or render type).
+     *
+     * @param objective objective that changed
+     */
+    public void onObjectiveChanged(Objective objective) {
+        if (objective != null) {
+            forward(new ClientboundSetObjectivePacket(objective, ClientboundSetObjectivePacket.METHOD_CHANGE),
+                    objective.getCriteria().getName());
+        }
+    }
+
+    /**
+     * Forwards a score change.
+     *
+     * @param score score that changed
+     */
+    public void onScoreChanged(Score score) {
+        if (score == null || score.getObjective() == null) {
+            return;
+        }
+        if (server.config().debugLogging()) {
+            LOGGER.info("Local score change: {} {} = {}", score.getOwner(),
+                    score.getObjective().getName(), score.getScore());
+        }
+        forward(new ClientboundSetScorePacket(ServerScoreboard.Method.CHANGE,
+                score.getObjective().getName(), score.getOwner(), score.getScore()), null);
+    }
+
+    /**
+     * Forwards a score removal.
+     *
+     * @param owner     score owner
+     * @param objective objective the score belonged to
+     */
+    public void onPlayerScoreRemoved(String owner, Objective objective) {
+        if (objective == null) {
+            return;
+        }
+        forward(new ClientboundSetScorePacket(ServerScoreboard.Method.REMOVE,
+                objective.getName(), owner, 0), null);
+    }
+
+    /**
+     * Forwards a display-slot change.
+     *
+     * @param slot      display slot index
+     * @param objective objective to show, {@code null} to clear the slot
+     */
+    public void onDisplayObjective(int slot, Objective objective) {
+        forward(new ClientboundSetDisplayObjectivePacket(slot, objective), null);
+    }
+
+    /**
+     * Forwards a team creation or edit.
+     *
+     * @param team team that changed
+     */
+    public void onTeamChanged(PlayerTeam team) {
+        if (team != null) {
+            forward(ClientboundSetPlayerTeamPacket.createAddOrModifyPacket(team, true), null);
+        }
+    }
+
+    /**
+     * Forwards a team removal.
+     *
+     * @param team team that was removed
+     */
+    public void onTeamRemoved(PlayerTeam team) {
+        if (team != null) {
+            forward(ClientboundSetPlayerTeamPacket.createRemovePacket(team), null);
+        }
+    }
+
+    /**
+     * Forwards a player joining or leaving a team.
+     *
+     * @param team   team
+     * @param player player name
+     * @param add    {@code true} when the player joined, {@code false} when they left
+     */
+    public void onPlayerTeamChanged(PlayerTeam team, String player, boolean add) {
+        if (team != null && player != null) {
+            forward(ClientboundSetPlayerTeamPacket.createPlayerPacket(team, player,
+                    add ? ClientboundSetPlayerTeamPacket.Action.ADD
+                            : ClientboundSetPlayerTeamPacket.Action.REMOVE), null);
+        }
+    }
+
+    /**
+     * Sends one scoreboard mutation to every peer unless this packet is the replay of a
+     * remote mutation.
+     *
+     * @param packet   vanilla packet describing the mutation
+     * @param criteria criteria for a new objective, otherwise {@code null}
+     */
+    private void forward(Packet<?> packet, String criteria) {
         if (!server.config().syncScoreboards() || Boolean.TRUE.equals(APPLYING.get())) {
             return;
         }
-        if (!isScoreboardPacket(packet)) {
-            return;
+        if (server.config().debugLogging()) {
+            LOGGER.info("Forwarding {}", packet.getClass().getSimpleName());
         }
+        broadcast(new ScoreboardUpdatePacket(packet, criteria));
+    }
+
+    /**
+     * @param packet scoreboard update to send to every peer
+     */
+    private void broadcast(ScoreboardUpdatePacket packet) {
         try {
-            server.peers().broadcast(new ScoreboardUpdatePacket(packet, criteriaOf(packet)));
+            server.peers().broadcast(packet);
         } catch (RuntimeException e) {
-            // A modded packet subclass may not be registered with the vanilla
-            // protocol; never let scoreboard propagation break the tick.
-            LOGGER.warn("Could not forward scoreboard packet {}: {}",
-                    packet.getClass().getName(), e.toString());
+            LOGGER.warn("Could not broadcast a scoreboard change: {}", e.toString());
         }
     }
+
     /**
      * Sends the current main scoreboard to a peer that just connected.
      *
@@ -117,16 +246,27 @@ public final class ScoreboardSyncManager {
                 sendTo(peerName, new ScoreboardUpdatePacket(
                         ClientboundSetPlayerTeamPacket.createAddOrModifyPacket(team, true), null));
             }
-            Set<Objective> sent = new HashSet<>();
+            // Send every objective and its scores, not only the displayed ones: an
+            // objective created before this peer connected must exist on the receiver
+            // or later score/display packets are dropped. The display slots are sent
+            // last so the receiver has the objectives they reference.
+            for (Objective objective : scoreboard.getObjectives()) {
+                sendTo(peerName, new ScoreboardUpdatePacket(
+                        new ClientboundSetObjectivePacket(objective,
+                                ClientboundSetObjectivePacket.METHOD_ADD),
+                        objective.getCriteria().getName()));
+                for (Score score : scoreboard.getPlayerScores(objective)) {
+                    sendTo(peerName, new ScoreboardUpdatePacket(
+                            new ClientboundSetScorePacket(ServerScoreboard.Method.CHANGE,
+                                    objective.getName(), score.getOwner(), score.getScore()),
+                            null));
+                }
+            }
             for (int slot = 0; slot < Scoreboard.DISPLAY_SLOTS; slot++) {
                 Objective objective = scoreboard.getDisplayObjective(slot);
-                if (objective == null || !sent.add(objective)) {
-                    continue;
-                }
-                for (Packet<?> packet : scoreboard.getStartTrackingPackets(objective)) {
-                    String criteria = packet instanceof ClientboundSetObjectivePacket
-                            ? objective.getCriteria().getName() : null;
-                    sendTo(peerName, new ScoreboardUpdatePacket(packet, criteria));
+                if (objective != null) {
+                    sendTo(peerName, new ScoreboardUpdatePacket(
+                            new ClientboundSetDisplayObjectivePacket(slot, objective), null));
                 }
             }
         });
@@ -156,6 +296,10 @@ public final class ScoreboardSyncManager {
      * @param packet received packet
      */
     public void onRemotePacket(ScoreboardUpdatePacket packet) {
+        if (server.config().debugLogging()) {
+            LOGGER.info("Received scoreboard update from a peer ({} payload bytes, criteria='{}')",
+                    packet.payloadLength(), packet.criteria());
+        }
         server.execute(() -> apply(packet));
     }
 
@@ -177,32 +321,6 @@ public final class ScoreboardSyncManager {
         } finally {
             APPLYING.set(Boolean.FALSE);
         }
-    }
-
-    /**
-     * @param packet any broadcast packet
-     * @return {@code true} for the four clientbound scoreboard packet types
-     */
-    private static boolean isScoreboardPacket(Packet<?> packet) {
-        return packet instanceof ClientboundSetObjectivePacket
-                || packet instanceof ClientboundSetScorePacket
-                || packet instanceof ClientboundSetDisplayObjectivePacket
-                || packet instanceof ClientboundSetPlayerTeamPacket;
-    }
-
-    /**
-     * @param packet broadcast packet
-     * @return criteria of a newly added objective, {@code null} for other packets
-     */
-    private String criteriaOf(Packet<?> packet) {
-        if (packet instanceof ClientboundSetObjectivePacket objective
-                && objective.getMethod() == ClientboundSetObjectivePacket.METHOD_ADD) {
-            Objective local = server.server().getScoreboard().getObjective(objective.getObjectiveName());
-            if (local != null) {
-                return local.getCriteria().getName();
-            }
-        }
-        return null;
     }
 
     /**

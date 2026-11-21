@@ -269,6 +269,15 @@ two processes.
   mixins compile-verified, no live proxy here. Velocity modern forwarding is not implemented.
 * **`/multiforge map [radius]`** prints a text chunk-ownership grid (partial `/mpmap`), and
   entity ownership resyncs serialize NBT once per entity instead of once per subscriber.
+* **Live verified** on two headless Forge 47.4.29 dev servers plus a master: scoreboard
+  objectives/scores/teams/display, block and time sync, player mirroring (`/list` on the peer),
+  `/multiforge map`, a forwarded BungeeCord login (IP `127.0.0.9` and UUID applied) and a
+  two-process leader takeover. Evidence: `compat/evidence/server-features-20261121T065500Z.md`.
+  The run found and fixed four bugs: the config was registered as SERVER (wrong directory,
+  resetting `bungeeCord`), Forge strips the forwarded host before `handleIntention`, 1.20.1
+  does not broadcast objective add/remove, and the score packet constructor argument order was
+  swapped. The config is now COMMON at `config/multiforge-server.toml` with a legacy migration.
+  `/reload` does not fire config reload events on this Forge version, so restart for configs.
 * Test counts after this session: `./gradlew build :multiforge-protocol:test
   :multiforge-master:test :multiforge-api:test` passes (protocol 36, master 41, api 4). Next
   non-GPU work: live-verify the forge features above, Velocity modern forwarding, per-chunk

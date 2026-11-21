@@ -159,9 +159,11 @@ Purpur fork whose functionality lives in three places:
   statistics/advancement deltas, chunk-border particles and `/multiforge map`, master
   Prometheus metrics, optional master leader election, download progress messages,
   BungeeCord/Velocity legacy IP+UUID+profile forwarding, ownership-boundary entity resyncs
-  and protocol input hardening with fuzzing. Forge code is compile-verified (reobf jar and
-  refmap); the protocol/master/API suites are green. Client-only compatibility rows remain
-  untested and are not claimed as compatible.
+  and protocol input hardening with fuzzing. Verified live on two headless Forge dev servers
+  (scoreboard, teams, block/time, player mirroring, map, forwarded login) and with a
+  two-process master leader takeover. Live testing also forced the config from a Forge SERVER
+  config to COMMON (`config/multiforge-server.toml`) with a legacy migration. Client-only
+  compatibility rows remain untested and are not claimed as compatible.
 * Session 5: live player-state sync verified on master + two Forge 47.4.29 servers with a
   headless `minecraft-protocol` bot; `tools/compat/player_state_check.py` recorded 21/21
   checks (main/armor/off-hand/ender-chest slots, hotbar selection, hunger, experience,

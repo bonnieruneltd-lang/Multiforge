@@ -83,11 +83,13 @@ coding.
 8. **Run configuration for a second dev server** - done: the `server2` ForgeGradle run inherits
    the resolved launch configuration from `server` (`parent runs.server`) and runs from
    `run2/`; verified with two live servers in this environment. See DEVELOPMENT.md.
-9. **Scoreboards** - done (session 6): every clientbound scoreboard broadcast
-   (`ClientboundSetObjectivePacket`, `ClientboundSetScorePacket`,
-   `ClientboundSetDisplayObjectivePacket`, `ClientboundSetPlayerTeamPacket`) is forwarded as
-   peer packet 30 and replayed through the vanilla scoreboard API on the other servers
-   (`ScoreboardSyncManager`). Only the main scoreboard is synchronized, matching upstream;
+9. **Scoreboards** - done and verified live (session 6): every `ServerScoreboard` mutation
+   (`onObjectiveAdded/Changed/Removed`, `onScoreChanged`, `onPlayerScoreRemoved`,
+   `setDisplayObjective`, team add/change/remove/membership) is forwarded as peer packet 30
+   and replayed through the vanilla scoreboard API on the other servers
+   (`ScoreboardSyncManager`); a connecting peer receives every objective, its scores, the
+   display slots and all teams. Live evidence: objectives, scores, teams and display slots
+   created on `live1` were read back on `live2` (`compat/evidence/server-features-20261121T065500Z.md`). Only the main scoreboard is synchronized, matching upstream;
    boss bars are per-player vanilla state and are **not** synchronized (upstream has no
    equivalent either).
 10. **Permissions/op synchronization** - done for vanilla operators: `/op` and `/deop` upload
@@ -112,7 +114,9 @@ coding.
     exercised manually (start two masters on one storage).
 14. **Built-in proxy player balancing**: the proxy currently picks a live server by load; the
     original can also use BungeeCord/Velocity. Verify reconnects and protocol edge cases.
-15. **Config hot reload** - mostly done (session 6). `MultiForgeServer.config` is volatile and
+15. **Config hot reload** - implemented but not reachable through `/reload` on Forge 47.4.29
+    (the event does not fire for mod configs), so a restart is still needed in practice.
+    Details: `MultiForgeServer.config` is volatile and
     `onConfigReloaded` swaps the snapshot on `ModConfigEvent.Reloading`, so every manager that
     reads `config()` sees the new values immediately; a changed `master.address` closes the
     control channel and reconnects, and disabling `debug.chunkBorders` clears the viewers.
@@ -150,11 +154,13 @@ coding.
     the debug particle view. A graphical map is still missing.
 22. Automate the live two-server check (container recipe) so it can run in CI.
 
-23. **BungeeCord / Velocity proxy compatibility** - legacy forwarding done (session 6):
+23. **BungeeCord / Velocity proxy compatibility** - legacy forwarding done and verified live
+    (session 6):
     `server.bungeeCord=true` parses `host\0ip[\0uuid\0properties]`, applies the player IP
     to the connection and replaces the login profile with the forwarded UUID/textures
     (`BungeeCordSupport`, handshake/login/connection mixins). Parser is unit tested; the
-    mixins are compile-verified (no live proxy here). Remaining: Velocity **modern**
+    mixins were exercised with a raw forwarded login on a dev server (UUID applied, IP logged).
+    Remaining: Velocity **modern**
     forwarding (login plugin channel + secret); currently configure Velocity for legacy
     `bungeecord` forwarding. Also not ported: MultiPaper's BungeeCord/Velocity plugin that
     runs the master inside the proxy and balances players itself - MultiForge relies on the
