@@ -168,3 +168,9 @@ root (`Shared path escapes the sync root`). Covered by
 The Forge `/reload` command does not reload mod configs on 47.4.29; use
 `/multiforge reload` (verified live). Values bound/negotiated once (peer port, server name,
 existing peer compression, scheduler periods) still need a restart and are logged as such.
+
+## Automated harness
+
+`tools/compat/cluster_check.py --skip-mod-checks` ran against this dev cluster and passed
+**17/17** checks, including the new scoreboard objective/score/team and entity
+mirror/damage/removal checks: `compat/evidence/cluster-20261121T070338Z.md`.

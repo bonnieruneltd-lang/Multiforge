@@ -89,6 +89,8 @@ def main(argv=None) -> int:
     parser.add_argument("--expected-targets", type=int, default=19,
                         help="number of required server mods expected (19 with Ksyxis, "
                              "18 when Ksyxis is removed for the chunk-sync check)")
+    parser.add_argument("--skip-mod-checks", action="store_true",
+                        help="skip the required-mod/data-pack checks (dev cluster with no pinned mods)")
     args = parser.parse_args(argv)
 
     cluster = Cluster(args.a_port, args.b_port, args.password, args.host)
@@ -107,17 +109,18 @@ def main(argv=None) -> int:
           and "live1" in servers_b and "live2" in servers_b,
           "both servers list live1 and live2")
 
-    compat = cluster.run("A", "multiforge compat")
-    loaded = re.search(r"Required server targets loaded: (\d+)/(\d+)", compat)
-    check(results, "required-targets-detected",
-          bool(loaded) and int(loaded.group(1)) == args.expected_targets,
-          loaded.group(0) if loaded else "no summary line in /multiforge compat")
+    if not args.skip_mod_checks:
+        compat = cluster.run("A", "multiforge compat")
+        loaded = re.search(r"Required server targets loaded: (\d+)/(\d+)", compat)
+        check(results, "required-targets-detected",
+              bool(loaded) and int(loaded.group(1)) == args.expected_targets,
+              loaded.group(0) if loaded else "no summary line in /multiforge compat")
 
-    datapacks = cluster.run("A", "datapack list")
-    check(results, "required-datapack-enabled",
-          "UltimateAntiSeedCracker" in datapacks,
-          "UltimateAntiSeedCracker.zip enabled" if "UltimateAntiSeedCracker" in datapacks
-          else "data pack not listed")
+        datapacks = cluster.run("A", "datapack list")
+        check(results, "required-datapack-enabled",
+              "UltimateAntiSeedCracker" in datapacks,
+              "UltimateAntiSeedCracker.zip enabled" if "UltimateAntiSeedCracker" in datapacks
+              else "data pack not listed")
 
     chunks_a = parse_chunks(cluster.run("A", "multiforge chunks"))
     chunks_b = parse_chunks(cluster.run("B", "multiforge chunks"))
@@ -150,6 +153,47 @@ def main(argv=None) -> int:
     time.sleep(args.wait_seconds)
     chest_b = cluster.run("B", f"data get block {chest} Items[0].id")
     check(results, "block-entity-a-to-b", "minecraft:diamond" in chest_b, chest_b.strip())
+
+    suffix = str(int(time.time()) % 100000)
+    objective = f"mfcheck{suffix}"
+    team = f"mfc{suffix}"
+    cluster.run("A", f"scoreboard objectives add {objective} dummy")
+    time.sleep(args.wait_seconds)
+    objectives_b = cluster.run("B", "scoreboard objectives list")
+    check(results, "scoreboard-objective-a-to-b", objective in objectives_b,
+          objectives_b.strip())
+
+    cluster.run("A", f"scoreboard players set MFCheck {objective} 7")
+    time.sleep(args.wait_seconds)
+    score_b = cluster.run("B", f"scoreboard players get MFCheck {objective}")
+    check(results, "scoreboard-score-a-to-b", "has 7" in score_b, score_b.strip())
+
+    cluster.run("A", f"team add {team}")
+    cluster.run("A", f"team join {team} MFCheck")
+    time.sleep(args.wait_seconds)
+    team_b = cluster.run("B", f"team list {team}")
+    check(results, "scoreboard-team-a-to-b", "1 member" in team_b, team_b.strip())
+
+    cow = f"{block_x} 100 {block_z}"
+    cluster.run("A", "kill @e[type=minecraft:cow,tag=mfcheck]")
+    cow_nbt = '{NoGravity:1b,Tags:["mfcheck"]}'
+    cluster.run("A", f"summon minecraft:cow {cow} {cow_nbt}")
+    time.sleep(args.wait_seconds)
+    mirrored = cluster.run("B", "execute if entity @e[type=minecraft:cow,tag=mfcheck]")
+    check(results, "entity-mirror-a-to-b", "Test passed" in mirrored, mirrored.strip())
+
+    cluster.run("A", "damage @e[type=minecraft:cow,tag=mfcheck,limit=1] 2")
+    time.sleep(args.wait_seconds)
+    health = cluster.run("B", "data get entity @e[type=minecraft:cow,tag=mfcheck,limit=1] Health")
+    check(results, "entity-damage-a-to-b", "8.0" in health, health.strip())
+
+    cluster.run("A", "kill @e[type=minecraft:cow,tag=mfcheck]")
+    time.sleep(args.wait_seconds)
+    removed = cluster.run("B", "execute if entity @e[type=minecraft:cow,tag=mfcheck]")
+    check(results, "entity-remove-a-to-b", "Test failed" in removed, removed.strip())
+
+    cluster.run("A", f"scoreboard objectives remove {objective}")
+    cluster.run("A", f"team remove {team}")
 
     cluster.run("A", "gamerule doDaylightCycle false")
     cluster.run("A", "time set 6000")

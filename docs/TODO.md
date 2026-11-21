@@ -155,7 +155,15 @@ coding.
     `/multiforge map [radius]` prints a text ownership grid around the player (`@` = this
     server, first letter = another server, `.` = unowned) and `/multiforge borders` covers
     the debug particle view. A graphical map is still missing.
-22. Automate the live two-server check (container recipe) so it can run in CI.
+22. Automate the live two-server check (container recipe) so it can run in CI - partially
+    done (session 6): `.github/workflows/build.yml` builds every module and runs the
+    protocol/master/API suites on a clean runner and uploads the jars.
+    `tools/compat/cluster_check.py` now also verifies scoreboard objectives/scores/teams
+    and entity mirror/damage/removal, and `--skip-mod-checks` lets it run on a dev
+    cluster; a live dev run recorded 17/17 checks
+    (`compat/evidence/cluster-20261121T070338Z.md`). The live check still needs a
+    Minecraft server download, RCON and a disposable world, so it remains a manual step
+    rather than a CI job.
 
 23. **BungeeCord / Velocity proxy compatibility** - legacy forwarding done and verified live
     (session 6):
