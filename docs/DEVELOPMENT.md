@@ -120,6 +120,46 @@ entity` output on both servers. It exits non-zero when a check fails and prints 
 used as evidence in `compat/evidence/`. See
 `compat/evidence/player-state-20261115T054356Z.md` for a recorded run.
 
+## Running behind BungeeCord or Velocity
+
+MultiForge servers can sit behind an external proxy. The proxy must use **legacy
+IP forwarding**, which BungeeCord calls `ip_forward` and Velocity calls
+`bungeecord: true` under `[advanced]`; Velocity's modern forwarding (login plugin
+channel + secret) is not implemented yet.
+
+1. Set `online-mode=false` in each backend `server.properties`. The proxy
+authenticates the player; a backend in online mode would overwrite the forwarded
+UUID during its own authentication.
+2. Set `server.bungeeCord = true` in each `config/multiforge-server.toml`.
+3. Firewall the backend ports so only the proxy can reach them. Legacy forwarding
+   is not authenticated: anyone who can connect directly can claim any IP/UUID.
+4. Add the backends to the proxy with their names matching `server.name`, so the
+   master's server list and the proxy's server list agree.
+
+With the option enabled the handshake host (`host\0ip[\0uuid\0properties]`) is
+parsed by `BungeeCordForwarding`, the connection address becomes the player's real
+IP (bans, whitelist logs, `/multiforge players`) and the login profile is replaced
+with the forwarded UUID and texture properties. All three shapes are accepted:
+IP-only (MultiForge's built-in proxy sends this), IP+UUID and IP+UUID+properties.
+A malformed or non-literal address is rejected and logged; the player then falls
+back to the proxy address/offline UUID rather than getting an arbitrary one.
+
+The master's built-in proxy (`proxy-port`) already sends IP-only forwarding, so a
+cluster can use either the built-in proxy or an external BungeeCord/Velocity, not
+both for the same player.
+
+Master leader election is unrelated but often used with a proxy: if two masters
+share one storage root, set `leader-election=true`; only the lock holder binds, the
+standby waits and takes over when the leader exits.
+
+## Continuous integration
+
+`.github/workflows/build.yml` runs on every push and pull request: it provisions JDK 17 and
+Gradle, runs `:multiforge-protocol:test :multiforge-master:test :multiforge-api:test`, then
+`./gradlew build` (which includes the Forge reobfuscated jar and mixin refmap) and uploads
+the jars. The live master + two-server check is still manual because it needs a Minecraft
+server download, RCON and a disposable world.
+
 ## Configuration files
 
 * Master: `multiforge-master.properties` next to the process (created on first start).

@@ -34,6 +34,8 @@ public final class MultiForgeConfig {
     public static final ForgeConfigSpec.IntValue PEER_PORT;
     /** Host other servers should use to reach this server; empty means auto-detect. */
     public static final ForgeConfigSpec.ConfigValue<String> ADVERTISE_HOST;
+    /** Accept BungeeCord/Velocity legacy IP/UUID/profile forwarding from a trusted proxy. */
+    public static final ForgeConfigSpec.BooleanValue BUNGEE_CORD;
 
     public static final ForgeConfigSpec.IntValue COMPRESSION_THRESHOLD;
     public static final ForgeConfigSpec.IntValue PING_INTERVAL_SECONDS;
@@ -104,6 +106,12 @@ public final class MultiForgeConfig {
         ADVERTISE_HOST = builder
                 .comment("Host other servers should use to connect to this server. Empty means auto-detect.")
                 .define("advertiseHost", "");
+        BUNGEE_CORD = builder
+                .comment("Accept BungeeCord/Velocity legacy IP/UUID/profile forwarding from the handshake.",
+                        "Only enable this behind a trusted proxy: the data is not authenticated.",
+                        "Requires server.properties online-mode=false and ip_forward/bungeecord=true on the proxy.",
+                        "Firewall the backend port so players cannot connect directly.")
+                .define("bungeeCord", false);
         COMPRESSION_THRESHOLD = builder
                 .comment("Compress peer packets larger than this many bytes. 0 disables peer compression.")
                 .defineInRange("compressionThreshold", 0, 0, 1 << 20);
@@ -179,6 +187,7 @@ public final class MultiForgeConfig {
                 SERVER_NAME.get(),
                 PEER_PORT.get(),
                 ADVERTISE_HOST.get(),
+                BUNGEE_CORD.get(),
                 COMPRESSION_THRESHOLD.get(),
                 PING_INTERVAL_SECONDS.get(),
                 RECONNECT_DELAY_SECONDS.get(),
@@ -279,6 +288,7 @@ public final class MultiForgeConfig {
                 string(values, "server.name", defaults.serverName()),
                 integer(values, "server.peerPort", defaults.peerPort()),
                 string(values, "server.advertiseHost", defaults.advertiseHost()),
+                bool(values, "server.bungeeCord", defaults.bungeeCord()),
                 integer(values, "server.compressionThreshold", defaults.compressionThreshold()),
                 integer(values, "master.pingIntervalSeconds", defaults.pingIntervalSeconds()),
                 integer(values, "master.reconnectDelaySeconds", defaults.reconnectDelaySeconds()),
@@ -367,6 +377,7 @@ public final class MultiForgeConfig {
             String serverName,
             int peerPort,
             String advertiseHost,
+            boolean bungeeCord,
             int compressionThreshold,
             int pingIntervalSeconds,
             int reconnectDelaySeconds,
@@ -397,7 +408,7 @@ public final class MultiForgeConfig {
 
         /** @return snapshot with the documented defaults, used before the config is loaded */
         public static Snapshot defaults() {
-            return new Snapshot("localhost:35353", "", 0, "", 0, 5, 2, 30, 20,
+            return new Snapshot("localhost:35353", "", 0, "", false, 0, 5, 2, 30, 20,
                     true, true, true, true, false, 10, 100,
                     true, true, true, true, true, true, true, true, true, true,
                     List.of(), List.of(), List.of("logs", "crash-reports"), false, false);

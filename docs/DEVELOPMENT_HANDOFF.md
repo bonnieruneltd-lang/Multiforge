@@ -161,8 +161,12 @@ mod-mod interaction, not a MultiForge ownership failure, and is recorded in
    tests). Only one server generates a never-seen chunk; later readers wait a bounded time
    and then read the generator's copy. Remaining work is load-aware assignment (an idle
    server generating for a busy one), not correctness.
-6. **Ownership epochs + packet sequence numbers** before any dynamic ownership work; see
-   `DISTRIBUTED_ARCHITECTURE_RESEARCH.md`.
+6. **Ownership epochs + packet sequence numbers** before dynamic ownership work; see
+   `DISTRIBUTED_ARCHITECTURE_RESEARCH.md`. Epochs are implemented (stamped on block/block
+   entity packets, older epochs dropped). Per-chunk sequence numbers/acks are still absent,
+   but the current design closes the gap they would detect: TCP orders each peer stream and
+   a new owner sends an NBT resync, so a missing update cannot persist across an ownership
+   change. They remain relevant only for a future live ownership-migration feature.
 
 ## 7. Recommended next milestones
 
@@ -211,10 +215,12 @@ mod-mod interaction, not a MultiForge ownership failure, and is recorded in
 
 ## 10. Session 6 update (2026-11-21, no GPU)
 
-This session finished the TODO items that do not need a Minecraft client or GPU. No live
-master + two-server run was possible/practical here, so the horizontal rule is: protocol and
-master changes are **test-verified**, forge changes are **compile-verified** (full reobf jar)
-and marked as such in README/TODO.
+This session finished the remaining server-side TODO items. The target deployment is a
+headless server cluster, so client rendering/shaders are out of scope. No live master +
+two-server game run was practical here, so the horizontal rule is: protocol and master
+changes are **test-verified**, forge changes are **compile-verified** (full reobf jar) and
+marked as such in README/TODO. The master leader lock was additionally exercised live with
+two processes.
 
 * **Protocol hardening + fuzzing (TODO 19).** `ProtocolFuzzTest` feeds random and malformed
   bodies to every registered message id. It found a remote OOM: `ExtendedByteBuf.readString`
@@ -251,8 +257,20 @@ and marked as such in README/TODO.
   queued stale write landing after `flush()` (`entityIdBlocksAreDisjointAndPersisted` failed
   once); writes are now serialized, `flush()` waits for the queue, and a monotonic guard
   refuses to write a smaller counter.
+* **Master leader election.** `LeaderElection` holds `master-leader.lock` (opt-in
+  `leader-election=true`) so only one master per storage root binds; a standby waits and
+  takes the lock when the leader exits. Unit tested (same-JVM lock contention and takeover).
+* **Download progress.** `DownloadProgressMessage` is sent per MiB plus an exact final message;
+  `FileSyncer` tracks active downloads and logs 25% milestones; `/multiforge status` lists
+  them. Covered by the file round-trip integration test.
+* **BungeeCord/Velocity legacy forwarding.** `BungeeCordForwarding` parses
+  `host\0ip[\0uuid\0properties]`; `BungeeCordSupport` plus handshake/login/connection mixins
+  apply the IP and forwarded UUID/textures when `server.bungeeCord=true`. Parser unit tested;
+  mixins compile-verified, no live proxy here. Velocity modern forwarding is not implemented.
+* **`/multiforge map [radius]`** prints a text chunk-ownership grid (partial `/mpmap`), and
+  entity ownership resyncs serialize NBT once per entity instead of once per subscriber.
 * Test counts after this session: `./gradlew build :multiforge-protocol:test
-  :multiforge-master:test :multiforge-api:test` passes (protocol 30, master 38, api 4). Next non-GPU work: live-verify the
-  forge features above, per-chunk sequence numbers/acks, leader election, structured download
-  progress and the remaining performance items.
+  :multiforge-master:test :multiforge-api:test` passes (protocol 36, master 41, api 4). Next
+  non-GPU work: live-verify the forge features above, Velocity modern forwarding, per-chunk
+  sequence numbers/acks and the remaining performance items.
 

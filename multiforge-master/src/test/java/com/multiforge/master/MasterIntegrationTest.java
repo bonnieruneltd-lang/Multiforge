@@ -31,6 +31,7 @@ import com.multiforge.protocol.messages.masterbound.WriteLevelMessage;
 import com.multiforge.protocol.messages.masterbound.WritePlayerMessage;
 import com.multiforge.protocol.messages.masterbound.WriteTickTimeMessage;
 import com.multiforge.protocol.messages.masterbound.WriteUidMessage;
+import com.multiforge.protocol.messages.serverbound.AddChunkSubscriberMessage;
 import com.multiforge.protocol.messages.serverbound.BooleanMessageReply;
 import com.multiforge.protocol.messages.serverbound.ChunkLoadedOnAnotherServerMessage;
 import com.multiforge.protocol.messages.serverbound.ChunkSubscribersSyncMessage;
@@ -477,16 +478,20 @@ class MasterIntegrationTest {
 
         a.send(new SubscribeChunkMessage(world, 12, 12));
         b.send(new SubscribeChunkMessage(world, 12, 12));
+        // The two subscribes arrive on different connections, so the master may process
+        // a's sync request before b's subscribe. Wait for the broadcast that proves b was
+        // registered, otherwise this test is a cross-connection race.
+        a.await(AddChunkSubscriberMessage.class, message -> message.server.equals("snap-b"), 10_000L);
         a.send(new com.multiforge.protocol.messages.masterbound.SyncChunkSubscribersMessage(world, 12, 12));
         a.await(ChunkSubscribersSyncMessage.class, message -> message.world.equals(world)
-                && java.util.Arrays.asList(message.subscribers).contains("snap-b"), 5000L);
+                && java.util.Arrays.asList(message.subscribers).contains("snap-b"), 10_000L);
 
         java.util.List<ServerConnection> snapshot =
                 ChunkSubscriptionManager.getSubscribers(world, 12, 12);
         assertEquals(2, snapshot.size());
 
         b.send(new UnsubscribeChunkMessage(world, 12, 12));
-        a.await(RemoveChunkSubscriberMessage.class, message -> message.server.equals("snap-b"), 5000L);
+        a.await(RemoveChunkSubscriberMessage.class, message -> message.server.equals("snap-b"), 10_000L);
 
         // The snapshot a handler is iterating must not be mutated by the unsubscribe
         // (this used to throw ConcurrentModificationException on a live cluster).
@@ -724,6 +729,15 @@ class MasterIntegrationTest {
 
         byte[] downloaded = b.download("plugins/demo/data.bin").get(10, TimeUnit.SECONDS);
         assertArrayEquals(data, downloaded);
+
+        // The master reports progress for large downloads; the last message is exact
+        // so a console can print 100% without waiting for the close marker.
+        com.multiforge.protocol.messages.serverbound.DownloadProgressMessage progress = b.await(
+                com.multiforge.protocol.messages.serverbound.DownloadProgressMessage.class,
+                message -> message.path.equals("plugins/demo/data.bin") && message.transferred == message.total,
+                5000L);
+        assertEquals(data.length, progress.total);
+        assertEquals(100, progress.percent());
     }
 
     @Test

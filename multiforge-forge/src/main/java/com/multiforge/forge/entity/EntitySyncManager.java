@@ -648,8 +648,11 @@ public final class EntitySyncManager {
             if (entity instanceof ServerPlayer || entity.isPassenger() || !shouldMirror(entity)) {
                 continue;
             }
-            for (String subscriber : subscribers) {
-                sendSnapshot(key, subscriber, entity);
+            // Serialize the NBT once per entity and send the same immutable packet to
+            // every subscriber; the old loop re-saved the entity once per peer.
+            EntityUpdateNBTPacket snapshot = snapshot(key, entity);
+            if (snapshot != null) {
+                server.peers().sendTo(subscribers, snapshot);
             }
         }
         if (server.config().debugLogging()) {
@@ -689,17 +692,32 @@ public final class EntitySyncManager {
      * @param entity     entity to snapshot
      */
     private void sendSnapshot(ChunkKey key, String subscriber, Entity entity) {
+        EntityUpdateNBTPacket snapshot = snapshot(key, entity);
+        if (snapshot != null) {
+            server.peers().sendTo(List.of(subscriber), snapshot);
+        }
+    }
+
+    /**
+     * Serializes one entity into a reusable snapshot packet.
+     *
+     * @param key    chunk that owns the entity
+     * @param entity entity to snapshot
+     * @return snapshot packet, or {@code null} when the entity type is unknown or
+     *         serialization failed
+     */
+    private EntityUpdateNBTPacket snapshot(ChunkKey key, Entity entity) {
         ResourceLocation typeId = EntityType.getKey(entity.getType());
         if (typeId == null) {
-            return;
+            return null;
         }
         try {
             CompoundTag tag = new CompoundTag();
             entity.saveWithoutId(tag);
-            server.peers().sendTo(List.of(subscriber), new EntityUpdateNBTPacket(
-                    key.getName(), entity, tag, typeId));
+            return new EntityUpdateNBTPacket(key.getName(), entity, tag, typeId);
         } catch (RuntimeException e) {
-            LOGGER.warn("Could not snapshot entity {} for {}: {}", entity.getUUID(), subscriber, e.toString());
+            LOGGER.warn("Could not snapshot entity {}: {}", entity.getUUID(), e.toString());
+            return null;
         }
     }
 

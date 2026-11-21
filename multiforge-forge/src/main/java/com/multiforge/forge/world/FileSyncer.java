@@ -11,6 +11,7 @@ import com.multiforge.protocol.messages.masterbound.WriteUidMessage;
 import com.multiforge.protocol.messages.serverbound.BooleanMessageReply;
 import com.multiforge.protocol.messages.serverbound.DataMessageReply;
 import com.multiforge.protocol.messages.serverbound.DataUpdateMessage;
+import com.multiforge.protocol.messages.serverbound.DownloadProgressMessage;
 import com.multiforge.protocol.messages.serverbound.FileContentMessage;
 import com.multiforge.protocol.messages.serverbound.FilesToSyncMessage;
 import net.minecraft.server.MinecraftServer;
@@ -82,6 +83,9 @@ public final class FileSyncer {
     /** Maximum difference between two timestamps that still counts as "same file". */
     private static final long MTIME_TOLERANCE_MILLIS = 2_000L;
 
+    /** Downloads at least this large report 25% milestones at INFO. */
+    private static final long LARGE_DOWNLOAD_BYTES = 4L * 1024L * 1024L;
+
     /** Suffixes that are never synchronized (partially written or diagnostic files). */
     private static final List<String> IGNORED_SUFFIXES = List.of(".tmp", ".hprof");
 
@@ -106,6 +110,8 @@ public final class FileSyncer {
      * the file did change.</p>
      */
     private final Map<String, FileStamp> jsonStamps = new ConcurrentHashMap<>();
+    /** Relative path -> progress of a download that is currently running. */
+    private final Map<String, DownloadState> activeDownloads = new ConcurrentHashMap<>();
 
     /** True while a periodic scan is queued or running on the IO thread. */
     private final AtomicBoolean scanScheduled = new AtomicBoolean();
@@ -626,6 +632,55 @@ public final class FileSyncer {
     }
 
     /**
+     * Records progress of an in-flight file download.
+     *
+     * <p>Downloads are streamed, so a large world file used to show nothing until the
+     * close marker arrived. The master sends a {@link DownloadProgressMessage} at
+     * least once per MiB; this method keeps the latest state for
+     * {@code /multiforge status} and logs a line at every 25% for files of at least
+     * 4 MiB (or every message when debug logging is on). Runs on the Netty thread and
+     * only touches concurrent maps.</p>
+     *
+     * @param message progress announcement
+     */
+    public void onDownloadProgress(DownloadProgressMessage message) {
+        if (message == null || message.path == null) {
+            return;
+        }
+        String path = normalizeSharedPath(message.path);
+        if (path == null) {
+            path = message.path;
+        }
+        DownloadState previous = activeDownloads.get(path);
+        if (message.total > 0 && message.transferred >= message.total) {
+            activeDownloads.remove(path);
+        } else {
+            activeDownloads.put(path, new DownloadState(message.transferred, message.total));
+        }
+        int percent = message.percent();
+        if (server.config().debugLogging()) {
+            LOGGER.info("Downloading '{}': {} ({} of {} bytes)", path,
+                    percent < 0 ? "?" : percent + "%", message.transferred, message.total);
+            return;
+        }
+        if (message.total >= LARGE_DOWNLOAD_BYTES) {
+            int previousPercent = previous == null ? -25 : previous.percent();
+            if (percent >= previousPercent + 25) {
+                LOGGER.info("Downloading '{}': {} of {} MiB ({}%)", path,
+                        message.transferred / (1024L * 1024L),
+                        message.total / (1024L * 1024L), percent);
+            }
+        }
+    }
+
+    /**
+     * @return immutable snapshot of running downloads, for commands and diagnostics
+     */
+    public Map<String, DownloadState> activeDownloads() {
+        return Map.copyOf(activeDownloads);
+    }
+
+    /**
      * Applies a shared-data update broadcast by the master.
      *
      * <p>MultiPaper writes {@code WriteDataMessage} payloads (custom data files)
@@ -951,6 +1006,25 @@ public final class FileSyncer {
         } catch (IOException e) {
             LOGGER.warn("Could not read {}: {}", name, e.toString());
             return null;
+        }
+    }
+
+    /**
+     * Progress of one in-flight download.
+     *
+     * @param transferred bytes handed to the channel so far
+     * @param total       total size, {@code -1} when unknown
+     */
+    public record DownloadState(long transferred, long total) {
+
+        /**
+         * @return completion percentage, or {@code -1} when the total is unknown
+         */
+        public int percent() {
+            if (total <= 0) {
+                return -1;
+            }
+            return (int) Math.min(100L, transferred * 100L / total);
         }
     }
 }

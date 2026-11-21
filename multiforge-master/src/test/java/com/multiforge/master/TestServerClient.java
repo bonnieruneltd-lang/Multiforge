@@ -9,6 +9,7 @@ import com.multiforge.protocol.messages.serverbound.AddChunkSubscriberMessage;
 import com.multiforge.protocol.messages.serverbound.AddEntitySubscriberMessage;
 import com.multiforge.protocol.messages.serverbound.ChunkSubscribersSyncMessage;
 import com.multiforge.protocol.messages.serverbound.DataUpdateMessage;
+import com.multiforge.protocol.messages.serverbound.DownloadProgressMessage;
 import com.multiforge.protocol.messages.serverbound.EntitySubscribersSyncMessage;
 import com.multiforge.protocol.messages.serverbound.FileContentMessage;
 import com.multiforge.protocol.messages.serverbound.PlayerUpdateMessage;
@@ -263,6 +264,11 @@ final class TestServerClient extends ServerBoundMessageHandler implements AutoCl
 
     @Override
     public void handle(FileContentMessage message) {
+        record(message);
+    }
+
+    @Override
+    public void handle(DownloadProgressMessage message) {
         record(message);
     }
 

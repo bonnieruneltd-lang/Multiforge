@@ -7,8 +7,12 @@
   "mixins": [
     "AbstractContainerMenuClickMixin",
     "BlockEntityMixin",
+    "BungeeHandshakeMixin",
+    "BungeeLoginMixin",
     "ChunkMapTrackedEntityMixin",
     "ChunkStorageMixin",
+    "ConnectionAddressAccessor",
+    "ConnectionForwardingCleanupMixin",
     "EntityMixin",
     "LevelChunkMixin",
     "LevelTicksMixin",

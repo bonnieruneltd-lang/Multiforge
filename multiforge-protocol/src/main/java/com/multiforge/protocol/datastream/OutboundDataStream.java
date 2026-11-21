@@ -68,14 +68,37 @@ public class OutboundDataStream {
         };
     }
 
+    /**
+     * Streams an input stream without progress reporting.
+     *
+     * @param in source, closed when the stream finishes or fails
+     * @return future completed when the close marker was written
+     */
     public ChannelFuture copyFromAsync(InputStream in) {
+        return copyFromAsync(in, null);
+    }
+
+    /**
+     * Streams an input stream and reports progress after every chunk.
+     *
+     * <p>The callback runs on the channel's event loop after each 64 KiB chunk was
+     * accepted by the channel, with the cumulative byte count. It is advisory:
+     * failures are not propagated into the copy and the close marker stays the
+     * completion signal.</p>
+     *
+     * @param in       source, closed when the stream finishes or fails
+     * @param progress cumulative byte consumer, may be {@code null}
+     * @return future completed when the close marker was written
+     */
+    public ChannelFuture copyFromAsync(InputStream in, java.util.function.LongConsumer progress) {
         ChannelPromise promise = new DefaultChannelPromise(channel);
         byte[] buffer = new byte[64 * 1024];
-        doCopyFrom(in, promise, buffer);
+        doCopyFrom(in, promise, buffer, progress, 0L);
         return promise;
     }
 
-    private void doCopyFrom(InputStream in, ChannelPromise promise, byte[] buffer) {
+    private void doCopyFrom(InputStream in, ChannelPromise promise, byte[] buffer,
+                            java.util.function.LongConsumer progress, long transferred) {
         try {
             int length = in.read(buffer);
             if (length <= 0) {
@@ -84,7 +107,17 @@ public class OutboundDataStream {
                 return;
             }
 
-            send(buffer, 0, length).addListener(future -> doCopyFrom(in, promise, buffer));
+            long next = transferred + length;
+            send(buffer, 0, length).addListener(future -> {
+                if (progress != null) {
+                    try {
+                        progress.accept(next);
+                    } catch (RuntimeException ignored) {
+                        // A progress callback must never abort a transfer.
+                    }
+                }
+                doCopyFrom(in, promise, buffer, progress, next);
+            });
         } catch (IOException e) {
             promise.setFailure(e);
         }

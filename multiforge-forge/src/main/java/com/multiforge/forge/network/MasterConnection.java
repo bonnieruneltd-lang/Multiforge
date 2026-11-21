@@ -12,6 +12,7 @@ import com.multiforge.protocol.messages.serverbound.AddChunkSubscriberMessage;
 import com.multiforge.protocol.messages.serverbound.AddEntitySubscriberMessage;
 import com.multiforge.protocol.messages.serverbound.ChunkSubscribersSyncMessage;
 import com.multiforge.protocol.messages.serverbound.DataUpdateMessage;
+import com.multiforge.protocol.messages.serverbound.DownloadProgressMessage;
 import com.multiforge.protocol.messages.serverbound.EntitySubscribersSyncMessage;
 import com.multiforge.protocol.messages.serverbound.FileContentMessage;
 import com.multiforge.protocol.messages.serverbound.PlayerUpdateMessage;
@@ -338,6 +339,12 @@ public final class MasterConnection extends ServerBoundMessageHandler {
     public void handle(ServerChangedChunkStatusMessage message) {
         lastReply = System.currentTimeMillis();
         server.chunks().onRemoteChunkStatus(message.world, message.cx, message.cz, message.status, message.server);
+    }
+
+    @Override
+    public void handle(DownloadProgressMessage message) {
+        lastReply = System.currentTimeMillis();
+        server.files().onDownloadProgress(message);
     }
 
     @Override

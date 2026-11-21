@@ -73,7 +73,6 @@ server (`ServerBoundProtocol`).
 | `ReadDataMessage` / `WriteDataMessage` | arbitrary shared file |
 | `UploadFileMessage` / `DownloadFileMessage` / `RequestFilesToSyncMessage` | shared file store |
 | `CallDataStorageMessage` | key/value storage used by integrations |
-| `RequestEntityIdBlock` | reserved for entity id allocation |
 
 ### Master -> server
 
@@ -93,6 +92,7 @@ server (`ServerBoundProtocol`).
 | `DataMessageReply`, `BooleanMessageReply`, `NullableStringMessageReply`, `KeyValueStringMapMessageReply`, `IntegerPairMessageReply` | replies |
 | `ChunkLoadedOnAnotherServerMessage(server)` | chunk read must go to a peer |
 | `FileContentMessage(path, lastModified, streamId)` | file download follows on a data stream |
+| `DownloadProgressMessage(path, streamId, transferred, total)` | advisory progress for that download, at least once per MiB and once with `transferred == total` |
 | `FilesToSyncMessage(files[])` | shared file inventory |
 | `DataUpdateMessage(path, data)` | real-time file update |
 | `ShutdownMessage` | master asks the server to stop |
@@ -212,7 +212,8 @@ it unchanged except for package names and logging.
 
 Master: `multiforge-master.properties` (`address`, `port`, `proxy-port`,
 `allow-multiple-connections`, `ping-timeout-millis`, `generation-lease-millis`,
-`generation-wait-millis`, `metrics-port`, `metrics-address`) plus
+`generation-wait-millis`, `metrics-port`, `metrics-address`, `leader-election`,
+`leader-retry-millis`) plus
 `-Dmultiforge.master.storage` for the storage root. `metrics-port=-1` disables the
 Prometheus endpoint; `/metrics` then reports the counters listed in
 [TODO.md](TODO.md#low-priority--polish).
@@ -231,6 +232,7 @@ tpsSyncIntervalTicks = 20
 name = "server1"       # empty = auto generated
 peerPort = 0           # 0 = ephemeral
 advertiseHost = ""
+bungeeCord = false     # accept legacy BungeeCord/Velocity forwarding (trusted proxy only)
 compressionThreshold = 0
 
 [synchronization]

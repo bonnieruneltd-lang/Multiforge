@@ -29,6 +29,7 @@ public class ServerBoundProtocol extends Protocol<ServerBoundMessage> {
         addMessage(NullableStringMessageReply.class, NullableStringMessageReply::new);
         addMessage(KeyValueStringMapMessageReply.class, KeyValueStringMapMessageReply::new);
         addMessage(IntegerPairMessageReply.class, IntegerPairMessageReply::new);
+        addMessage(DownloadProgressMessage.class, DownloadProgressMessage::new);
     }
 
 }

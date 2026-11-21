@@ -54,6 +54,9 @@ touching code, then read the architecture document of the subsystem you change.
 | Live stats/advancements | `player/PlayerProgressSyncManager`, `StatsCounterIncrementMixin`, `PlayerAdvancementsAwardMixin`, packets 31-32 |
 | Chunk border debug view | `chunk/ChunkBorderVisualizer`, `/multiforge borders` in `MultiForgeCommands` |
 | Master metrics | `master/util/MetricsServer`, `MultiForgeMaster.snapshotMetrics`, `MasterConfig` metrics keys |
+| Master leader election | `master/LeaderElection`, `MultiForgeMaster.acquireLeadership`, `leader-election` config |
+| Download progress | `DownloadProgressMessage`, `OutboundDataStream.copyFromAsync(InputStream, LongConsumer)`, `DownloadFileHandler`, `FileSyncer.onDownloadProgress` |
+| BungeeCord/Velocity forwarding | `protocol/proxy/BungeeCordForwarding`, `forge/connect/BungeeCordSupport`, `BungeeHandshakeMixin`, `BungeeLoginMixin`, `ConnectionAddressAccessor`, `server.bungeeCord` |
 | Container window forwarding | `container/ContainerSyncManager`, `ServerPlayerMenuMixin`, `AbstractContainerMenuClickMixin`, `OpenContainerPacket`/`ContainerClickPacket`/`ContainerClosePacket` |
 | Live user lists | `StoredUserListMixin`, `FileSyncer.onUserListChanged/onDataUpdate`, `PlayerSyncManager.reloadUserList`, `WriteJsonHandler` |
 | Ownership epochs | `ChunkSubscriptionManager`, `SetChunkOwnerMessage`, `ChunkSubscribersSyncMessage`, `ChunkState`, `ChunkManager`, `BlockChangePacket`, `BlockEntityUpdatePacket` |
@@ -94,9 +97,11 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   inventory, time, gamerule, single owner, 20 TPS, save-all) with 18/19 server mods loaded.
   The full set (19/19 incl. Ksyxis) also starts; Ksyxis is removed for the shared-chunk
   check because force-loaded tickets disappear while it is installed.
-* Compatibility score: 0/35 FULLY COMPATIBLE. 2 server targets FUNCTIONAL, 8 PARTIAL,
-  10 LOADING, 15 client targets NOT TESTED (no GPU). Do not inflate this; the matrix and
-  evidence are in `docs/REQUIRED_MOD_COMPATIBILITY.md`.
+* Compatibility score: no target is FULLY COMPATIBLE yet. 2 server targets FUNCTIONAL, 8
+  PARTIAL, 10 LOADING, 15 client-only targets NOT TESTED. The deployment is a headless
+  server cluster: client rendering targets (shaders, Embeddium/Oculus, ...) do not run on
+  the server and are out of scope for server functionality, but they are not claimed as
+  compatible either. Matrix and evidence: `docs/REQUIRED_MOD_COMPATIBILITY.md`.
 * Entity mirroring (TODO 1) and player mirroring (TODO 2) are implemented and verified on a
   two-server cluster; player evidence is in
   `compat/evidence/player-mirroring-20261115T030505Z.md`. Live inventory, ender chest,
@@ -122,7 +127,13 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
 * Chunk generation leases are implemented and integration tested; the lease is demand
   driven (the server whose player needs the chunk generates it). Choosing an idle server
   to generate for a busy one is not implemented.
-* This session (6) finished the non-GPU items: main-scoreboard sync (peer packet 30),
+* This session (6) also added the master leader lock (`leader-election`, opt-in), download
+  progress reporting, `/multiforge map`, BungeeCord/Velocity legacy IP+UUID+profile
+  forwarding (`server.bungeeCord`, opt-in with a firewall requirement) and single-encode
+  entity resyncs. All compile; protocol/master/api suites pass (protocol 36, master 41, api
+  4). The BungeeCord mixins are compile-verified only; the parser, leader lock and download
+  progress are unit/integration tested. No live proxy or two-server game run happened here.
+* It also finished the earlier non-GPU items: main-scoreboard sync (peer packet 30),
   live statistic/advancement deltas (31-32), `/multiforge borders`, the master Prometheus
   endpoint, entity ownership-boundary resyncs and protocol input hardening/fuzzing. All
   compile and the protocol/master suites pass (`ProtocolFuzzTest`, `MetricsServerTest`,
@@ -132,7 +143,7 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
 * Highest-value next work: (1) live-verify the session 6 forge features on a master + two
   servers, (2) extend the player-driven harness (`tools/compat/mcbot.js` +
   `player_state_check.py`) with gameplay interactions, because most server rows are waiting
-  on interaction, not code, and (3) run the 15 client targets on a GPU machine. Remaining
+  on interaction, not code. Remaining
   design/code items are config hot reload, per-chunk sequence numbers/acks, master leader
   election and the performance leftovers in PERFORMANCE.md.
 * Do not restart or rewrite working subsystems. Read `DEVELOPMENT_HANDOFF.md` for the

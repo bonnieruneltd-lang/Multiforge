@@ -7,6 +7,7 @@ import com.multiforge.protocol.messages.masterbound.PlayerConnectMessage;
 import com.multiforge.protocol.messages.masterbound.ReadChunkMessage;
 import com.multiforge.protocol.messages.masterbound.WriteChunkMessage;
 import com.multiforge.protocol.messages.serverbound.ChunkSubscribersSyncMessage;
+import com.multiforge.protocol.messages.serverbound.DownloadProgressMessage;
 import com.multiforge.protocol.messages.serverbound.PlayerUpdateMessage;
 import com.multiforge.protocol.messages.serverbound.ServerBoundProtocol;
 import com.multiforge.protocol.messages.serverbound.ServerInfoUpdateMessage;
@@ -144,6 +145,17 @@ class MessageCodecTest {
         assertEquals("Alex", update.playerName);
         assertEquals("server-c", update.server);
         assertTrue(!update.online);
+    }
+
+    @Test
+    void downloadProgressRoundTrips() {
+        DownloadProgressMessage decoded = roundTrip(
+                new DownloadProgressMessage("world/region/r.0.0.mca", 7, 3L * 1024L * 1024L,
+                        10L * 1024L * 1024L), new ServerBoundProtocol());
+        assertEquals("world/region/r.0.0.mca", decoded.path);
+        assertEquals(7, decoded.streamId);
+        assertEquals(30, decoded.percent());
+        assertEquals(10L * 1024L * 1024L, decoded.total);
     }
 
     @Test

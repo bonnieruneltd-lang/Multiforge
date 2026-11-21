@@ -40,4 +40,9 @@ public abstract class ServerBoundMessageHandler extends MessageHandler<ServerBou
     public abstract void handle(ChunkSubscribersSyncMessage message);
 
     public abstract void handle(EntitySubscribersSyncMessage message);
+
+    /**
+     * @param message progress of an in-flight download
+     */
+    public abstract void handle(DownloadProgressMessage message);
 }

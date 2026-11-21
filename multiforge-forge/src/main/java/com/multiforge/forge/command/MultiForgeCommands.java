@@ -54,6 +54,11 @@ public final class MultiForgeCommands {
                                                 com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "x"),
                                                 com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "z"))))))
                 .then(Commands.literal("chunks").executes(context -> chunks(context.getSource())))
+                .then(Commands.literal("map")
+                        .executes(context -> map(context.getSource(), 8))
+                        .then(Commands.argument("radius", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 32))
+                                .executes(context -> map(context.getSource(),
+                                        com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "radius")))))
                 .then(Commands.literal("borders").executes(context -> borders(context.getSource())))
                 .then(Commands.literal("compat").executes(context -> compat(context.getSource())))
                 .then(Commands.literal("download")
@@ -79,6 +84,59 @@ public final class MultiForgeCommands {
      * @param source command source
      * @return 1 when the state changed, 0 otherwise
      */
+    /**
+     * Prints a text map of chunk ownership around the player.
+     *
+     * <p>Port of MultiPaper's {@code /mpmap} without the client-side rendering:
+     * one character per chunk, {@code @} for a chunk this server ticks, the
+     * upper-case first letter of the owning server for a chunk another server
+     * ticks, and {@code .} for a chunk without a known owner (idle, or not loaded
+     * anywhere yet). The rows are ordinary chat lines, so the command works on a
+     * normal client and can be copied into a bug report.</p>
+     *
+     * @param source command source
+     * @param radius chunks in each direction, 1-32
+     * @return number of owners that are not this server (for command result tools)
+     */
+    private static int map(CommandSourceStack source, int radius) {
+        MultiForgeServer runtime = runtime(source);
+        if (runtime == null) {
+            return 0;
+        }
+        ServerLevel level;
+        ChunkPos center;
+        try {
+            ServerPlayer player = source.getPlayerOrException();
+            level = (ServerLevel) player.level();
+            center = player.chunkPosition();
+        } catch (CommandSyntaxException e) {
+            source.sendFailure(Component.literal("Run this command as a player."));
+            return 0;
+        }
+        String local = runtime.serverName();
+        int foreign = 0;
+        source.sendSuccess(() -> Component.literal(String.format(
+                "Chunk ownership around %d,%d (radius %d) - @ = this server, letters = other servers, . = unowned",
+                center.x, center.z, radius)), false);
+        for (int dz = -radius; dz <= radius; dz++) {
+            StringBuilder row = new StringBuilder(radius * 2 + 1);
+            for (int dx = -radius; dx <= radius; dx++) {
+                ChunkKey key = runtime.chunks().keyOf(level, center.x + dx, center.z + dz);
+                String owner = runtime.chunks().ownerName(key);
+                if (owner == null) {
+                    row.append('.');
+                } else if (owner.equals(local)) {
+                    row.append('@');
+                } else {
+                    row.append(Character.toUpperCase(owner.charAt(0)));
+                    foreign++;
+                }
+            }
+            source.sendSuccess(() -> Component.literal(row.toString()), false);
+        }
+        return foreign;
+    }
+
     private static int borders(CommandSourceStack source) {
         MultiForgeServer runtime = runtime(source);
         if (runtime == null) {
@@ -131,6 +189,13 @@ public final class MultiForgeCommands {
                 runtime.peers().connections().size(), runtime.entities().mirroredEntityCount(),
                 runtime.chunkIo().readCount(), runtime.chunkIo().writeCount(), runtime.chunkIo().failureCount());
         source.sendSuccess(() -> Component.literal(line), false);
+        Map<String, com.multiforge.forge.world.FileSyncer.DownloadState> downloads =
+                runtime.files().activeDownloads();
+        for (Map.Entry<String, com.multiforge.forge.world.FileSyncer.DownloadState> entry : downloads.entrySet()) {
+            com.multiforge.forge.world.FileSyncer.DownloadState state = entry.getValue();
+            source.sendSuccess(() -> Component.literal(String.format("download %s: %d%% (%d/%d bytes)",
+                    entry.getKey(), state.percent(), state.transferred(), state.total())), false);
+        }
         return 1;
     }
 

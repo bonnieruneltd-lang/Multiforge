@@ -59,8 +59,13 @@ integration tests and by running two real Forge servers against a master:
 | Chunk-border debug visualization (`/multiforge borders`) | implemented (config `debug.chunkBorders`); compile-verified |
 | Prometheus `/metrics` endpoint for the master | implemented (`metrics-port`, default off); unit tested |
 | Protocol input hardening + fuzzing | implemented: bounds-checked lengths, random/malformed-payload tests |
+| BungeeCord / Velocity legacy IP+UUID+profile forwarding | implemented (`server.bungeeCord`, default off); compile-verified, live check pending |
+| External proxy / built-in proxy load balancing | supported; built-in proxy verified by design, external BungeeCord/Velocity documented |
+| Master leader election for shared storage | implemented (`leader-election`, default off); unit tested |
+| Download progress reporting | implemented: `DownloadProgressMessage` every MiB, shown in `/multiforge status`; integration tested |
+| Chunk-ownership text map (`/multiforge map`) | implemented; compile-verified |
 | Pinned compatibility manifest and two-server RCON harness | implemented; 35 targets pinned, server set tested together |
-| Required mod compatibility (35 targets) | 0/35 FULLY COMPATIBLE: 2 functional, 8 partial, 10 loading, 15 client targets not tested (no GPU) - see [docs/REQUIRED_MOD_COMPATIBILITY.md](docs/REQUIRED_MOD_COMPATIBILITY.md) |
+| Required mod compatibility (35 targets) | Server deployment: 20/20 server targets installed and started together (2 functional, 8 partial, 10 loading); 15 client-only targets are out of scope for the headless server (pinned, not tested) - see [docs/REQUIRED_MOD_COMPATIBILITY.md](docs/REQUIRED_MOD_COMPATIBILITY.md) |
 
 Read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before running a production world, and
 [docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md) for the current audit.
@@ -104,7 +109,7 @@ Read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before running a production wo
 ## Commands
 
 `/multiforge status`, `/multiforge servers`, `/multiforge players`, `/multiforge chunk`,
-`/multiforge chunks`, `/multiforge borders`, `/multiforge compat`,
+`/multiforge chunks`, `/multiforge map [radius]`, `/multiforge borders`, `/multiforge compat`,
 `/multiforge download <path>` (aliases `/mfservers`, `/mfslist`). `/multiforge borders`
 requires `debug.chunkBorders = true`.
 

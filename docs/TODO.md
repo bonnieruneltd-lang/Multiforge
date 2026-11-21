@@ -28,7 +28,10 @@ coding.
    client is connected; the owner applies slot deltas). Cross-server damage now carries the
    causing/direct entity UUIDs and source position, and the owner rebuilds a real
    `DamageSource`. Still missing: mob navigation handover, raids, dragon fight, projectile
-   ownership beyond the attacker/direct UUIDs, sign editing and pistons.
+   ownership beyond the attacker/direct UUIDs. Sign editing and pistons are already covered
+   by the generic paths: a sign calls `BlockEntity.setChanged()` and a piston move is a
+   block/block-entity change, so `BlockEntityUpdatePacket`/`BlockChangePacket` carry them
+   (not separately live-tested).
 6. **Chunk status protocol** - done: the master records load/unload status
    (`ChunkStatusTracker`) and does not redirect a read to a peer that is unloading; covered by
    `unloadingPeerIsNotChosenForChunkRead`. The client-side status view is still informational.
@@ -101,8 +104,12 @@ coding.
 12. **Weather conflict resolution**: weather is last-writer-wins on a state transition; time already
     follows upstream's forced/periodic semantics. A master-owned logical clock would remove the
     remaining one-tick jitter after a lag spike.
-13. **Master high availability**: multiple masters sharing storage are supported by the file
-    locks, but there is no leader election; the built-in proxy would also need it.
+13. **Master high availability** - single-leader part done (session 6): `LeaderElection`
+    takes an exclusive OS lock on `master-leader.lock` when `leader-election=true` (default
+    off); a standby waits and takes over when the leader exits, and the built-in proxy and
+    metrics endpoint only start on the leader. This is a failover lock, not live migration:
+    servers reconnect and replay pending requests. Unit tested; live two-process takeover is
+    exercised manually (start two masters on one storage).
 14. **Built-in proxy player balancing**: the proxy currently picks a live server by load; the
     original can also use BungeeCord/Velocity. Verify reconnects and protocol edge cases.
 15. **Config hot reload** - mostly done (session 6). `MultiForgeServer.config` is volatile and
@@ -123,7 +130,11 @@ coding.
     `/metrics` on `metrics-port` (disabled with -1, default) with uptime, online
     servers/players, owned/subscribed chunks, pending entity writes and the next entity id.
     Bind it to a private interface with `metrics-address` in production.
-18. Structured progress reporting for large file downloads (the download itself is streamed).
+18. Structured progress reporting for large file downloads - done (session 6): the master
+    sends `DownloadProgressMessage` (path, stream id, transferred, total) at least once per
+    MiB and once with `transferred == total`; `FileSyncer` tracks active downloads, logs
+    25% milestones for files >= 4 MiB and shows them in `/multiforge status`. Covered by a
+    master integration test.
 19. Protocol fuzz tests - done (session 6). `ProtocolFuzzTest` feeds malformed and random
     bodies to every registered message id and checks announced byte/string/array lengths are
     rejected before allocation. It found a remote OOM in `readString` and the array readers;
@@ -133,8 +144,21 @@ coding.
     `MultiForgeApiProviderTest` contains a complete example implementation plus contract
     tests for registration, reset, the not-initialised error and the value objects. A
     separate example mod project is still missing.
-21. Port MultiPaper's `/mpmap` and `/mpdebug` visualisations.
+21. Port MultiPaper's `/mpmap` and `/mpdebug` visualisations - partially done (session 6):
+    `/multiforge map [radius]` prints a text ownership grid around the player (`@` = this
+    server, first letter = another server, `.` = unowned) and `/multiforge borders` covers
+    the debug particle view. A graphical map is still missing.
 22. Automate the live two-server check (container recipe) so it can run in CI.
+
+23. **BungeeCord / Velocity proxy compatibility** - legacy forwarding done (session 6):
+    `server.bungeeCord=true` parses `host\0ip[\0uuid\0properties]`, applies the player IP
+    to the connection and replaces the login profile with the forwarded UUID/textures
+    (`BungeeCordSupport`, handshake/login/connection mixins). Parser is unit tested; the
+    mixins are compile-verified (no live proxy here). Remaining: Velocity **modern**
+    forwarding (login plugin channel + secret); currently configure Velocity for legacy
+    `bungeecord` forwarding. Also not ported: MultiPaper's BungeeCord/Velocity plugin that
+    runs the master inside the proxy and balances players itself - MultiForge relies on the
+    proxy's own balancing or the built-in proxy.
 
 ## Done (for reference)
 

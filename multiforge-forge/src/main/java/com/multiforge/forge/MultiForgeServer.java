@@ -7,6 +7,7 @@ import com.multiforge.forge.chunk.ChunkManager;
 import com.multiforge.forge.chunk.ChunkStorageRegistry;
 import com.multiforge.forge.chunk.ChunkSyncIo;
 import com.multiforge.forge.compat.ModCompatibilityManager;
+import com.multiforge.forge.connect.BungeeCordSupport;
 import com.multiforge.forge.config.MultiForgeConfig;
 import com.multiforge.forge.container.ContainerSyncManager;
 import com.multiforge.forge.entity.EntitySyncManager;
@@ -102,6 +103,7 @@ public final class MultiForgeServer {
     private final EntityIdAllocator entityIds;
     private final ModCompatibilityManager compat;
     private final MultiForgeApiImpl api;
+    private final BungeeCordSupport bungee;
 
     private final Map<String, ServerLevel> levels = new ConcurrentHashMap<>();
     private final AtomicBoolean stopping = new AtomicBoolean();
@@ -132,6 +134,7 @@ public final class MultiForgeServer {
         this.progress = new PlayerProgressSyncManager(this);
         this.compat = new ModCompatibilityManager(this);
         this.api = new MultiForgeApiImpl(this);
+        this.bungee = new BungeeCordSupport(this);
         this.entityIds = new EntityIdAllocator(
                 () -> master.request(new RequestEntityIdBlock(), IntegerPairMessageReply.class),
                 message -> LOGGER.warn("Entity id allocation: {}", message));
@@ -504,6 +507,7 @@ public final class MultiForgeServer {
         containers.clear();
         scoreboards.clear();
         progress.clear();
+        bungee.clear();
         entityIds.clear();
         chunks.clear();
         borders.clear();
@@ -634,6 +638,11 @@ public final class MultiForgeServer {
     /** @return required-target detection and compatibility reporting */
     public ModCompatibilityManager compat() {
         return compat;
+    }
+
+    /** @return BungeeCord/Velocity legacy forwarding support */
+    public BungeeCordSupport bungee() {
+        return bungee;
     }
 
     /** @return public API implementation */

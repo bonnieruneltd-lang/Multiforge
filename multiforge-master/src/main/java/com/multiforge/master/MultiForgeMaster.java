@@ -2,6 +2,7 @@ package com.multiforge.master;
 
 import com.multiforge.master.proxy.ProxyServer;
 import com.multiforge.master.util.Log;
+import com.multiforge.master.util.MasterStorage;
 import com.multiforge.master.util.MetricsServer;
 import com.multiforge.protocol.MessageBootstrap;
 import com.multiforge.protocol.messages.masterbound.MasterBoundMessage;
@@ -40,6 +41,8 @@ public class MultiForgeMaster extends MessageBootstrap<MasterBoundMessage, Serve
     private static volatile MasterConfig config;
     /** Prometheus endpoint, {@code null} when {@code metrics-port} is negative. */
     private static volatile MetricsServer metricsServer;
+    /** Storage leader lock, {@code null} unless {@code leader-election=true}. */
+    private static volatile LeaderElection leaderElection;
     /** Wall-clock start of the process, used by the uptime metric. */
     private static final long STARTED_AT = System.currentTimeMillis();
 
@@ -95,6 +98,8 @@ public class MultiForgeMaster extends MessageBootstrap<MasterBoundMessage, Serve
             }
         }
 
+        acquireLeadership(address, port);
+
         setupGracefulShutdown();
 
         if (proxyPort >= 0) {
@@ -134,6 +139,41 @@ public class MultiForgeMaster extends MessageBootstrap<MasterBoundMessage, Serve
                         + (address == null || address.isEmpty() ? "0.0.0.0" : address) + ":" + boundPort);
             }
         });
+    }
+
+    /**
+     * Acquires the opt-in storage leader lock before any port is bound.
+     *
+     * <p>When {@code leader-election=true} a standby master waits here without
+     * listening, so the running servers never see two masters for the same
+     * storage. A failure to create the lock file aborts start-up: continuing
+     * without the guarantee would risk two writers on one world.</p>
+     *
+     * @param address bind address (may be empty)
+     * @param port    master port
+     */
+    private static void acquireLeadership(String address, int port) {
+        MasterConfig snapshot = config;
+        if (snapshot == null || !snapshot.isLeaderElection()) {
+            return;
+        }
+        LeaderElection election = new LeaderElection(
+                MasterStorage.file(LeaderElection.LOCK_FILE).toPath(),
+                snapshot.getLeaderRetryMillis());
+        String description = (address == null || address.isEmpty() ? "0.0.0.0" : address)
+                + ":" + port + " pid=" + ProcessHandle.current().pid();
+        try {
+            Log.info("Leader election enabled; acquiring " + election.path());
+            election.awaitLeadership(description);
+            leaderElection = election;
+            Log.info("This master is the storage leader");
+        } catch (java.io.IOException e) {
+            Log.error("Could not acquire the storage leader lock; refusing to start", e);
+            System.exit(1);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.exit(1);
+        }
     }
 
     /**
@@ -245,6 +285,11 @@ public class MultiForgeMaster extends MessageBootstrap<MasterBoundMessage, Serve
                 Log.error("Interrupted while waiting for the event loop to stop", e);
             }
             awaitAsyncTasks();
+            // Release the storage lock last: a standby must not bind its port while this
+            // process still owns listening sockets from the old leader term.
+            if (leaderElection != null) {
+                leaderElection.close();
+            }
         }, "MultiForge-Shutdown");
         Runtime.getRuntime().addShutdownHook(shutdownListener);
     }

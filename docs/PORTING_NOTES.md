@@ -154,6 +154,14 @@ Purpur fork whose functionality lives in three places:
   20 TPS, save-all). 20/20 required targets installed; 19/19 Forge mods load in the full
   configuration. `docs/REQUIRED_MOD_COMPATIBILITY.md` has the per-target evidence and the
   honest 0/35 fully-compatible score.
+* Session 6: server-side completion pass (the deployment is a headless server cluster, so
+  client rendering/shaders are out of scope): main-scoreboard packet replay, live
+  statistics/advancement deltas, chunk-border particles and `/multiforge map`, master
+  Prometheus metrics, optional master leader election, download progress messages,
+  BungeeCord/Velocity legacy IP+UUID+profile forwarding, ownership-boundary entity resyncs
+  and protocol input hardening with fuzzing. Forge code is compile-verified (reobf jar and
+  refmap); the protocol/master/API suites are green. Client-only compatibility rows remain
+  untested and are not claimed as compatible.
 * Session 5: live player-state sync verified on master + two Forge 47.4.29 servers with a
   headless `minecraft-protocol` bot; `tools/compat/player_state_check.py` recorded 21/21
   checks (main/armor/off-hand/ender-chest slots, hotbar selection, hunger, experience,

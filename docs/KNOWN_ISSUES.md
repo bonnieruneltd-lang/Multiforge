@@ -208,6 +208,37 @@ This is a target-mod defect, recorded so nobody re-pins 3.0.
   player. The player data file on the master is still authoritative on save/load, and a
   statistic earned while no peer connection exists waits for the next save.
 
+### 20. BungeeCord forwarding trusts the proxy
+
+With `server.bungeeCord=true` the backend accepts IP, UUID and profile properties from
+the handshake. The format is not authenticated, so anyone who can reach the backend port
+can impersonate any player. This is inherent to legacy forwarding (the same is true of
+Paper's `bungeecord: true`); the mitigation is a firewall or private network that only
+admits the proxy, plus `online-mode=false` on the backend because the proxy authenticates.
+Velocity's modern forwarding is not implemented; configure Velocity for legacy
+`bungeecord` forwarding. Malformed forwarding data is rejected and logged rather than
+used, and the connection falls back to the proxy address and an offline UUID.
+
+### 21. Leader election is a failover lock, not live migration
+
+`leader-election=true` guarantees only one master serves a shared storage root. The
+standby process waits for the lock and starts listening when the leader exits (including a
+crash, because the OS releases the lock). It does not transfer open connections, in-flight
+uploads or the proxy socket: game servers reconnect to the master on their normal retry
+interval and replay their pending requests, so expect a short reconnect window. The old
+leader releases the lock only after its listener and event loop are shut down, so the
+standby never binds while the previous term still owns a listening socket. Leave the
+option off unless two masters really share one storage directory.
+
+### 22. Download progress is advisory
+
+`DownloadProgressMessage` reports bytes handed to the channel, not bytes the peer has
+written to disk. A network buffer can therefore make the reported value jump ahead of the
+actual file; the data-stream close marker remains the only completion signal, and a
+missing or duplicated progress message cannot corrupt a download. Very large files on a
+slow link are throttled to one message per MiB so progress does not add meaningful
+traffic.
+
 ## Fixed issues worth knowing about (regression tests cover them)
 
 * Data stream downloads were truncated at 64 KiB because the outbound stream reused the

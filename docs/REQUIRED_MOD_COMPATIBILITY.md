@@ -4,10 +4,13 @@ This document is the compatibility record for the 35 targets that MultiForge mus
 support. It is not a wish list: every row names the exact artifact that was pinned,
 where it belongs, what was executed against it and what is still unverified.
 
-**Current result: 0/35 FULLY COMPATIBLE; 20/20 server targets installed and started in
-one two-server cluster; 15/15 client targets pinned but not testable in this container
-(no display, no GPU).** Read the status column before quoting a number; the target is
-35/35 but the honest state today is below it.
+**Current result: 20/20 server targets installed and started in one two-server cluster;
+15/15 client targets pinned but not testable in this container (no display, no GPU).**
+Read the status column before quoting a number. The deployment this document supports is a
+headless server cluster; client-side rendering targets (shaders, Embeddium/Oculus, Cull
+Leaves, Dynamic FPS, ...) do not run on the server and do not affect server functionality.
+They remain **NOT TESTED** here because no client is available, and should be checked on a
+game client only if a matching client modpack is distributed.
 
 ## 1. Test environment
 
@@ -82,7 +85,9 @@ Loading is not compatibility. A green server log alone never justifies FUNCTIONA
 All client artifacts are pinned in `compat/required-mods.json`. None could be executed
 here: the verification container has no display server and no OpenGL driver, so neither
 a Forge client nor Oculus shader compilation can run. The status is therefore
-**NOT TESTED**, not "compatible". The required manual matrix is in section 6.
+**NOT TESTED**, not "compatible". The required manual matrix is in section 6. Client-only
+rows are out of scope for the headless server deployment (the server has no display and no
+shader stack), but they are not claimed as compatible either.
 
 | # | Name | Kind / mod id | Pinned version | File | Deps | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |

@@ -38,6 +38,8 @@ public final class MasterConfig {
     private long generationWaitMillis = 2_000L;
     private int metricsPort = -1;
     private String metricsAddress = "";
+    private boolean leaderElection = false;
+    private long leaderRetryMillis = 5_000L;
 
     private MasterConfig() {
     }
@@ -72,6 +74,10 @@ public final class MasterConfig {
                 config.generationWaitMillis);
         config.metricsPort = Integer.getInteger("multiforge.master.metricsPort", config.metricsPort);
         config.metricsAddress = System.getProperty("multiforge.master.metricsAddress", config.metricsAddress);
+        config.leaderElection = Boolean.parseBoolean(System.getProperty(
+                "multiforge.master.leaderElection", Boolean.toString(config.leaderElection)));
+        config.leaderRetryMillis = Long.getLong("multiforge.master.leaderRetryMillis",
+                config.leaderRetryMillis);
         return config;
     }
 
@@ -97,6 +103,9 @@ public final class MasterConfig {
         generationWaitMillis = longValue(properties, "generation-wait-millis", generationWaitMillis);
         metricsPort = intValue(properties, "metrics-port", metricsPort);
         metricsAddress = properties.getProperty("metrics-address", metricsAddress).trim();
+        leaderElection = Boolean.parseBoolean(properties.getProperty(
+                "leader-election", Boolean.toString(leaderElection)));
+        leaderRetryMillis = longValue(properties, "leader-retry-millis", leaderRetryMillis);
     }
 
     /**
@@ -130,6 +139,11 @@ public final class MasterConfig {
                 # Keep it on a private interface (metrics-address) in production.
                 metrics-port=-1
                 metrics-address=
+                # Opt-in leader election for two masters that share one storage
+                # root: only the process holding master-leader.lock serves servers.
+                # Leave false for a single master (the default).
+                leader-election=false
+                leader-retry-millis=5000
                 """;
         Path parent = file.toAbsolutePath().getParent();
         if (parent != null) {
@@ -201,14 +215,25 @@ public final class MasterConfig {
         return metricsAddress;
     }
 
+    /** @return whether a master must hold the storage leader lock before starting */
+    public boolean isLeaderElection() {
+        return leaderElection;
+    }
+
+    /** @return delay between leader lock attempts while standing by */
+    public long getLeaderRetryMillis() {
+        return leaderRetryMillis;
+    }
+
     @Override
     public String toString() {
         return String.format(Locale.ROOT,
                 "MasterConfig[address=%s, port=%d, proxyPort=%d, allowMultipleConnections=%s, "
                         + "pingTimeout=%dms, generationLease=%dms, generationWait=%dms, "
-                        + "metrics=%s:%d]",
+                        + "metrics=%s:%d, leaderElection=%s, leaderRetry=%dms]",
                 address.isEmpty() ? "0.0.0.0" : address, port, proxyPort, allowMultipleConnections,
                 pingTimeoutMillis, generationLeaseMillis, generationWaitMillis,
-                metricsAddress.isEmpty() ? "0.0.0.0" : metricsAddress, metricsPort);
+                metricsAddress.isEmpty() ? "0.0.0.0" : metricsAddress, metricsPort,
+                leaderElection, leaderRetryMillis);
     }
 }

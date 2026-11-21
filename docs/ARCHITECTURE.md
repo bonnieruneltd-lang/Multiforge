@@ -37,16 +37,19 @@ com.multiforge.forge
 │   ├── PlayerSyncManager      data files, duplicate login prevention, chat, registry
 │   ├── PlayerMirrorManager    remote player copies, tab list, retries, peer cleanup
 │   ├── PlayerStateSyncManager live inventory/ender chest/hunger/experience/effects sync
+│   ├── PlayerProgressSyncManager batched statistics and advancement progress
 │   └── ExternalPlayer         ServerPlayer copy hosted by another server
 ├── world/
 │   ├── WorldSyncManager       time, weather, gamerules, world border, level data
-│   └── FileSyncer             level.dat, uid.dat, JSON files, arbitrary files
+│   └── FileSyncer             level.dat, uid.dat, JSON files, arbitrary files, download progress
+├── scoreboard/ScoreboardSyncManager  main scoreboard packet replay across servers
+├── connect/BungeeCordSupport  legacy BungeeCord/Velocity IP+UUID+profile forwarding
 ├── config/MultiForgeConfig    ForgeConfigSpec + startup TOML reader + immutable Snapshot
 ├── command/MultiForgeCommands /multiforge commands
 ├── compat/ModCompatibilityManager  required-target detection and `/multiforge compat`
 ├── api/MultiForgeApiImpl      public API implementation
 ├── common/                    small value types and path helpers
-└── mixin/                     nineteen Mixins (see below)
+└── mixin/                     Mixins (ownership, sync, player, scoreboard, proxy; see below)
 ```
 
 ## 2. Processes and connections
@@ -83,6 +86,11 @@ its own framing with optional zlib compression, see [NETWORKING.md](NETWORKING.m
 ## 3. Lifecycle
 
 ```
+Master process start (standalone)
+  └─ optional LeaderElection (exclusive master-leader.lock in the storage root)
+       ├─ wait while another master holds the lock
+       └─ bind master port, proxy, metrics, then serve
+
 MinecraftServer.loadLevel (Mixin HEAD)
   └─ MultiForgeServer.bootstrap
        ├─ read config (startup TOML reader, before Forge's config event)
