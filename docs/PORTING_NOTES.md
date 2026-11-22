@@ -65,7 +65,7 @@ Purpur fork whose functionality lives in three places:
 | `Bukkit.broadcastMessage` across servers | `ServerChatEvent` -> `ChatMessagePacket` -> `PlayerList.broadcastSystemMessage` | Forge has no cluster broadcast. |
 | `PlayerJoinEvent`/`QuitEvent` handling | `PlayerList.placeNewPlayer` claim + player registry + logout manager | The claim must happen before the player is added. |
 | `multipaper.yml` (`ConfigurationPart`) | `ForgeConfigSpec` (`SERVER`) + startup TOML reader | Forge owns config loading, but MultiForge starts before it. |
-| BungeeCord/Velocity embedding of the master | standalone master only | Forge has no proxy plugin API; the master ships the same TCP proxy. |
+| BungeeCord/Velocity embedding of the master | standalone master, built-in proxy, Velocity plugin | Forge has no proxy plugin API; the master ships the TCP proxy, and the optional `multiforge-velocity` module embeds the master in Velocity. The BungeeCord plugin is not ported. |
 | `MultiPaperConnection` (`@Sharable`) | `MasterConnection` (`@Sharable`, required for reconnect) | Reattaching a channel handler requires it. |
 | Paper `RegionFile` | ported unchanged into `com.multiforge.master.util` | No Minecraft dependency, battle tested. |
 | `jo-nbt` transient entity merge | same dependency in the master | Needed server-side. |

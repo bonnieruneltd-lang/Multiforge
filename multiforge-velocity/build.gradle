@@ -1,0 +1,41 @@
+/*
+ * Optional Velocity plugin: runs the master inside the proxy and balances players
+ * by backend tick time, matching MultiPaper's MultiPaperVelocity plugin.
+ *
+ * The plugin is built as a self-contained jar (master + protocol + Netty + the
+ * small NBT/YAML/logging dependencies) because Velocity plugins cannot reference
+ * build paths. The proxy itself supplies the Velocity API at runtime.
+ */
+plugins {
+    id 'java'
+}
+
+repositories {
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+}
+
+dependencies {
+    compileOnly 'com.velocitypowered:velocity-api:3.4.0'
+    annotationProcessor 'com.velocitypowered:velocity-api:3.4.0'
+    implementation project(':multiforge-master')
+    // MasterConnection/ServerConnection expose protocol types in their public
+    // signatures, so the compiler needs them on the compile classpath too.
+    implementation project(':multiforge-protocol')
+}
+
+tasks.named('jar', Jar).configure {
+    dependsOn configurations.runtimeClasspath
+    archiveBaseName = 'multiforge-velocity'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes(
+                'Implementation-Title': 'MultiForge Velocity',
+                'Implementation-Version': project.version
+        )
+    }
+    from sourceSets.main.output
+    from {
+        configurations.runtimeClasspath.findAll { it.name.endsWith('.jar') }.collect { zipTree(it) }
+    }
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA', 'module-info.class'
+}

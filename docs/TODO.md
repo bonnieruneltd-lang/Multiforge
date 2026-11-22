@@ -226,8 +226,9 @@ coding.
     built-in proxy (IP-only forwarding preserved the offline UUID). Velocity **modern**
     forwarding (login plugin + HMAC) is implemented and verified with a simulated proxy;
     versions 2-4 (player key) are not requested. Remaining: MultiPaper's BungeeCord/Velocity
-    plugin that runs the master inside the proxy and balances players itself - MultiForge
-    relies on the proxy's own balancing or the built-in proxy.
+    plugin that runs the master inside the proxy and balances players itself: the Velocity
+    variant is implemented (`multiforge-velocity`, live-verified with two backends); the
+    BungeeCord variant is not ported and relies on the proxy's own balancing.
 
 ## Done (for reference)
 

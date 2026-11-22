@@ -176,6 +176,19 @@ the production Forge client, runs one client per shader pack and writes
 launch/log checks with `--allow-software` (labelled SOFTWARE; shader rows stay open). See
 [docs/CLIENT_MATRIX.md](CLIENT_MATRIX.md) for the machine specification and the verdict rules.
 
+## Velocity plugin
+
+`multiforge-velocity` is the optional port of MultiPaper's proxy-hosted master. It embeds the
+master in Velocity and balances connects by backend tick time:
+
+```bash
+./gradlew :multiforge-velocity:build
+cp multiforge-velocity/build/libs/multiforge-velocity-*.jar <velocity>/plugins/
+```
+
+Backends point at `proxy-host:35353` and use names that match `velocity.toml`'s `[servers]`.
+See [VELOCITY_PLUGIN.md](VELOCITY_PLUGIN.md) for configuration, limits and the live evidence.
+
 ## One-command live cluster
 
 `tools/ci/live_cluster.sh` boots the master, two Forge dev servers and the headless bots, runs

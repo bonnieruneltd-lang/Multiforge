@@ -60,6 +60,7 @@ touching code, then read the architecture document of the subsystem you change.
 | Master leader election | `master/LeaderElection`, `MultiForgeMaster.acquireLeadership`, `leader-election` config |
 | Download progress | `DownloadProgressMessage`, `OutboundDataStream.copyFromAsync(InputStream, LongConsumer)`, `DownloadFileHandler`, `FileSyncer.onDownloadProgress` |
 | BungeeCord/Velocity forwarding | `protocol/proxy/BungeeCordForwarding`, `forge/connect/BungeeCordSupport` + `VelocityForwardingSupport`, `BungeeHandshakeMixin`/`BungeeLoginMixin`/`VelocityLoginMixin`, `ConnectionAddressAccessor`, `server.bungeeCord` / `server.velocityModern` |
+| Velocity plugin (embedded master) | `multiforge-velocity/` (`MultiForgeVelocity`), `MultiForgeMaster.startEmbedded`, `docs/VELOCITY_PLUGIN.md` |
 | Container window forwarding | `container/ContainerSyncManager`, `ServerPlayerMenuMixin`, `AbstractContainerMenuClickMixin`, `OpenContainerPacket`/`ContainerClickPacket`/`ContainerClosePacket` |
 | Live user lists | `StoredUserListMixin`, `FileSyncer.onUserListChanged/onDataUpdate`, `PlayerSyncManager.reloadUserList`, `WriteJsonHandler` |
 | Ownership epochs | `ChunkSubscriptionManager`, `SetChunkOwnerMessage`, `ChunkSubscribersSyncMessage`, `ChunkState`, `ChunkManager`, `BlockChangePacket`, `BlockEntityUpdatePacket` |
@@ -172,7 +173,8 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   `compat/evidence/packet-loss-20261122T075418Z.md`), and `tools/ci/live_cluster.sh` reproduces
   the 18/18 + forced-loss + fight run in one command. Radium/ServerCore and Ksyxis are closed as
   documented deployment profiles (`docs/COMPATIBILITY_PROFILES.md`). Larger features still
-  missing: the MultiPaper-style proxy-side master plugin. A graphical map is optional: upstream
+  missing: the BungeeCord proxy plugin (the Velocity equivalent is ported and live-verified).
+  A graphical map is optional: upstream
   `/mpmap` is textual and the text variant (`/multiforge map`) is implemented.
 * Do not restart or rewrite working subsystems. Read `DEVELOPMENT_HANDOFF.md` for the
   session audit and `KNOWN_ISSUES.md` for the interaction findings (Timber 3.0, Radium ×

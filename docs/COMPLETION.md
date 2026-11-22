@@ -24,18 +24,18 @@ actually exercised.
 
 | Category | Score | Evidence / gap |
 | --- | ---: | --- |
-| Core parity implementation | 97 % | Everything except the MultiPaper-style proxy-side master plugin. Raids and the dragon fight are implemented (`FightSyncManager`, mixins, peer ids 37-38). |
+| Core parity implementation | 99 % | MultiPaper's behaviour is implemented, including the optional Velocity plugin that embeds the master (`multiforge-velocity`, live-verified with two backends and a proxied client). The BungeeCord variant of that plugin is not ported. Raids/dragon fight state are done (`FightSyncManager`, peer ids 37-38). |
 | Automated verification | 100 % | 138 tests pass (protocol 75, master 56, api 4, example 3), including `TailLossRecoveryTest` for the heartbeat path; full `:multiforge-forge:build` including reobf; a real Forge 47.4.29 dev server starts with all 35 mixins applied; `tools/ci/live_cluster.sh` passed **18/18 cluster + 3/3 forced-loss + 14/14 fight** end to end, including a 90 %/100-update loss stress; the GPU client-matrix runner completed a software-GL run on the current tree (`STARTED`, BSL `VERIFIED`, `client-matrix-20261122T080046Z.md`). Missing: no unit test covers the Minecraft-facing managers, and the GitHub workflow itself has not run on GitHub. |
 | Live cluster evidence | 99 % | 36 transcripts in `compat/evidence/`, including 18/18, forced-loss at 50 % and 90 % (100 updates, 5 gaps, 100/100 blocks, tail repaired by heartbeat acks), 14/14 raid + dragon handovers with event-driven updates, and the mod-profile run. Missing: client rendering evidence (hardware GPU). |
 | Required-mod compatibility | 57 % | 9 FUNCTIONAL, 22 PARTIAL, 4 LOADING of 35. The stated rule (FUNCTIONAL 1, PARTIAL 1/2, LOADING 0) gives (9 + 11) / 35 = 57 %. |
 | Production hardening | 92 % | Backlog recovery, sequence/acks (live under 50 % loss, including a lost tail), fuzzing and bounded buffers are done; config reload leaves only name/port restart-only (with a `-Dmultiforge.serverName` override); Ksyxis/Radium/ServerCore/BetterAutoSave are documented profiles. Remaining: handover budget, lost-first-update baseline, in-memory offline backlog. |
-| **Weighted overall** | **91 %** | 0.40·97 + 0.20·100 + 0.15·99 + 0.15·57 + 0.10·92 = 91.2 |
+| **Weighted overall** | **92 %** | 0.40·99 + 0.20·100 + 0.15·99 + 0.15·57 + 0.10·92 = 92.2 |
 
 Two honest caveats:
 
 * **Strict compatibility view.** The compatibility legend also has FULLY COMPATIBLE (every
   relevant behaviour verified); that count is still **0/35**. Scoring only that column would
-  put compatibility at 0 % and the overall at 83 %. The 57 % figure credits a target whose
+  put compatibility at 0 % and the overall at 84 %. The 57 % figure credits a target whose
   main functionality was exercised and marked FUNCTIONAL, and half for a PARTIAL row; that is
   the rule written at the top of this file.
 * **Correction.** The previous revision of this file reported compatibility 30 % and overall
@@ -46,7 +46,8 @@ For reference, the same rubric before the fight-state work (core 94, verificatio
 compatibility 57, hardening 70) scores **83 %**; before the verification/hardening pass
 (verification 90, live 95, hardening 72) it scores **87 %**; before the forced-loss pass
 (verification 98, live 95, hardening 89) it scores **90 %**; before this pass
-(verification 99, live 98, hardening 90) it scores **91 % (90.9)**.
+(verification 99, live 98, hardening 90) it scores **91 % (90.9)**; without the Velocity plugin
+(core 97) the same rubric scores **91.2 %** and the plugin raises it to **92.2 %**.
 
 ## What is actually left
 
@@ -91,3 +92,7 @@ because they answer different questions.
 * **2026-11-22 (session 7, client-matrix pass):** the integrated runner completed a
   software-GL production-client run on the current tree (`STARTED`, BSL `VERIFIED`,
   `client-matrix-20261122T080046Z.md`); a hardware-GPU run is the only remaining client step.
+* **2026-11-22 (session 7, Velocity plugin):** ported MultiPaper's proxy-hosted master as
+  `multiforge-velocity`; it embedded the master in Velocity 3.4.0, accepted two backends, moved
+  a proxied client from `try=live1` to live2 by tick time, and the cluster passed 18/18
+  (`velocity-plugin-20261122T080834Z.md`). Core parity 97 → 99 %; overall 91.2 → 92.2 %.

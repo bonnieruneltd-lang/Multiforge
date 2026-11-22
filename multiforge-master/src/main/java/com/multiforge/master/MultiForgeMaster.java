@@ -116,6 +116,44 @@ public class MultiForgeMaster extends MessageBootstrap<MasterBoundMessage, Serve
     }
 
     /**
+     * Starts a master inside another process (the Velocity/BungeeCord plugin).
+     *
+     * <p>Unlike {@link #main(String[])}, this never reads the console, starts the
+     * built-in proxy or calls {@code System.exit}: the host process owns the
+     * lifecycle and exits on its own. The caller sets
+     * {@code multiforge.master.storage} before calling so the shared world lives in
+     * the proxy's data directory. Leader election and the metrics endpoint are not
+     * started in embedded mode; use the standalone master for those.</p>
+     *
+     * @param address bind address, {@code null} or empty for all interfaces
+     * @param port    control port the game servers connect to
+     * @return the running master
+     * @throws IllegalStateException when the configuration cannot be read or the
+     *                               port cannot be bound
+     */
+    public static synchronized MultiForgeMaster startEmbedded(String address, int port) {
+        if (instance != null) {
+            return instance;
+        }
+        // The host process is already alive; Netty threads must not be the only
+        // thing keeping it up, but DAEMON=false matches the standalone behaviour.
+        MessageBootstrap.DAEMON = false;
+        try {
+            config = MasterConfig.load();
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not read " + MasterConfig.FILE_NAME, e);
+        }
+        ChunkGenerationManager.configure(
+                config.getGenerationLeaseMillis(), config.getGenerationWaitMillis());
+        Log.info("Embedded master starting: port " + port + ", storage "
+                + MasterStorage.root());
+        MultiForgeMaster master = new MultiForgeMaster(address, port);
+        instance = master;
+        setupGracefulShutdown();
+        return master;
+    }
+
+    /**
      * Creates the master and starts listening. Kept public so integration tests
      * can boot a master on an ephemeral port without spawning a JVM.
      *

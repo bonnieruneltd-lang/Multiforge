@@ -1,0 +1,8 @@
+{
+  "id": "multiforge-velocity",
+  "name": "MultiForge Velocity",
+  "version": "1.0.0",
+  "main": "com.multiforge.velocity.MultiForgeVelocity",
+  "authors": ["MultiForge contributors"],
+  "description": "Runs the MultiForge master inside Velocity and balances players by backend tick time."
+}
