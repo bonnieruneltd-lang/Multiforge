@@ -29,6 +29,9 @@ import java.util.UUID;
  */
 public final class ContainerClickPacket extends PeerPacket {
 
+    /** Upper bound for changed slots in one click; vanilla menus are far smaller. */
+    public static final int MAX_CHANGES = 4096;
+
     /** One changed container slot. */
     public record SlotChange(int index, ItemStack stack) {
     }
@@ -73,6 +76,12 @@ public final class ContainerClickPacket extends PeerPacket {
         this.z = buf.readInt();
         this.player = buf.readUUID();
         int size = buf.readVarInt();
+        // A hostile peer could announce two billion slots; ArrayList would try to
+        // allocate that array before reading anything. Bound by the menu size and
+        // the remaining frame (each change needs at least two bytes).
+        if (size < 0 || size > MAX_CHANGES || size > buf.readableBytes()) {
+            throw new IllegalArgumentException("Invalid container change count " + size);
+        }
         List<SlotChange> decoded = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             decoded.add(new SlotChange(buf.readVarInt(), buf.readItem()));

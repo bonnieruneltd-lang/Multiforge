@@ -4,6 +4,9 @@ import com.multiforge.protocol.ExtendedByteBuf;
 
 public class FilesToSyncMessage extends ServerBoundMessage {
 
+    /** Upper bound for entries in one list; a world never has millions of files. */
+    public static final int MAX_FILES = 1 << 20;
+
     public final FileToSync[] filesToSync;
 
     public FilesToSyncMessage(FileToSync[] filesToSync) {
@@ -16,9 +19,10 @@ public class FilesToSyncMessage extends ServerBoundMessage {
         // the timestamp. A hostile frame could otherwise announce two billion
         // entries in a 20 byte frame and take the process down with an
         // OutOfMemoryError before reading a single entry.
-        if (count < 0 || count > byteBuf.readableBytes() / 9) {
+        if (count < 0 || count > MAX_FILES || count > byteBuf.readableBytes() / 9) {
             throw new IllegalArgumentException("Files to sync count " + count
-                    + " does not fit in " + byteBuf.readableBytes() + " readable bytes");
+                    + " does not fit in " + byteBuf.readableBytes() + " readable bytes (limit "
+                    + MAX_FILES + ")");
         }
         filesToSync = new FileToSync[count];
         for (int i = 0; i < filesToSync.length; i ++) {

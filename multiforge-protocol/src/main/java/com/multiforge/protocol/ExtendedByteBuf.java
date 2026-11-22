@@ -60,6 +60,12 @@ public class ExtendedByteBuf extends ByteBuf {
      */
     public static final int MAX_STRING_BYTES = 1 << 20;
 
+    /** Maximum number of elements in a string array (server names, file keys). */
+    public static final int MAX_STRING_ARRAY_ELEMENTS = 1 << 16;
+
+    /** Maximum number of elements in a chunk key array. */
+    public static final int MAX_CHUNK_KEY_ARRAY_ELEMENTS = 1 << 20;
+
     public String readString() {
         int length = readVarInt();
         if (length < 0) {
@@ -135,9 +141,10 @@ public class ExtendedByteBuf extends ByteBuf {
      */
     public String[] readStringArray() {
         int count = readVarInt();
-        if (count < 0 || count > readableBytes()) {
+        if (count < 0 || count > MAX_STRING_ARRAY_ELEMENTS || count > readableBytes()) {
             throw new IllegalArgumentException("String array count " + count
-                    + " does not fit in " + readableBytes() + " readable bytes");
+                    + " does not fit in " + readableBytes() + " readable bytes (limit "
+                    + MAX_STRING_ARRAY_ELEMENTS + ")");
         }
         String[] strings = new String[count];
         for (int i = 0; i < count; i++) {
@@ -157,9 +164,10 @@ public class ExtendedByteBuf extends ByteBuf {
      */
     public ChunkKey[] readChunkKeyArray() {
         int count = readVarInt();
-        if (count < 0 || count > readableBytes() / 9) {
+        if (count < 0 || count > MAX_CHUNK_KEY_ARRAY_ELEMENTS || count > readableBytes() / 9) {
             throw new IllegalArgumentException("Chunk key array count " + count
-                    + " does not fit in " + readableBytes() + " readable bytes");
+                    + " does not fit in " + readableBytes() + " readable bytes (limit "
+                    + MAX_CHUNK_KEY_ARRAY_ELEMENTS + ")");
         }
         ChunkKey[] keys = new ChunkKey[count];
         for (int i = 0; i < count; i++) {

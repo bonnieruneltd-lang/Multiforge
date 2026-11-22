@@ -307,6 +307,11 @@ cluster.
   Both the frame length and the uncompressed length are capped by
   `-Dmultiforge.peer.maxFrameBytes` (16 MiB default; the inflater holds the compressed input,
   the uncompressed output and the target buffer at the same time).
+* The peer packet decoders had two more unguarded counts: an
+  `EntityUpdateWithDependenciesPacket` created `new UUID[readVarInt()]` and a
+  `ContainerClickPacket` created `new ArrayList<>(readVarInt())` before looking at the frame.
+  Both are bounded by the remaining bytes (and a 4096-entry cap) now, like the master protocol
+  arrays.
 * A fallback `ChunkStorage` created by `LocalChunkStorage` was registered by the constructor
   mixin, so a local backup write (or a read fallback while the master was up) re-entered
   `ChunkSyncIo` and would recurse until the stack overflowed. The instance is unregistered

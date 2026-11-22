@@ -62,7 +62,14 @@ public final class EntityUpdateWithDependenciesPacket extends PeerPacket {
         this.uuid = byteBuf.readUUID();
         this.chunkX = byteBuf.readVarInt();
         this.chunkZ = byteBuf.readVarInt();
-        this.dependencies = new UUID[byteBuf.readVarInt()];
+        int count = byteBuf.readVarInt();
+        // Each dependency is a 16 byte UUID, so the count must fit in the frame;
+        // cap it further because an entity packet with thousands of dependencies
+        // is not a real scenario and the array is allocated up front.
+        if (count < 0 || count > 4096 || count > byteBuf.readableBytes() / 16) {
+            throw new IllegalArgumentException("Invalid dependency count " + count);
+        }
+        this.dependencies = new UUID[count];
         for (int i = 0; i < dependencies.length; i++) {
             dependencies[i] = byteBuf.readUUID();
         }
