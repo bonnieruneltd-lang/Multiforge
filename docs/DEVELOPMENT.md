@@ -132,6 +132,23 @@ The same bot now also sends `dig`, `place`, `drop`, `command`, `attackplayer` an
 (e.g. Timber/FastLeafDecay, TPA and Beautified Chat in
 `compat/evidence/gameplay-mods-20261122T043800Z.md`).
 
+## Live fight-state check
+
+Raid and dragon-fight replication and handover are verified with two headless bots and RCON:
+
+```bash
+node tools/compat/mcbot.js 127.0.0.1 25565 SyncBotA 25599 &
+node tools/compat/mcbot.js 127.0.0.1 25566 SyncBotB 25600 &
+python3 tools/compat/fight_sync_check.py --a-port 25575 --b-port 25576 \
+    --password <rcon-password> --out compat/evidence
+```
+
+The script teleports the bots to the raid first (when a raid is active) and then to the end,
+asserts that both servers report the same raid id/wave and dragon UUID/phase with exactly one
+`local=true`, then moves the owner's bot away and the other bot in to trigger two fenced
+handovers per fight, checking the epoch advances and the state is preserved. It exits non-zero
+on failure. Evidence: `compat/evidence/fight-sync-20261122T064859Z.md` (12/12).
+
 ## Running behind BungeeCord or Velocity
 
 MultiForge servers can sit behind an external proxy. Two forwarding modes are supported:

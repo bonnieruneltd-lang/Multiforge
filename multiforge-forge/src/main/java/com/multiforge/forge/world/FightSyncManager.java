@@ -228,6 +228,53 @@ public final class FightSyncManager {
         dragonHashes.clear();
     }
 
+    /**
+     * Describes every raid and dragon fight in the loaded levels.
+     *
+     * <p>Used by {@code /multiforge fights} and by the live cluster harness. The
+     * lines are deliberately stable, single-line {@code key=value} records so a
+     * test can assert that two servers agree on the dragon UUID and raid wave while
+     * only one of them reports {@code local=true} (the ticking server).</p>
+     *
+     * @return one line per raid and per loaded end level, never {@code null}
+     */
+    public java.util.List<String> describe() {
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        for (ServerLevel level : server.server().getAllLevels()) {
+            String world = server.chunks().worldName(level);
+            try {
+                for (Raid raid : raidMap(level).values()) {
+                    BlockPos center = raid.getCenter();
+                    lines.add("raid world=" + world
+                            + " id=" + raid.getId()
+                            + " center=" + center.getX() + "," + center.getY() + "," + center.getZ()
+                            + " wave=" + raid.getGroupsSpawned()
+                            + " active=" + raid.isActive()
+                            + " stopped=" + raid.isStopped()
+                            + " epoch=" + epochAt(level, center.getX(), center.getZ())
+                            + " local=" + server.chunks().isLocallyOwned(
+                                    level, center.getX(), center.getZ()));
+                }
+                EndDragonFight fight = level.getDragonFight();
+                if (fight != null) {
+                    EndDragonFight.Data data = fight.saveData();
+                    lines.add("dragon world=" + world
+                            + " uuid=" + data.dragonUUID().orElse(null)
+                            + " killed=" + data.dragonKilled()
+                            + " previously=" + data.previouslyKilled()
+                            + " respawning=" + data.isRespawning()
+                            + " gateways=" + data.gateways().map(java.util.List::size).orElse(0)
+                            + " portal=" + data.exitPortalLocation().orElse(null)
+                            + " epoch=" + epochAt(level, 0, 0)
+                            + " local=" + server.chunks().isLocallyOwned(level, 0, 0));
+                }
+            } catch (RuntimeException e) {
+                lines.add("error world=" + world + " message=" + e);
+            }
+        }
+        return lines;
+    }
+
     private void syncRaids(ServerLevel level) {
         Map<Integer, Raid> raids = raidMap(level);
         if (raids.isEmpty()) {

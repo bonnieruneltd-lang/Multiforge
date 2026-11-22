@@ -43,6 +43,12 @@ public abstract class EndDragonFightMixin {
         if (server == null || server.isStopping() || !server.config().chunkSync()) {
             return;
         }
+        // Without the island chunk loaded there is nothing to simulate, and asking
+        // the master for ownership of an unloaded chunk would be wrong.
+        if (level.getChunkSource().getChunkNow(0, 0) == null) {
+            callbackInfo.cancel();
+            return;
+        }
         if (!server.chunks().shouldTickAt(level, 0, 0)) {
             callbackInfo.cancel();
         }

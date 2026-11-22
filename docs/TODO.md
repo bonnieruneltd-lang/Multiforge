@@ -40,8 +40,9 @@ coding.
    **Raid and dragon fight state is transferred too** (`FightSyncManager`, peer ids 37-38):
    the owner broadcasts the vanilla raid NBT and `EndDragonFight.Data` once per second when it
    changed and sends it directly to the new owner before a handover; `RaidMixin` and
-   `EndDragonFightMixin` stop every other server from ticking those fights. Compile- and
-   startup-verified; a live raid/dragon handover test is still outstanding (KNOWN_ISSUES 26).
+   `EndDragonFightMixin` stop every other server from ticking those fights. Both paths are
+   live-verified, including two fenced handovers each
+   (`compat/evidence/fight-sync-20261122T064859Z.md`, 12/12 checks).
 6. **Chunk status protocol** - done: the master records load/unload status
    (`ChunkStatusTracker`) and does not redirect a read to a peer that is unloading; covered by
    `unloadingPeerIsNotChosenForChunkRead`. The client-side status view is still informational.

@@ -331,10 +331,15 @@ remaining limits are deliberate trade-offs:
 * Vanilla still persists each server's copy to its own `data/raids.dat` and level data. The
   live packets are authoritative in memory; a server that starts with a stale file is
   corrected by the first broadcast from the owner.
-* Live verification of a raid handover and a dragon handover has **not** run yet. The mixins,
-  packets and handover hook are compile-verified and the server starts with the mixins
-  applied; a two-player raid/dragon walk-across test should be added to
-  `tools/compat/cluster_check.py` when a test client is available.
+* Both fights are **live-verified** on a master + two dev servers
+  (`compat/evidence/fight-sync-20261122T064859Z.md`, 12/12 checks): the same raid id/wave and
+  dragon UUID/phase on both servers, exactly one `local=true`, and two fenced handovers each
+  (raid epochs 7→8→9, dragon 5→6→7).
+* Testing note: vanilla `Raid.tick` calls `stop()` when the centre is not a valid village and
+  `groupsSpawned == 0`. A synthetic test village must have its POIs registered (a bell, beds,
+  a composter and a villager worked after the first wave spawned) before a wave-0 raid is handed
+  over, or vanilla ends it on the new owner for its own reasons. This is not a transfer bug;
+  `tools/compat/fight_sync_check.py` therefore runs the raid round before the dragon rounds.
 
 See TODO 5, `docs/SYNCHRONIZATION.md` and `docs/NETWORKING.md`.
 

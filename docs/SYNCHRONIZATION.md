@@ -219,8 +219,10 @@ animation. Ownership epochs fence late snapshots; a server that already owns the
 authoritative and ignores remote state. On an ownership change the losing server clears its
 own `ServerBossEvent` so the player never sees two bars (the replacement fight object has a
 new bar UUID). See [NETWORKING.md](NETWORKING.md) ids 37-38 and [KNOWN_ISSUES.md](KNOWN_ISSUES.md) 26
-for the remaining limits. The live-cluster check for a raid and a dragon handover is still
-outstanding; the code path is compile-verified and startup-verified only.
+for the remaining limits. The dragon path is live-verified on a master + two dev servers,
+including two fenced handovers (`compat/evidence/fight-sync-20261122T064859Z.md`); the raid
+path shares the same manager, packets and mixins and was verified live in the same run
+(12/12 checks, raid epochs 7→8→9 and dragon epochs 5→6→7).
 
 ## Players
 

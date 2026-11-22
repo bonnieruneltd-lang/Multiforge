@@ -1,0 +1,302 @@
+{
+  "timestamp": "20261122T064859Z",
+  "checks": [
+    {
+      "check": "dragon-fight-running",
+      "passed": true,
+      "detail": "uuid=3265be00-1521-4688-9216-8ce62466a3d4"
+    },
+    {
+      "check": "dragon-state-replicated",
+      "passed": true,
+      "detail": "A=3265be00-1521-4688-9216-8ce62466a3d4 B=3265be00-1521-4688-9216-8ce62466a3d4"
+    },
+    {
+      "check": "single-ticking-owner",
+      "passed": true,
+      "detail": "ticking server=A"
+    },
+    {
+      "check": "raid-state-replicated",
+      "passed": true,
+      "detail": "A=2/1 B=2/1"
+    },
+    {
+      "check": "raid-handover-owner-flip",
+      "passed": true,
+      "detail": "A -> B, epoch 7 -> 8"
+    },
+    {
+      "check": "raid-handover-state-preserved",
+      "passed": true,
+      "detail": "id=2 wave=1 active=true"
+    },
+    {
+      "check": "raid-handover-back-owner-flip",
+      "passed": true,
+      "detail": "B -> A, epoch 8 -> 9"
+    },
+    {
+      "check": "raid-handover-back-state-preserved",
+      "passed": true,
+      "detail": "id=2 wave=1 active=true"
+    },
+    {
+      "check": "handover-owner-flip",
+      "passed": true,
+      "detail": "A -> B, epoch 5 -> 6"
+    },
+    {
+      "check": "handover-state-preserved",
+      "passed": true,
+      "detail": "uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false gateways=20"
+    },
+    {
+      "check": "handover-back-owner-flip",
+      "passed": true,
+      "detail": "B -> A, epoch 6 -> 7"
+    },
+    {
+      "check": "handover-back-state-preserved",
+      "passed": true,
+      "detail": "uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false gateways=20"
+    }
+  ],
+  "transcript": [
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=7 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=true\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=7 local=false\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=false\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=7 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=true\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=7 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=true\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=7 local=false\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=false\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=7 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=true\n"
+    },
+    {
+      "server": "A",
+      "command": "execute in minecraft:overworld run tp SyncBotA 41.5 -60 0.5",
+      "response": "Teleported SyncBotA to 41.500000, -60.000000, 0.500000\n"
+    },
+    {
+      "server": "B",
+      "command": "execute in minecraft:overworld run tp SyncBotB 1.5 -60 0.5",
+      "response": "Teleported SyncBotB to 1.500000, -60.000000, 0.500000\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=7 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=true\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=7 local=false\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=false\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=7 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=true\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=7 local=false\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=false\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=7 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=true\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=7 local=false\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=false\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (1 entries):\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=true\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=8 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=false\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=8 local=false\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=true\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=8 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=false\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=8 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=false\n"
+    },
+    {
+      "server": "B",
+      "command": "execute in minecraft:overworld run tp SyncBotB 41.5 -60 0.5",
+      "response": "Teleported SyncBotB to 41.500000, -60.000000, 0.500000\n"
+    },
+    {
+      "server": "A",
+      "command": "execute in minecraft:overworld run tp SyncBotA 1.5 -60 0.5",
+      "response": "Teleported SyncBotA to 1.500000, -60.000000, 0.500000\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=8 local=false\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=true\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=8 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=false\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=8 local=false\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=true\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=8 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=false\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=8 local=false\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=true\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=8 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=false\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=8 local=false\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=true\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=8 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=false\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=8 local=false\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=true\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=8 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=false\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=9 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=true\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=9 local=false\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=false\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=9 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=true\n"
+    },
+    {
+      "server": "A",
+      "command": "execute in minecraft:the_end run tp SyncBotA 600 80 600",
+      "response": "Teleported SyncBotA to 600.500000, 80.000000, 600.500000\n"
+    },
+    {
+      "server": "B",
+      "command": "execute in minecraft:the_end run tp SyncBotB 0.5 80 0.5",
+      "response": "Teleported SyncBotB to 0.500000, 80.000000, 0.500000\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=9 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=true\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=9 local=false\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=5 local=false\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=9 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=6 local=false\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=9 local=false\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=6 local=true\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=9 local=false\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=6 local=true\n"
+    },
+    {
+      "server": "B",
+      "command": "execute in minecraft:the_end run tp SyncBotB 600 80 600",
+      "response": "Teleported SyncBotB to 600.500000, 80.000000, 600.500000\n"
+    },
+    {
+      "server": "A",
+      "command": "execute in minecraft:the_end run tp SyncBotA 0.5 80 0.5",
+      "response": "Teleported SyncBotA to 0.500000, 80.000000, 0.500000\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=9 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=6 local=false\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=9 local=false\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=6 local=true\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=9 local=true\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=7 local=true\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge fights",
+      "response": "Fight state (2 entries):\nraid world=world id=2 center=1,-60,0 wave=1 active=true stopped=false epoch=9 local=false\ndragon world=world_the_end uuid=3265be00-1521-4688-9216-8ce62466a3d4 killed=false previously=false respawning=false gateways=20 portal=BlockPos{x=0, y=61, z=0} epoch=7 local=false\n"
+    }
+  ]
+}

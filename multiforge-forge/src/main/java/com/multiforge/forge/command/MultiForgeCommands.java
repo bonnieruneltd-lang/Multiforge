@@ -60,6 +60,7 @@ public final class MultiForgeCommands {
                                 .executes(context -> map(context.getSource(),
                                         com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "radius")))))
                 .then(Commands.literal("borders").executes(context -> borders(context.getSource())))
+                .then(Commands.literal("fights").executes(context -> fights(context.getSource())))
                 .then(Commands.literal("reload").executes(context -> reload(context.getSource())))
                 .then(Commands.literal("compat").executes(context -> compat(context.getSource())))
                 .then(Commands.literal("download")
@@ -199,6 +200,35 @@ public final class MultiForgeCommands {
             source.sendSuccess(() -> Component.literal(line), false);
         }
         return 1;
+    }
+
+    /**
+     * Prints the replicated raid and dragon-fight state.
+     *
+     * <p>One stable {@code key=value} line per raid and per loaded end level. The
+     * {@code local=true} flag marks the server that ticks the fight; every other
+     * server must show the same id/UUID and phase with {@code local=false}. The
+     * live cluster harness parses these lines to prove state replication and a
+     * handover without needing a graphical client.</p>
+     *
+     * @param source command source
+     * @return number of printed lines
+     */
+    private static int fights(CommandSourceStack source) {
+        MultiForgeServer runtime = runtime(source);
+        if (runtime == null) {
+            return 0;
+        }
+        java.util.List<String> lines = runtime.fights().describe();
+        if (lines.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("No loaded raids or dragon fights."), false);
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Fight state (" + lines.size() + " entries):"), false);
+        for (String line : lines) {
+            source.sendSuccess(() -> Component.literal(line), false);
+        }
+        return lines.size();
     }
 
     private static int status(CommandSourceStack source) {

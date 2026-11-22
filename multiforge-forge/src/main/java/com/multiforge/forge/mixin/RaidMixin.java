@@ -49,6 +49,13 @@ public abstract class RaidMixin {
         if (server == null || server.isStopping() || !server.config().chunkSync()) {
             return;
         }
+        // A raid whose centre chunk is not loaded here cannot be simulated; do not
+        // request ownership for a chunk this server does not even hold (vanilla
+        // uses getChunkIfLoaded for the same reason).
+        if (level.getChunkSource().getChunkNow(center.getX() >> 4, center.getZ() >> 4) == null) {
+            callbackInfo.cancel();
+            return;
+        }
         if (!server.chunks().shouldTickAt(level, center.getX(), center.getZ())) {
             callbackInfo.cancel();
         }

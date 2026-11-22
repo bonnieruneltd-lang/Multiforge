@@ -53,7 +53,7 @@ touching code, then read the architecture document of the subsystem you change.
 | Player data / login | `PlayerSyncManager`, `PlayerListMixin`, `ServerStatsCounterMixin`, `PlayerAdvancementsMixin` |
 | Player mirroring | `player/PlayerMirrorManager`, `player/ExternalPlayer`, `PlayerListAccessor`, `ServerPlayerHurtMixin`, `EntitySyncManager` |
 | Main scoreboard sync | `scoreboard/ScoreboardSyncManager`, `ServerScoreboardObjectiveMixin`, `ScoreboardUpdatePacket` |
-| Boss bars / raid and dragon fight state | `world/BossEventSyncManager`, `ServerBossEventMixin`, `BossEventPacket`; `world/FightSyncManager`, `RaidMixin`, `EndDragonFightMixin`, `RaidStatePacket`/`DragonFightStatePacket` |
+| Boss bars / raid and dragon fight state | `world/BossEventSyncManager`, `ServerBossEventMixin`, `BossEventPacket`; `world/FightSyncManager`, `RaidMixin`, `EndDragonFightMixin`, `RaidStatePacket`/`DragonFightStatePacket`; `/multiforge fights` + `tools/compat/fight_sync_check.py` for verification |
 | Live stats/advancements | `player/PlayerProgressSyncManager`, `StatsCounterIncrementMixin`, `PlayerAdvancementsAwardMixin`, packets 31-32 |
 | Chunk border debug view | `chunk/ChunkBorderVisualizer`, `/multiforge borders` in `MultiForgeCommands` |
 | Master metrics | `master/util/MetricsServer`, `MultiForgeMaster.snapshotMetrics`, `MasterConfig` metrics keys |
@@ -161,19 +161,17 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   `compat/evidence/server-features-20261121T065500Z.md` and the 18/18 deployment run in
   `compat/evidence/cluster-20261121T072841Z.md`. Details in TODO.md items 9, 11, 16, 17, 19
   and KNOWN_ISSUES.md.
-* Highest-value next work: (1) add live raid/dragon handover checks to the cluster harness
-  (the transfer itself is implemented in `FightSyncManager`; compile- and startup-verified,
-  live evidence missing), (2) extend the player-driven harness
+* Highest-value next work: (1) a peer-level forced-packet-loss run (the acknowledgement logic
+  is already property-tested under random loss), (2) extend the player-driven harness
   (`tools/compat/mcbot.js` now sends look/move/chat/use/attack in addition to the hotbar slot)
   into gameplay checks for the remaining 4 LOADING server rows, (3) hardware-GPU visual
   checks for the 11 PARTIAL client rows (Complementary/Sildur pipelines, culling, Dynamic FPS,
   RRLS), (4) the Radium/ServerCore profile decision and the Ksyxis `/forceload` reproduction.
-  The fenced handover is implemented and live-verified
-  (`compat/evidence/chunk-handover-20261122T035205Z.md`). The unit tests already simulate
-  random packet loss and repair it through acknowledgements
-  (`SequenceRecoveryRandomTest`); a live forced-loss run is still missing. Larger features
-  still missing: the MultiPaper-style proxy-side master plugin. A graphical map is optional:
-  upstream `/mpmap` is textual and the text variant (`/multiforge map`) is implemented.
+  The fenced handover and both fight types are implemented and live-verified
+  (`compat/evidence/chunk-handover-20261122T035205Z.md`,
+  `compat/evidence/fight-sync-20261122T064859Z.md`, 12/12). Larger features still missing: the
+  MultiPaper-style proxy-side master plugin. A graphical map is optional: upstream `/mpmap` is
+  textual and the text variant (`/multiforge map`) is implemented.
 * Do not restart or rewrite working subsystems. Read `DEVELOPMENT_HANDOFF.md` for the
   session audit and `KNOWN_ISSUES.md` for the interaction findings (Timber 3.0, Radium ×
   ServerCore, Ksyxis × forceload, master region compression label).

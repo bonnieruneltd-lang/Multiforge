@@ -57,7 +57,7 @@ integration tests and by running two real Forge servers against a master:
 | Live statistics and advancement progress | implemented: 10 s statistic deltas + immediate criterion awards (peer packets 31-32); compile-verified, live check pending |
 | Master region file format | true zlib, readable by vanilla/tooling; legacy gzip transcoded on read (round-trip tested + live master bytes checked) |
 | Boss bars (dragon, raids, plugin bars) | implemented: owner forwards vanilla boss-event packets; verified live with two clients receiving the same add/progress/remove ([evidence](compat/evidence/boss-bar-20261122T044950Z.md)) |
-| Raid and ender-dragon fight state across handovers | implemented: owner broadcasts raid NBT and `EndDragonFight.Data` (peer packets 37-38), only the owner ticks them; compile-verified, live handover check pending |
+| Raid and ender-dragon fight state across handovers | implemented and **live-verified** for both: same state on both servers, one ticker, two fenced handovers each (raid epochs 7→8→9, dragon 5→6→7). [evidence](compat/evidence/fight-sync-20261122T064859Z.md) |
 | Required-target detection and `/multiforge compat` | implemented |
 | Chunk-border debug visualization (`/multiforge borders`) | implemented (config `debug.chunkBorders`); compile-verified |
 | Prometheus `/metrics` endpoint for the master | implemented (`metrics-port`, default off); unit tested |
@@ -112,8 +112,9 @@ Read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before running a production wo
 ## Commands
 
 `/multiforge status`, `/multiforge servers`, `/multiforge players`, `/multiforge chunk`,
-`/multiforge chunks`, `/multiforge map [radius]`, `/multiforge borders`, `/multiforge reload`,
-`/multiforge compat`, `/multiforge download <path>` (aliases `/mfservers`, `/mfslist`).
+`/multiforge chunks`, `/multiforge map [radius]`, `/multiforge borders`, `/multiforge fights`,
+`/multiforge reload`, `/multiforge compat`, `/multiforge download <path>` (aliases `/mfservers`,
+`/mfslist`).
 `/multiforge borders` requires `debug.chunkBorders = true`; `/multiforge reload` re-reads
 `config/multiforge-server.toml` without a restart.
 
