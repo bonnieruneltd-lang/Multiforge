@@ -5,7 +5,7 @@ support. It is not a wish list: every row names the exact artifact that was pinn
 where it belongs, what was executed against it and what is still unverified.
 
 **Current result: all 35 targets exercised on this build. Server deployment: 20/20 installed,
-started and player-checked (5 FUNCTIONAL, 10 PARTIAL, 5 LOADING). Client: 15/15 launched in a
+started and player-checked (5 FUNCTIONAL, 11 PARTIAL, 4 LOADING). Client: 15/15 launched in a
 production Forge client under Xvfb/llvmpipe (4 FUNCTIONAL, 11 PARTIAL, 0 NOT TESTED).**
 The player-driven server run is `compat/evidence/gameplay-mods-20261122T043800Z.md`; the client
 run is `compat/evidence/client-matrix-20261122T052900Z.md`.
@@ -131,7 +131,7 @@ the twentieth target is a data pack and is enabled from `world/datapacks/`. Evid
 
 | # | Name | Mod id | Pinned version | File | Deps | Status | Evidence / known issues |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Darceno's Minecarts | `mr_darcenos_minecarts` | 1.3 | `darcenos-minecarts-1.3.jar` | — | LOADING | Loaded in the full cluster. Minecart speed/chunk-loading behaviour needs a player-driven test. The 1.3 `+mod` variant is pinned, not the `slower` variant. |
+| 1 | Darceno's Minecarts | `mr_darcenos_minecarts` | 1.3 | `darcenos-minecarts-1.3.jar` | — | PARTIAL | Rider-triggered speed and chunk loading observed: a powered-rail cart with an armor-stand passenger moved 5.6 blocks in the first 0.2 s despite `Motion:[0.6]`, and `forceload query` listed the cart's chunk `[5,4]`. A controlled end-to-end transport run (cart stops/reverses in the synthetic test) was not completed. |
 | 2 | Just Player Heads | `justplayerheads` | 1.20.1-4.5 | `justplayerheads-1.20.1-4.5.jar` | Collective 8.86 | LOADING | Both mods loaded; head-drop behaviour needs a player kill. |
 | 3 | Timber Strike | `mr_timber_strike` | 1.3 | `timber-strike-1.3.jar` | — | FUNCTIONAL | 3.0 is listed for 1.20.1 but ships 1.20.2+ syntax (`return run ...`); all 15 tree functions fail to parse on 1.20.1. 1.3 parses cleanly and loads. Player test: one survival iron-axe break at the base of a 4-log oak trunk removed the other three logs and the leaves within 3 s (`compat/evidence/gameplay-mods-20261122T043800Z.md`). |
 | 4 | Lithostitched | `lithostitched` | 1.4.12 | `lithostitched-forge-1.20.1-1.4.12.jar` | — | PARTIAL | Loaded; Tectonic's worldgen and `/locate structure` ran over the shared world without errors. Its structure-injection edge cases were not enumerated. |
@@ -185,7 +185,7 @@ change the support matrix and must not be hidden:
 | Area | Remaining work |
 | --- | --- |
 | Client mods (15) | The production client run covered launch, mod load, in-world join, Embeddium/Oculus/BSL, ImmediatelyFast and the Anti Cords pack. Remaining: hardware-GPU visual verification of Complementary/Sildur pipelines, culling correctness, Dynamic FPS throttling and RRLS server switches. |
-| Server gameplay | Minecart speed, player-head drops, combat-log punishment and AntiXray packet obfuscation still need player-driven checks. Tree felling, leaf decay, TPA (same-server), chat formatting, anti-seed `/seed` and natural item merging are covered by `compat/evidence/gameplay-mods-20261122T043800Z.md`. |
+| Server gameplay | End-to-end minecart transport, player-head drops, combat-log punishment and AntiXray packet obfuscation still need player-driven checks. Tree felling, leaf decay, TPA (same-server), chat formatting, anti-seed `/seed`, natural item merging and the minecart speed/forceload branch are covered by `compat/evidence/gameplay-mods-20261122T043800Z.md`. |
 | Cross-server gameplay | Chunk ownership transfer while a player walks, player mirroring (see `compat/evidence/player-mirroring-20261115T030505Z.md`), inventory sync (TODO 3), server switch and reconnect. |
 | Radium/ServerCore | Decide on a supported combination and add a documented config profile; do not claim both optimisations active. |
 | Evidence | Client and player-driven results are recorded in `compat/evidence/client-matrix-20261122T052900Z.md` and `compat/evidence/gameplay-mods-20261122T043800Z.md`; append a hardware-GPU visual run when available. |
@@ -198,8 +198,8 @@ matrix deliberately keeps most rows below that bar.
 | Status | Client | Server | Total |
 | --- | --- | --- | --- |
 | NOT TESTED | 0 | 0 | 0 |
-| LOADING | 0 | 5 | 5 |
-| PARTIAL | 11 | 10 | 21 |
+| LOADING | 0 | 4 | 4 |
+| PARTIAL | 11 | 11 | 22 |
 | FUNCTIONAL | 4 | 5 | 9 |
 | FULLY COMPATIBLE | 0 | 0 | 0 |
 | BLOCKED | 0 | 0 | 0 |
