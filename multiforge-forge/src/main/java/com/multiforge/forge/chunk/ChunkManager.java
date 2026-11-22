@@ -175,6 +175,20 @@ public final class ChunkManager {
     private final Set<ChunkKey> dirtyAckChunks = ConcurrentHashMap.newKeySet();
 
     /**
+     * Chunks that received ordered updates recently and get a heartbeat ack.
+     *
+     * <p>A receiver only acknowledged when another update arrived, so a dropped
+     * <em>last</em> update (the tail of a burst) was never requested again. The
+     * heartbeat resends the highest contiguous sequence once per second for a few
+     * seconds after the last update; the sender's retransmit buffer returns anything
+     * above it, which repairs a lost tail without a special packet type.</p>
+     */
+    private final Set<ChunkKey> periodicAckChunks = ConcurrentHashMap.newKeySet();
+
+    /** Last tick an ordered update was applied per chunk, used to expire heartbeats. */
+    private final Map<ChunkKey, Integer> ackActivityTick = new ConcurrentHashMap<>();
+
+    /**
      * Compression pool for peer chunk replies.
      *
      * <p>Serializing the chunk must run on the server thread, but gzip only needs
@@ -279,6 +293,8 @@ public final class ChunkManager {
             states.remove(key, state);
             pendingAcks.remove(key);
             dirtyAckChunks.remove(key);
+            periodicAckChunks.remove(key);
+            ackActivityTick.remove(key);
         }
     }
 
@@ -288,6 +304,7 @@ public final class ChunkManager {
      */
     public void tick() {
         flushAcks();
+        flushHeartbeatAcks();
         drainBlockEntityUpdates();
         tickHandovers();
         requestHandoversForPlayers();
@@ -1209,6 +1226,26 @@ public final class ChunkManager {
             return;
         }
         long contiguous = current.contiguousSequence(senderName(connection));
+        if (contiguous <= 0L) {
+            return;
+        }
+        queueAckValue(key, connection, epoch, contiguous);
+        // Remember the chunk for the heartbeat so a dropped tail is repaired even
+        // when no further update arrives to carry an acknowledgement.
+        periodicAckChunks.add(key);
+        ackActivityTick.put(key, server.server().getTickCount());
+    }
+
+    /**
+     * Queues an explicit acknowledgement value, shared by the normal and heartbeat
+     * paths.
+     *
+     * @param key        chunk
+     * @param connection sender
+     * @param epoch      epoch of the acknowledgement
+     * @param contiguous highest contiguous sequence to acknowledge
+     */
+    private void queueAckValue(ChunkKey key, PeerConnection connection, long epoch, long contiguous) {
         Map<PeerConnection, PendingAck> byPeer =
                 pendingAcks.computeIfAbsent(key, ignored -> new ConcurrentHashMap<>());
         PendingAck ack = byPeer.computeIfAbsent(connection,
@@ -1216,6 +1253,53 @@ public final class ChunkManager {
         ack.merge(epoch, contiguous);
         ack.dirty = true;
         dirtyAckChunks.add(key);
+    }
+
+    /**
+     * Re-acknowledges the newest contiguous sequence once per second for chunks that
+     * received ordered updates in the last five seconds.
+     *
+     * <p>This is the repair path for a lost <em>tail</em>: the receiver cannot detect
+     * a gap after the last packet it saw, so without a heartbeat the sender would keep
+     * the missing entry in its retransmit buffer forever. The extra acks are harmless
+     * once everything is acknowledged: the sender's buffer is empty above the
+     * contiguous value.</p>
+     */
+    private void flushHeartbeatAcks() {
+        if (periodicAckChunks.isEmpty()) {
+            return;
+        }
+        int now = server.server().getTickCount();
+        if (now % 20 != 0) {
+            return;
+        }
+        for (ChunkKey key : periodicAckChunks) {
+            Integer last = ackActivityTick.get(key);
+            if (last == null || now - last > 100) {
+                periodicAckChunks.remove(key);
+                ackActivityTick.remove(key);
+                continue;
+            }
+            ChunkState state = states.get(key);
+            if (state == null) {
+                periodicAckChunks.remove(key);
+                ackActivityTick.remove(key);
+                continue;
+            }
+            long epoch = state.ownershipEpoch();
+            if (epoch <= 0L) {
+                continue;
+            }
+            for (PeerConnection connection : server.peers().connections()) {
+                if (!connection.isActive()) {
+                    continue;
+                }
+                long contiguous = state.contiguousSequence(senderName(connection));
+                if (contiguous > 0L) {
+                    queueAckValue(key, connection, epoch, contiguous);
+                }
+            }
+        }
     }
 
     /** Sends the batched acknowledgements. Called once per tick on the server thread. */
@@ -1479,6 +1563,8 @@ public final class ChunkManager {
         worldNameCache = null;
         pendingAcks.clear();
         dirtyAckChunks.clear();
+        periodicAckChunks.clear();
+        ackActivityTick.clear();
         pendingHandovers.clear();
         handoverBackoff.clear();
         keyCache.clear();

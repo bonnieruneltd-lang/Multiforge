@@ -306,18 +306,27 @@ two processes.
   including the four new ones (`RaidMixin`, `RaidsAccessor`, `EndDragonFightMixin`,
   `RaidAccessor`), and no `FightSyncManager` exception during the run.
 * **Live verified on a master + two dev servers (session 7):** the cluster harness passed
-  18/18 (`compat/evidence/cluster-20261122T072753Z.md`). `tools/compat/fight_sync_check.py`
-  passed **14/14** (`compat/evidence/fight-sync-20261122T072854Z.md`): it created a raid
+  18/18 (`compat/evidence/cluster-20261122T074448Z.md`). `tools/compat/fight_sync_check.py`
+  passed **14/14** (`compat/evidence/fight-sync-20261122T074549Z.md`): it created a raid
   (`/multiforge startraid` plus a test village), verified the same raid id/wave and dragon
   UUID/phase on both servers with exactly one `local=true`, and handed each fight over and back
   (raid epochs 2→3→4, dragon 1→2→3) while preserving the state.
-  `tools/compat/packet_loss_check.py` passed **3/3** (`packet-loss-20261122T072758Z.md`): with
+  `tools/compat/packet_loss_check.py` passed **3/3** (`packet-loss-20261122T074452Z.md`): with
   50 % of first block transmissions dropped, the receiver observed 23 sequence gaps and all
   40 blocks plus the chest NBT converged through retransmits.
 * **Repeatable:** `tools/ci/live_cluster.sh` boots the master, both dev servers and the bots,
   runs the cluster, forced-loss and fight harnesses and shuts everything down (exit 0 only on
   success); the GitHub Actions template is `tools/ci/live-cluster-workflow.yml`. A full run
   passed 18/18 + 3/3 + 14/14.
+* **Reliability pass:** fight mutations are pushed immediately (`RaidMixin` hooks stop/spawnGroup/
+  joinRaid/removeFromRaid/absorbBadOmen; `EndDragonFightMixin` hooks setDragonKilled/tryRespawn/
+  updateDragon/setRespawnStage) with the 1 s comparison as a safety net. The receiver now sends
+  a heartbeat acknowledgement once per second for five seconds after the last update, which
+  repairs a lost **tail** (the last update of a burst) that per-update acks cannot detect. The
+  forced-loss run found both this and the lost-first-update baseline (`PacketLossInjector`
+  deliberately never drops sequence 1; KNOWN_ISSUES 24). `-Dmultiforge.serverName=<name>`
+  overrides a config file that Forge rewrote during startup, which makes the CI cluster
+  deterministic; `tools/ci/` uses it for live1/live2.
 * **Mod profiles closed:** Ksyxis 1.4.6 did not reproduce the `/forceload` ticket loss on
   47.4.29; Radium/ServerCore and BetterAutoSave are documented deployment choices
   (`docs/COMPATIBILITY_PROFILES.md`, `compat/evidence/mod-profile-20261122T070103Z.md`).

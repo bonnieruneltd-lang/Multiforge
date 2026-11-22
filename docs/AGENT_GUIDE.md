@@ -168,8 +168,8 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   hotbar slot) into gameplay checks for the remaining 4 LOADING server rows. The fenced
   handover, both fight types and forced packet loss are implemented and live-verified
   (`compat/evidence/chunk-handover-20261122T035205Z.md`,
-  `compat/evidence/fight-sync-20261122T072854Z.md`,
-  `compat/evidence/packet-loss-20261122T072758Z.md`), and `tools/ci/live_cluster.sh` reproduces
+  `compat/evidence/fight-sync-20261122T074549Z.md`,
+  `compat/evidence/packet-loss-20261122T074452Z.md`), and `tools/ci/live_cluster.sh` reproduces
   the 18/18 + forced-loss + fight run in one command. Radium/ServerCore and Ksyxis are closed as
   documented deployment profiles (`docs/COMPATIBILITY_PROFILES.md`). Larger features still
   missing: the MultiPaper-style proxy-side master plugin. A graphical map is optional: upstream

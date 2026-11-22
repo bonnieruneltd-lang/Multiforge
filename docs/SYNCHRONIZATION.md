@@ -209,9 +209,10 @@ sends it to its local players in that world, without creating or ticking a secon
 `SavedData` (`data/raids.dat` and the level data), so the chunk payload, the entity stream and
 the boss-bar packet cannot move them. `FightSyncManager` closes that gap (the port of
 MultiPaper's `Sync raids` and `Sync ender dragon fight` patches). The server that owns a
-raid's centre chunk or the end island chunk (0, 0) serializes the vanilla state every second
-(`Raid.save` / `EndDragonFight.saveData`) and broadcasts `RaidStatePacket` /
-`DragonFightStatePacket` when it changed, plus one removal packet when a raid ends. The old
+raid's centre chunk or the end island chunk (0, 0) pushes the vanilla state
+(`Raid.save` / `EndDragonFight.saveData`) on the hooked mutations, and compares it once per
+second as a safety net; a changed hash becomes a `RaidStatePacket` / `DragonFightStatePacket`,
+plus one removal packet when a raid ends. The old
 owner also sends the relevant snapshots directly to the new owner before a handover fence.
 `RaidMixin` and `EndDragonFightMixin` cancel `tick` on every server that does not own the
 centre chunk, so exactly one server advances the waves, raiders, dragon phases and respawn
@@ -220,7 +221,7 @@ authoritative and ignores remote state. On an ownership change the losing server
 own `ServerBossEvent` so the player never sees two bars (the replacement fight object has a
 new bar UUID). See [NETWORKING.md](NETWORKING.md) ids 37-38 and [KNOWN_ISSUES.md](KNOWN_ISSUES.md) 26
 for the remaining limits. The dragon path is live-verified on a master + two dev servers,
-including two fenced handovers (`compat/evidence/fight-sync-20261122T072854Z.md`); the raid
+including two fenced handovers (`compat/evidence/fight-sync-20261122T074549Z.md`); the raid
 path shares the same manager, packets and mixins and was verified live in the same run
 (14/14 checks, raid epochs 2→3→4 and dragon epochs 1→2→3).
 

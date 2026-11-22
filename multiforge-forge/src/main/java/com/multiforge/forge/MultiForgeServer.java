@@ -162,7 +162,9 @@ public final class MultiForgeServer {
         MultiForgeConfig.bake();
         MultiForgeConfig.Snapshot snapshot = MultiForgeConfig.snapshotForStartup(
                 server.getServerDirectory().toPath());
-        String name = snapshot.serverName();
+        // A system property is an explicit override for tests and provisioning, where
+        // the config file may be generated or corrected by Forge before this runs.
+        String name = System.getProperty("multiforge.serverName", snapshot.serverName());
         if (name == null || name.isBlank()) {
             name = "server" + ThreadLocalRandom.current().nextInt(10000, 100000);
         }

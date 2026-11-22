@@ -157,7 +157,8 @@ done
 grep -q "listening on" "$RUNTIME/master.log" || { log "master did not start"; exit 1; }
 
 log "starting live1 (Gradle dev run)"
-(./gradlew --no-daemon :multiforge-forge:runServer -PmultiforgeRunHeap="$HEAP" \
+(JAVA_TOOL_OPTIONS="-Dmultiforge.serverName=live1" \
+   ./gradlew --no-daemon :multiforge-forge:runServer -PmultiforgeRunHeap="$HEAP" \
    > "$RUNTIME/server1-gradle.log" 2>&1) &
 GRADLE1_PID=$!
 wait_for_ready "$RUN1/logs/latest.log" live1 || exit 1
@@ -176,6 +177,7 @@ for item in open(f"/proc/{pid}/environ", "rb").read().decode("utf-8", "ignore").
     if "=" in item:
         key, value = item.split("=", 1)
         env[key] = value
+env["JAVA_TOOL_OPTIONS"] = "-Dmultiforge.serverName=live2"
 out = open(logfile, "wb")
 proc = subprocess.Popen(args, cwd=cwd, env=env, stdout=out,
                         stderr=subprocess.STDOUT, start_new_session=True)

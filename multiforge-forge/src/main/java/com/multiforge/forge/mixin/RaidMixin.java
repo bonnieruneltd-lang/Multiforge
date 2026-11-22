@@ -3,7 +3,9 @@ package com.multiforge.forge.mixin;
 import com.multiforge.forge.MultiForgeServer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.raid.Raid;
+import net.minecraft.world.entity.raid.Raider;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Shadow;
@@ -58,6 +60,80 @@ public abstract class RaidMixin {
         }
         if (!server.chunks().shouldTickAt(level, center.getX(), center.getZ())) {
             callbackInfo.cancel();
+        }
+    }
+
+    /**
+     * Pushes a stopped raid to the peers immediately.
+     *
+     * @param callbackInfo mixin callback
+     */
+    @Inject(method = "stop", at = @At("TAIL"))
+    private void multiforge$afterStop(CallbackInfo callbackInfo) {
+        MultiForgeServer server = MultiForgeServer.instanceOrNull();
+        if (server != null) {
+            server.fights().onRaidStopped((Raid) (Object) this);
+        }
+    }
+
+    /**
+     * Pushes a newly spawned wave immediately.
+     *
+     * @param pos          spawn position
+     * @param callbackInfo mixin callback
+     */
+    @Inject(method = "spawnGroup", at = @At("TAIL"))
+    private void multiforge$afterSpawnGroup(BlockPos pos, CallbackInfo callbackInfo) {
+        MultiForgeServer server = MultiForgeServer.instanceOrNull();
+        if (server != null) {
+            server.fights().onRaidChanged((Raid) (Object) this);
+        }
+    }
+
+    /**
+     * Pushes a raider join immediately.
+     *
+     * @param wave         wave index
+     * @param raider       raider that joined
+     * @param pos          join position
+     * @param existing     whether the raider already existed
+     * @param callbackInfo mixin callback
+     */
+    @Inject(method = "joinRaid", at = @At("TAIL"))
+    private void multiforge$afterJoin(int wave, Raider raider, BlockPos pos, boolean existing,
+                                      CallbackInfo callbackInfo) {
+        MultiForgeServer server = MultiForgeServer.instanceOrNull();
+        if (server != null) {
+            server.fights().onRaidChanged((Raid) (Object) this);
+        }
+    }
+
+    /**
+     * Pushes a raider removal immediately.
+     *
+     * @param raider       raider that left
+     * @param countHealth  whether its health was counted
+     * @param callbackInfo mixin callback
+     */
+    @Inject(method = "removeFromRaid", at = @At("TAIL"))
+    private void multiforge$afterRemove(Raider raider, boolean countHealth, CallbackInfo callbackInfo) {
+        MultiForgeServer server = MultiForgeServer.instanceOrNull();
+        if (server != null) {
+            server.fights().onRaidChanged((Raid) (Object) this);
+        }
+    }
+
+    /**
+     * Pushes bad omen absorption (the raid's wave budget changes) immediately.
+     *
+     * @param player       player with bad omen
+     * @param callbackInfo mixin callback
+     */
+    @Inject(method = "absorbBadOmen", at = @At("TAIL"))
+    private void multiforge$afterBadOmen(Player player, CallbackInfo callbackInfo) {
+        MultiForgeServer server = MultiForgeServer.instanceOrNull();
+        if (server != null) {
+            server.fights().onRaidChanged((Raid) (Object) this);
         }
     }
 }

@@ -147,7 +147,7 @@ The script teleports the bots to the raid first (when a raid is active) and then
 asserts that both servers report the same raid id/wave and dragon UUID/phase with exactly one
 `local=true`, then moves the owner's bot away and the other bot in to trigger two fenced
 handovers per fight, checking the epoch advances and the state is preserved. It exits non-zero
-on failure. Evidence: `compat/evidence/fight-sync-20261122T072854Z.md` (14/14).
+on failure. Evidence: `compat/evidence/fight-sync-20261122T074549Z.md` (14/14).
 
 ## Forced packet-loss check
 
@@ -163,6 +163,16 @@ python3 tools/compat/packet_loss_check.py --a-port 25575 --b-port 25576 \
 The injector drops only the first transmission of block/block-entity updates; retransmissions
 are never dropped, so a run always converges. It is a debug tool: the default is 0 and
 `/multiforge status` reports the active percentage as `drop=`.
+
+## Hardware client matrix
+
+The 15 client targets can only be judged by a real client. `tools/compat/run_client_matrix.sh`
+is the one-command wrapper: it probes the host (refusing a machine without a usable OpenGL
+renderer), pins and SHA-512-verifies the client artifacts, assembles the instance, installs
+the production Forge client, runs one client per shader pack and writes
+`compat/evidence/client-matrix-<utc>.{md,json}`. A software-only machine can still run the
+launch/log checks with `--allow-software` (labelled SOFTWARE; shader rows stay open). See
+[docs/CLIENT_MATRIX.md](CLIENT_MATRIX.md) for the machine specification and the verdict rules.
 
 ## One-command live cluster
 

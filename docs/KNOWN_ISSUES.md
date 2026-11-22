@@ -298,6 +298,18 @@ defect; the counter is visible as `seq gaps=` in `/multiforge status`. Pending a
 are dropped at shutdown, which is harmless because a restarting peer reloads chunks from the
 cluster.
 
+A **lost first update** is indistinguishable from a peer that subscribed mid-stream: both
+arrive with a sequence above 1 and no prior value, so the baseline rule skips the missing prefix
+instead of requesting it. Every update after the first one of a sender/chunk is covered; a lost
+first update is repaired by the next chunk read/save or a later resync. The debug injector
+(`/multiforge drop`) deliberately never drops sequence 1 so the live forced-loss test measures
+the real retransmit path, and a future subscription handshake that announces the sender's
+current sequence would close the last window. A **lost final update** (tail) is repaired by the
+heartbeat acknowledgement: the receiver re-acks its highest contiguous sequence once per second
+for five seconds after the last update, and the sender's retransmit buffer fills the hole.
+Verified live at 50 % loss: 15-23 gaps observed and all 40 blocks plus the chest NBT converged
+(`compat/evidence/packet-loss-20261122T074452Z.md`).
+
 ### 25. Chunk handover limits
 
 `ChunkHandoverManager` moves a chunk only after the old owner saved it and the master
@@ -319,18 +331,19 @@ acknowledged the upload. Remaining limits:
   `compat/evidence/handover-mirroring-20261122T040431Z.md`); the timeout and
   old-owner-disconnect paths are covered by master integration tests.
 
-### 26. Raid and dragon fight transfer is polled, not event driven
+### 26. Fight state is pushed on mutation, with a one-second safety net
 
-Raid state and the dragon fight are replicated by `FightSyncManager` (peer ids 37-38). The
-remaining limits are deliberate trade-offs:
+Raid state and the dragon fight are replicated by `FightSyncManager` (peer ids 37-38). Limits
+and trade-offs:
 
-* Changes are detected once per second, not on every mutation. The boss bar itself is still
-  forwarded immediately (`BossEventPacket`), so a player sees wave progress live; the fight
-  **object** on a mirror can be up to one second old. That is enough for a handover, which
-  also sends the snapshots directly to the new owner before the fence.
-* The owner serializes a raid once per second even when nothing changed, then drops the packet
-  because the hash is unchanged. A raid is a few hundred bytes, so the cost is small, but it
-  is not free on a world with several concurrent raids.
+* Mutations are pushed immediately: `RaidMixin` hooks `stop`, `spawnGroup`, `joinRaid`,
+  `removeFromRaid` and `absorbBadOmen`, and `EndDragonFightMixin` hooks `setDragonKilled`,
+  `tryRespawn`, `updateDragon` and `setRespawnStage`. The remaining once-per-second comparison
+  is a safety net for a state change with no hook and repairs a lost packet; before the hooks a
+  mirror's fight object could be up to one second old.
+* The owner still serializes a raid and the fight once per second for that safety net, then
+  drops the packet because the hash is unchanged. A raid is a few hundred bytes, so the cost is
+  small, but it is not free on a world with several concurrent raids.
 * Applying a dragon snapshot constructs a new `EndDragonFight` (`ServerLevel.setDragonFight`)
   instead of mutating the old object, because vanilla 1.20.1 has no public `load(Data)`.
   The losing server removes its boss-bar players first, so there is at most a one-tick gap
@@ -339,7 +352,7 @@ remaining limits are deliberate trade-offs:
   live packets are authoritative in memory; a server that starts with a stale file is
   corrected by the first broadcast from the owner.
 * Both fights are **live-verified** on a master + two dev servers
-  (`compat/evidence/fight-sync-20261122T072854Z.md`, 14/14 checks): the same raid id/wave and
+  (`compat/evidence/fight-sync-20261122T074549Z.md`, 14/14 checks): the same raid id/wave and
   dragon UUID/phase on both servers, exactly one `local=true`, and two fenced handovers each
   (raid epochs 7→8→9, dragon 5→6→7).
 * Testing note: vanilla `Raid.tick` calls `stop()` when the centre is not a valid village and
@@ -350,7 +363,7 @@ remaining limits are deliberate trade-offs:
 
 * Live verification of a forced-loss run is now recorded: `/multiforge drop 50` on one server,
   the receiver reported 23 sequence gaps, and all 40 blocks plus the block-entity NBT converged
-  (`compat/evidence/packet-loss-20261122T072758Z.md`). The history is still bounded at 128
+  (`compat/evidence/packet-loss-20261122T074452Z.md`). The history is still bounded at 128
   updates per chunk and peer; a loss burst larger than that cannot be repaired from history and
   is resynchronised by the baseline rule above.
 

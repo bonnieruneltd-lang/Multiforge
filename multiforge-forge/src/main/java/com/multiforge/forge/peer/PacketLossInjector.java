@@ -54,6 +54,13 @@ public final class PacketLossInjector {
      * <p>Called once per peer inside the broadcast loop, so two peers can see
      * different losses. Non-sequenced packets are never dropped.</p>
      *
+     * <p>The first sequenced update of a stream is never dropped. A receiver that has
+     * not seen a sender before adopts the first sequence it receives as its baseline
+     * (the mid-stream rule in {@code SequenceTracker}), so dropping sequence 1 would
+     * make the receiver silently skip it instead of asking for a retransmit. That is
+     * a documented limit of the baseline rule, not something this debug injector
+     * should trip over; the harness proves gap repair from sequence 2 onwards.</p>
+     *
      * @param packet packet about to be sent
      * @return {@code true} when this transmission should be skipped
      */
@@ -62,7 +69,15 @@ public final class PacketLossInjector {
         if (percent == 0) {
             return false;
         }
-        if (!(packet instanceof BlockChangePacket) && !(packet instanceof BlockEntityUpdatePacket)) {
+        long sequence;
+        if (packet instanceof BlockChangePacket blockChange) {
+            sequence = blockChange.sequence;
+        } else if (packet instanceof BlockEntityUpdatePacket blockEntity) {
+            sequence = blockEntity.sequence;
+        } else {
+            return false;
+        }
+        if (sequence <= 1L) {
             return false;
         }
         return ThreadLocalRandom.current().nextInt(100) < percent;

@@ -2,6 +2,8 @@ package com.multiforge.forge.mixin;
 
 import com.multiforge.forge.MultiForgeServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.boss.enderdragon.EnderDragon;
+import net.minecraft.world.level.dimension.end.DragonRespawnAnimation;
 import net.minecraft.world.level.dimension.end.EndDragonFight;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -51,6 +53,49 @@ public abstract class EndDragonFightMixin {
         }
         if (!server.chunks().shouldTickAt(level, 0, 0)) {
             callbackInfo.cancel();
+        }
+    }
+
+    /**
+     * @param dragon       killed dragon
+     * @param callbackInfo mixin callback
+     */
+    @Inject(method = "setDragonKilled", at = @At("TAIL"))
+    private void multiforge$afterDragonKilled(EnderDragon dragon, CallbackInfo callbackInfo) {
+        notifyChanged();
+    }
+
+    /**
+     * @param callbackInfo mixin callback
+     */
+    @Inject(method = "tryRespawn", at = @At("TAIL"))
+    private void multiforge$afterTryRespawn(CallbackInfo callbackInfo) {
+        notifyChanged();
+    }
+
+    /**
+     * @param dragon       dragon being updated
+     * @param callbackInfo mixin callback
+     */
+    @Inject(method = "updateDragon", at = @At("TAIL"))
+    private void multiforge$afterUpdateDragon(EnderDragon dragon, CallbackInfo callbackInfo) {
+        notifyChanged();
+    }
+
+    /**
+     * @param stage        new respawn stage
+     * @param callbackInfo mixin callback
+     */
+    @Inject(method = "setRespawnStage", at = @At("TAIL"))
+    private void multiforge$afterRespawnStage(DragonRespawnAnimation stage, CallbackInfo callbackInfo) {
+        notifyChanged();
+    }
+
+    /** Pushes the fight data to the peers right after a phase change. */
+    private void notifyChanged() {
+        MultiForgeServer server = MultiForgeServer.instanceOrNull();
+        if (server != null) {
+            server.fights().onDragonChanged(level, (EndDragonFight) (Object) this);
         }
     }
 }

@@ -37,7 +37,7 @@ integration tests and by running two real Forge servers against a master:
 | Chunk ownership and tick gating | implemented, verified live (previous session) |
 | Fenced chunk handover / player-follow ownership | implemented; 8 master integration tests and verified live on two dev servers with bots walking across the border ([evidence 1](compat/evidence/chunk-handover-20261122T035205Z.md), [evidence 2](compat/evidence/handover-mirroring-20261122T040431Z.md)) |
 | Chunk unload status respected when redirecting reads | implemented, integration tested |
-| Forced packet-loss recovery | verified live: 50 % of block/block-entity first transmissions dropped, the receiver saw 23 gaps and retransmits delivered all 40 blocks and the chest NBT (`packet-loss-20261122T072758Z.md`); debug `/multiforge drop` |
+| Forced packet-loss recovery | verified live: 50 % of block/block-entity first transmissions dropped, gaps acknowledged and retransmitted, a once-per-second heartbeat ack repairs a lost tail; all 40 blocks and the chest NBT converged (`packet-loss-20261122T074452Z.md`); debug `/multiforge drop` |
 | Block and block entity broadcasts | implemented |
 | Peer-to-peer chunk transfer with compression | implemented, verified live (previous session) |
 | Server registry, heartbeats, TPS/player counts, global player list | implemented |
@@ -58,7 +58,7 @@ integration tests and by running two real Forge servers against a master:
 | Live statistics and advancement progress | implemented: 10 s statistic deltas + immediate criterion awards (peer packets 31-32); compile-verified, live check pending |
 | Master region file format | true zlib, readable by vanilla/tooling; legacy gzip transcoded on read (round-trip tested + live master bytes checked) |
 | Boss bars (dragon, raids, plugin bars) | implemented: owner forwards vanilla boss-event packets; verified live with two clients receiving the same add/progress/remove ([evidence](compat/evidence/boss-bar-20261122T044950Z.md)) |
-| Raid and ender-dragon fight state across handovers | implemented and **live-verified** for both: same state on both servers, one ticker, two fenced handovers each (raid epochs 2→3→4, dragon 1→2→3). [evidence](compat/evidence/fight-sync-20261122T072854Z.md) |
+| Raid and ender-dragon fight state across handovers | implemented and **live-verified** for both: mutations pushed immediately (1 s safety net), same state on both servers, one ticker, two fenced handovers each (raid epochs 2→3→4, dragon 1→2→3). [evidence](compat/evidence/fight-sync-20261122T074549Z.md) |
 | Required-target detection and `/multiforge compat` | implemented |
 | Chunk-border debug visualization (`/multiforge borders`) | implemented (config `debug.chunkBorders`); compile-verified |
 | Prometheus `/metrics` endpoint for the master | implemented (`metrics-port`, default off); unit tested |
@@ -108,6 +108,9 @@ Read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before running a production wo
    name = "survival1"          # unique per server
    ```
 
+   `server.name` can also be forced with `-Dmultiforge.serverName=<name>` (tests and
+   provisioning; it overrides the config file, which Forge may rewrite on first start).
+
 4. Point your load balancer (or the master's built-in proxy) at the servers. Players can
    join any server; their data follows them.
 
@@ -136,6 +139,7 @@ Read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before running a production wo
 * [Completion scorecard](docs/COMPLETION.md)
 * [Required mod compatibility](docs/REQUIRED_MOD_COMPATIBILITY.md)
 * [Compatibility profiles](docs/COMPATIBILITY_PROFILES.md)
+* [Client matrix](docs/CLIENT_MATRIX.md)
 * [Distributed architecture research](docs/DISTRIBUTED_ARCHITECTURE_RESEARCH.md)
 * [Distributed roadmap](docs/DISTRIBUTED_ROADMAP.md)
 

@@ -229,6 +229,95 @@ public final class FightSyncManager {
     }
 
     /**
+     * Broadcasts a raid immediately after a mutation (wave spawn, raider join/leave,
+     * bad omen absorption).
+     *
+     * <p>Called from {@code RaidMixin} on the server thread. The periodic once-per-second
+     * comparison remains as a safety net for missed calls and for a state change made by
+     * vanilla code that has no hook, but the observable updates no longer wait for it.
+     * Only the server that owns the raid's centre chunk sends.</p>
+     *
+     * @param raid changed raid
+     */
+    public void onRaidChanged(Raid raid) {
+        if (raid == null || !server.config().worldSync() || server.isStopping()) {
+            return;
+        }
+        if (raid.isStopped()) {
+            onRaidStopped(raid);
+            return;
+        }
+        if (!(raid.getLevel() instanceof ServerLevel level)) {
+            return;
+        }
+        BlockPos center = raid.getCenter();
+        if (!server.chunks().isLocallyOwned(level, center.getX(), center.getZ())) {
+            return;
+        }
+        try {
+            String world = server.chunks().worldName(level);
+            CompoundTag tag = raid.save(new CompoundTag());
+            int hash = tag.hashCode();
+            String key = raidKey(world, raid.getId());
+            if (!Integer.valueOf(hash).equals(raidHashes.put(key, hash))) {
+                server.peers().broadcast(new RaidStatePacket(world, raid.getId(),
+                        epochAt(level, center.getX(), center.getZ()), tag));
+            }
+        } catch (RuntimeException e) {
+            LOGGER.warn("Could not broadcast changed raid {}", raid.getId(), e);
+        }
+    }
+
+    /**
+     * Withdraws a raid from the peers as soon as it stops.
+     *
+     * @param raid stopped raid
+     */
+    public void onRaidStopped(Raid raid) {
+        if (raid == null || !server.config().worldSync() || server.isStopping()
+                || !(raid.getLevel() instanceof ServerLevel level)) {
+            return;
+        }
+        String world = server.chunks().worldName(level);
+        if (raidHashes.remove(raidKey(world, raid.getId())) != null) {
+            server.peers().broadcast(new RaidStatePacket(world, raid.getId(), 0L, null));
+        }
+    }
+
+    /**
+     * Broadcasts the dragon fight immediately after a phase mutation.
+     *
+     * <p>Called from {@code EndDragonFightMixin} for dragon killed, respawn stage,
+     * respawn attempt and dragon update. Only the end island's owner sends; the
+     * periodic comparison is the safety net.</p>
+     *
+     * @param level level of the fight
+     * @param fight changed fight
+     */
+    public void onDragonChanged(ServerLevel level, EndDragonFight fight) {
+        if (level == null || fight == null || !server.config().worldSync() || server.isStopping()) {
+            return;
+        }
+        if (!server.chunks().isLocallyOwned(level, 0, 0)) {
+            return;
+        }
+        try {
+            String world = server.chunks().worldName(level);
+            CompoundTag tag = encodeDragon(fight.saveData());
+            if (tag == null) {
+                return;
+            }
+            int hash = tag.hashCode();
+            if (!Integer.valueOf(hash).equals(dragonHashes.put(world, hash))) {
+                server.peers().broadcast(new DragonFightStatePacket(world,
+                        epochAt(level, 0, 0), tag));
+            }
+        } catch (RuntimeException e) {
+            LOGGER.warn("Could not broadcast the dragon fight for {}", level.dimension().location(), e);
+        }
+    }
+
+    /**
      * Describes every raid and dragon fight in the loaded levels.
      *
      * <p>Used by {@code /multiforge fights} and by the live cluster harness. The

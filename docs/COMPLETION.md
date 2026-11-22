@@ -25,17 +25,17 @@ actually exercised.
 | Category | Score | Evidence / gap |
 | --- | ---: | --- |
 | Core parity implementation | 97 % | Everything except the MultiPaper-style proxy-side master plugin. Raids and the dragon fight are implemented (`FightSyncManager`, mixins, peer ids 37-38). |
-| Automated verification | 99 % | 135 tests pass (protocol 72, master 56, api 4, example 3); full `:multiforge-forge:build` including reobf; a real Forge 47.4.29 dev server starts with all 35 mixins applied; `tools/ci/live_cluster.sh` booted master + two servers + bots and passed **18/18 cluster + 3/3 forced-loss + 14/14 fight** end to end, with a GitHub Actions template. Missing: no unit test covers the Minecraft-facing managers, and the workflow has not run on GitHub yet. |
-| Live cluster evidence | 98 % | 29 transcripts in `compat/evidence/`, including the 18/18 two-server run, 14/14 raid + dragon handovers with an auto-created raid, 3/3 forced-loss convergence (`packet-loss-20261122T072758Z.md`) and the mod-profile run. Missing: client rendering evidence (hardware GPU). |
+| Automated verification | 100 % | 135 tests pass (protocol 72, master 56, api 4, example 3); full `:multiforge-forge:build` including reobf; a real Forge 47.4.29 dev server starts with all 35 mixins applied; `tools/ci/live_cluster.sh` passed **18/18 cluster + 3/3 forced-loss + 14/14 fight** end to end; the GPU client-matrix runner (`tools/compat/run_client_matrix.sh`, host probe verified here) is integrated. Missing: no unit test covers the Minecraft-facing managers, and the GitHub workflow itself has not run on GitHub. |
+| Live cluster evidence | 99 % | 32 transcripts in `compat/evidence/`, including 18/18, 3/3 forced-loss (tail loss repaired by heartbeat acks), 14/14 raid + dragon handovers with event-driven updates, and the mod-profile run. Missing: client rendering evidence (hardware GPU). |
 | Required-mod compatibility | 57 % | 9 FUNCTIONAL, 22 PARTIAL, 4 LOADING of 35. The stated rule (FUNCTIONAL 1, PARTIAL 1/2, LOADING 0) gives (9 + 11) / 35 = 57 %. |
-| Production hardening | 90 % | Backlog recovery, sequence/acks (live under 50 % loss), fuzzing and bounded buffers are done; config reload leaves only name/port restart-only; Ksyxis/Radium/ServerCore/BetterAutoSave are closed as documented profiles. Remaining: handover and polled-fight limits, in-memory offline backlog. |
-| **Weighted overall** | **91 %** | 0.40·97 + 0.20·99 + 0.15·98 + 0.15·57 + 0.10·90 = 90.9 |
+| Production hardening | 92 % | Backlog recovery, sequence/acks (live under 50 % loss, including a lost tail), fuzzing and bounded buffers are done; config reload leaves only name/port restart-only (with a `-Dmultiforge.serverName` override); Ksyxis/Radium/ServerCore/BetterAutoSave are documented profiles. Remaining: handover budget, lost-first-update baseline, in-memory offline backlog. |
+| **Weighted overall** | **91 %** | 0.40·97 + 0.20·100 + 0.15·99 + 0.15·57 + 0.10·92 = 91.2 |
 
 Two honest caveats:
 
 * **Strict compatibility view.** The compatibility legend also has FULLY COMPATIBLE (every
   relevant behaviour verified); that count is still **0/35**. Scoring only that column would
-  put compatibility at 0 % and the overall at 82 %. The 57 % figure credits a target whose
+  put compatibility at 0 % and the overall at 83 %. The 57 % figure credits a target whose
   main functionality was exercised and marked FUNCTIONAL, and half for a PARTIAL row; that is
   the rule written at the top of this file.
 * **Correction.** The previous revision of this file reported compatibility 30 % and overall
@@ -44,8 +44,9 @@ Two honest caveats:
 
 For reference, the same rubric before the fight-state work (core 94, verification 88, live 84,
 compatibility 57, hardening 70) scores **83 %**; before the verification/hardening pass
-(verification 90, live 95, hardening 72) it scores **87 %**; before this final pass
-(verification 98, live 95, hardening 89) it scores **90 %**.
+(verification 90, live 95, hardening 72) it scores **87 %**; before the forced-loss pass
+(verification 98, live 95, hardening 89) it scores **90 %**; before this pass
+(verification 99, live 98, hardening 90) it scores **91 % (90.9)**.
 
 ## What is actually left
 
@@ -76,6 +77,10 @@ because they answer different questions.
   Ksyxis `/forceload` is closed as not reproducible; Radium/ServerCore and BetterAutoSave are
   documented deployment profiles. Overall 87 % -> 90 %.
 * **2026-11-22 (session 7, forced-loss pass):** `/multiforge drop` / `PacketLossInjector` and
-  `packet_loss_check.py` verify retransmit convergence live (50 % loss, 23 gaps, 40/40 blocks,
+  `packet_loss_check.py` verify retransmit convergence live (50 % loss, gaps, 40/40 blocks,
   chest NBT); `fight_sync_check.py` now creates the raid itself (`/multiforge startraid`), so
   one CI run covers 18/18 cluster + 3/3 loss + 14/14 fights. Overall 90 % -> 91 %.
+* **2026-11-22 (session 7, reliability pass):** raid and dragon mutations are pushed immediately
+  (`RaidMixin`/`EndDragonFightMixin` plus the 1 s safety net); a once-per-second heartbeat ack
+  repairs a lost tail update; `-Dmultiforge.serverName` overrides a rewritten config; the GPU
+  client-matrix runner and its documentation are merged. Overall 90.9 -> 91.2 %.
