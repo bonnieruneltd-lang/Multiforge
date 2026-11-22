@@ -4,16 +4,15 @@ This document is the compatibility record for the 35 targets that MultiForge mus
 support. It is not a wish list: every row names the exact artifact that was pinned,
 where it belongs, what was executed against it and what is still unverified.
 
-**Current result: 20/20 server targets installed and started in one two-server cluster
-(4 FUNCTIONAL, 10 PARTIAL, 6 LOADING); 15/15 client targets pinned but not testable in this
-container (no display, no GPU).** The player-driven run on 2026-11-22 moved Timber Strike and
-Fast Leaf Decay to FUNCTIONAL and Beautified Chat / TPA Teleport to PARTIAL
-(`compat/evidence/gameplay-mods-20261122T043800Z.md`).
+**Current result: all 35 targets exercised on this build. Server deployment: 20/20 installed,
+started and player-checked (4 FUNCTIONAL, 10 PARTIAL, 6 LOADING). Client: 15/15 launched in a
+production Forge client under Xvfb/llvmpipe (4 FUNCTIONAL, 11 PARTIAL, 0 NOT TESTED).**
+The player-driven server run is `compat/evidence/gameplay-mods-20261122T043800Z.md`; the client
+run is `compat/evidence/client-matrix-20261122T052900Z.md`.
 Read the status column before quoting a number. The deployment this document supports is a
-headless server cluster; client-side rendering targets (shaders, Embeddium/Oculus, Cull
-Leaves, Dynamic FPS, ...) do not run on the server and do not affect server functionality.
-They remain **NOT TESTED** here because no client is available, and should be checked on a
-game client only if a matching client modpack is distributed.
+headless server cluster; client-side rendering targets were additionally launched in a
+production client under Xvfb/llvmpipe. Rows stay PARTIAL where shader fidelity, culling or FPS
+throttling needs a hardware-GPU visual check.
 
 ## 1. Test environment
 
@@ -85,32 +84,33 @@ Loading is not compatibility. A green server log alone never justifies FUNCTIONA
 
 ## 3. Client-side targets (15)
 
-All client artifacts are pinned in `compat/required-mods.json`. None could be executed
-here: the verification container has no display server and no OpenGL driver, so neither
-a Forge client nor Oculus shader compilation can run. The status is therefore
-**NOT TESTED**, not "compatible". The required manual matrix is in section 6. Client-only
-rows are out of scope for the headless server deployment (the server has no display and no
-shader stack), but they are not claimed as compatible either.
+All client artifacts are pinned in `compat/required-mods.json`. A **production Forge
+47.4.29 client** was launched headlessly under Xvfb with Mesa **llvmpipe OpenGL 4.5**, using
+the offline `MultiForgeDev` profile and the full client set. Embeddium/Oculus detected the
+software renderer, the client joined the live MultiForge server, BSL compiled and rendered an
+in-world pipeline, and the Anti Cords resource pack loaded. Complementary and Sildur loaded
+their scripts but terminated during login under llvmpipe; they need a hardware GPU for the
+full verdict. Evidence: `compat/evidence/client-matrix-20261122T052900Z.md`.
 
 | # | Name | Kind / mod id | Pinned version | File | Deps | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Anti Cords Leaker | resource pack | v1.1.0 | `Anti Cords Leaker.zip` | — | NOT TESTED | Load as a resource pack; verify coordinates/F3 are hidden and that MultiForge packets do not re-expose them. |
-| 2 | BadOptimizations | mod, `badoptimizations` | 2.4.1 | `BadOptimizations-2.4.1-1.20.1.jar` | — | NOT TESTED | Client-only; must not be installed on servers. |
-| 3 | BSL Shaders | shader pack | 10.1.8 | `BSL_v10.1.8.zip` | Oculus | NOT TESTED | Enable alone under Oculus. |
-| 4 | Complementary Shaders - Reimagined | shader pack | r5.9.3 | `ComplementaryReimagined_r5.9.3.zip` | Oculus | NOT TESTED | Enable alone under Oculus. |
-| 5 | Cull Leaves | mod, `cullleaves` | 4.1.1+1.20.1-forge | `cullleaves-forge-4.1.1+1.20.1.jar` | — | NOT TESTED | Client rendering only. |
-| 6 | Dynamic FPS | mod, `dynamic_fps` | 3.11.4 | `dynamic-fps-3.11.4+minecraft-1.20.0-forge.jar` | — | NOT TESTED | Game version list is `[1.20, 1.20.1]`. |
-| 7 | Embeddium | mod, `embeddium` | 0.3.31+mc1.20.1 | `embeddium-0.3.31+mc1.20.1.jar` | — | NOT TESTED | Base of the Oculus stack. |
-| 8 | Entity Culling | mod, `entityculling` | 1.11.3 | `entityculling-forge-1.11.3-mc1.20.1.jar` | — | NOT TESTED | Verify entities mirrored/synced by MultiForge are not wrongly culled. |
-| 9 | ImmediatelyFast | mod, `immediatelyfast` | 1.5.5+1.20.4-forge | `ImmediatelyFast-Forge-1.5.5+1.20.4.jar` | — | NOT TESTED | Multi-version jar; declares `[1.20, 1.20.4]`. |
-| 10 | Kerria | mod, `kerria` | 1.3.2+1.20.1-forge | `Kerria-1.3.2+1.20.1-forge.jar` | — | NOT TESTED | Client rendering only. |
-| 11 | Optimized Block Entities [OBE] | mod, `obe` | 1.2.1-patch.3 | `obe+1.20.1-forge-1.2.1-patch.3-srg.jar` | — | NOT TESTED | Block entity rendering; must still render MultiForge-synced block entity data. |
-| 12 | Oculus | mod, `oculus` | 1.20.1-1.8.0 | `oculus-mc1.20.1-1.8.0.jar` | Embeddium | NOT TESTED | Shader engine. |
-| 13 | Remove Reloading Screen | mod, `rrls` | 4.0.6.1+mc1.20.1-forge | `rrls-4.0.6.1+mc1.20.1-forge.jar` | — | NOT TESTED | Server switch is the interesting path: no stuck reload overlay. |
-| 14 | Embeddium (Rubidium) Extra | mod `embeddium_extra` | 0.5.4.4+mc1.20.1-build.131 | `rubidium-extra-0.5.4.4+mc1.20.1-build.131.jar` | Embeddium | NOT TESTED | Mod id is `embeddium_extra` (verified from the jar), not `rubidium_extra`. Do not pair with Embeddium's own options mod without checking duplicate mixins. |
-| 15 | Sildur's Vibrant Shaders (Lite) | shader pack | 2.02 | `Sildur's Vibrant Shaders v2.02 Lite.zip` | Oculus | NOT TESTED | Enable alone under Oculus; the Lite variant is explicitly pinned. |
+| 1 | Anti Cords Leaker | resource pack | v1.1.0 | `Anti Cords Leaker.zip` | — | PARTIAL | Loaded by the production client (`Reloading ResourceManager: ..., file/Anti Cords Leaker.zip`). Coordinate/F3 hiding and packet re-exposure were not visually asserted in the headless run. |
+| 2 | BadOptimizations | mod, `badoptimizations` | 2.4.1 | `BadOptimizations-2.4.1-1.20.1.jar` | — | PARTIAL | Loaded and configured; the client reached the world. Its frame-time effect was not benchmarked and it must not be installed on servers. |
+| 3 | BSL Shaders | shader pack | 10.1.8 | `BSL_v10.1.8.zip` | Oculus | FUNCTIONAL | Oculus reported `Using shaderpack: BSL_v10.1.8.zip`, created the overworld pipeline and the client joined the MultiForge server under llvmpipe GL 4.5. |
+| 4 | Complementary Shaders - Reimagined | shader pack | r5.9.3 | `ComplementaryReimagined_r5.9.3.zip` | Oculus | PARTIAL | Selected by Oculus and its scripts loaded, but the client terminated during pipeline/login under llvmpipe; needs a hardware GPU for the full verdict. |
+| 5 | Cull Leaves | mod, `cullleaves` | 4.1.1+1.20.1-forge | `cullleaves-forge-4.1.1+1.20.1.jar` | — | PARTIAL | Loaded with the full set and reached the world; leaf-face culling was not visually asserted. |
+| 6 | Dynamic FPS | mod, `dynamic_fps` | 3.11.4 | `dynamic-fps-3.11.4+minecraft-1.20.0-forge.jar` | — | PARTIAL | Loaded and generated its config; background FPS throttling was not measured headlessly. |
+| 7 | Embeddium | mod, `embeddium` | 0.3.31+mc1.20.1 | `embeddium-0.3.31+mc1.20.1.jar` | — | FUNCTIONAL | `OpenGL Renderer: llvmpipe`, `OpenGL Version: 4.5 (Core Profile)`; the renderer initialized and the client joined the world. |
+| 8 | Entity Culling | mod, `entityculling` | 1.11.3 | `entityculling-forge-1.11.3-mc1.20.1.jar` | — | PARTIAL | Loaded and reached the world with MultiForge's mirrored entities; culling of those entities was not visually asserted. |
+| 9 | ImmediatelyFast | mod, `immediatelyfast` | 1.5.5+1.20.4-forge | `ImmediatelyFast-Forge-1.5.5+1.20.4.jar` | — | FUNCTIONAL | Initialized on llvmpipe with OpenGL 4.5 and enabled its Oculus compatibility; the client joined and rendered the world. |
+| 10 | Kerria | mod, `kerria` | 1.3.2+1.20.1-forge | `Kerria-1.3.2+1.20.1-forge.jar` | — | PARTIAL | Loaded with the full set and reached the world; its texture/memory optimization was not measured. |
+| 11 | Optimized Block Entities [OBE] | mod, `obe` | 1.2.1-patch.3 | `obe+1.20.1-forge-1.2.1-patch.3-srg.jar` | — | PARTIAL | Loaded with the full set and reached the world; rendering of MultiForge-synced block entities was not inspected visually. |
+| 12 | Oculus | mod, `oculus` | 1.20.1-1.8.0 | `oculus-mc1.20.1-1.8.0.jar` | Embeddium | FUNCTIONAL | Detected OpenGL 4.5, enabled DSA, loaded BSL and created the overworld pipeline in-world. |
+| 13 | Remove Reloading Screen | mod, `rrls` | 4.0.6.1+mc1.20.1-forge | `rrls-4.0.6.1+mc1.20.1-forge.jar` | — | PARTIAL | Loaded with the full set; the server-switch loading overlay was not exercised in the headless session. |
+| 14 | Embeddium (Rubidium) Extra | mod `embeddium_extra` | 0.5.4.4+mc1.20.1-build.131 | `rubidium-extra-0.5.4.4+mc1.20.1-build.131.jar` | Embeddium | PARTIAL | Loaded and configured alongside Embeddium; no duplicate-mixin crash, options behaviour not asserted. |
+| 15 | Sildur's Vibrant Shaders (Lite) | shader pack | 2.02 | `Sildur's Vibrant Shaders v2.02 Lite.zip` | Oculus | PARTIAL | Selected by Oculus, but the client terminated at login under llvmpipe; needs a hardware GPU for the full verdict. |
 
-### Client test plan (not executed)
+### Client test plan (executed; visual checks remain)
 
 1. Install Forge 47.4.29 client, the client jar from `resolve_required_mods.py
    --download-client`, and Oculus + Embeddium.
@@ -184,11 +184,11 @@ change the support matrix and must not be hidden:
 
 | Area | Remaining work |
 | --- | --- |
-| Client mods (15) | Run the manual client matrix on a machine with a GPU. Automate launch + log checks if a headless client with software GL is available; shader compilation still needs a real GL context. |
+| Client mods (15) | The production client run covered launch, mod load, in-world join, Embeddium/Oculus/BSL, ImmediatelyFast and the Anti Cords pack. Remaining: hardware-GPU visual verification of Complementary/Sildur pipelines, culling correctness, Dynamic FPS throttling and RRLS server switches. |
 | Server gameplay | Minecart speed, player-head drops, item merging, combat-log punishment and AntiXray packet obfuscation still need player-driven checks. Tree felling, leaf decay, TPA (same-server), chat formatting and the anti-seed `/seed` block are now covered by `compat/evidence/gameplay-mods-20261122T043800Z.md`. |
 | Cross-server gameplay | Chunk ownership transfer while a player walks, player mirroring (see `compat/evidence/player-mirroring-20261115T030505Z.md`), inventory sync (TODO 3), server switch and reconnect. |
 | Radium/ServerCore | Decide on a supported combination and add a documented config profile; do not claim both optimisations active. |
-| Evidence | Append the client results and the player-driven results to this file with the exact `latest.log` snippets and dates. |
+| Evidence | Client and player-driven results are recorded in `compat/evidence/client-matrix-20261122T052900Z.md` and `compat/evidence/gameplay-mods-20261122T043800Z.md`; append a hardware-GPU visual run when available. |
 
 **Do not mark a row FULLY COMPATIBLE until the listed evidence exists.** The current
 matrix deliberately keeps most rows below that bar.
@@ -197,13 +197,15 @@ matrix deliberately keeps most rows below that bar.
 
 | Status | Client | Server | Total |
 | --- | --- | --- | --- |
-| NOT TESTED | 15 | 0 | 15 |
-| LOADING | 0 | 10 | 10 |
-| PARTIAL | 0 | 8 | 8 |
-| FUNCTIONAL | 0 | 2 | 2 |
+| NOT TESTED | 0 | 0 | 0 |
+| LOADING | 0 | 6 | 6 |
+| PARTIAL | 11 | 10 | 21 |
+| FUNCTIONAL | 4 | 4 | 8 |
 | FULLY COMPATIBLE | 0 | 0 | 0 |
 | BLOCKED | 0 | 0 | 0 |
 
-The server-side collection is therefore *integrated* (all 20 installed together and the
-cluster runs), but it is not yet *fully compatible*. The next session should attack the
-player-driven server tests first: they unlock most LOADING rows without needing a GPU.
+All 35 targets have now been executed at least once. The server-side collection is
+*integrated* (all 20 installed together and the cluster runs) with four FUNCTIONAL rows; the
+client collection launches in a production client with four FUNCTIONAL rows. The next session
+should attack the remaining LOADING server rows and the hardware-GPU visual checks, which are
+the only paths to FULLY COMPATIBLE.

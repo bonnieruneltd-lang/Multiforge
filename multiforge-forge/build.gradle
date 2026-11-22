@@ -32,6 +32,16 @@ minecraft {
     runs {
         // Two servers are configured out of the box so the cluster behaviour can
         // be verified locally: ./gradlew :multiforge-forge:runServer and runServer2
+        client {
+            workingDirectory project.file('runClient')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'info'
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+            jvmArg "-Xmx${project.findProperty('multiforgeClientHeap') ?: '2G'}"
+            jvmArg '-Djava.awt.headless=false'
+            args '--username', 'MultiForgeDev', '--width', '854', '--height', '480'
+        }
         server {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'

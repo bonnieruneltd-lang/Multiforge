@@ -19,7 +19,10 @@ bin/
 # Forge / Minecraft runtime output
 /run/
 /multiforge-forge/run/
+/multiforge-forge/runClient/
 /runs/
+/runClient/
+/config/
 /logs/
 *.log
 crash-reports/

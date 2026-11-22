@@ -67,7 +67,7 @@ integration tests and by running two real Forge servers against a master:
 | Download progress reporting | implemented: `DownloadProgressMessage` every MiB, shown in `/multiforge status`; integration tested |
 | Chunk-ownership text map (`/multiforge map`) | implemented; compile-verified |
 | Pinned compatibility manifest and two-server RCON harness | implemented; 35 targets pinned, server set tested together |
-| Required mod compatibility (35 targets) | Server deployment: 20/20 server targets installed and started together (4 functional, 10 partial, 6 loading); 15 client-only targets are out of scope for the headless server (pinned, not tested) - see [docs/REQUIRED_MOD_COMPATIBILITY.md](docs/REQUIRED_MOD_COMPATIBILITY.md) |
+| Required mod compatibility (35 targets) | All 35 exercised: server 20/20 (4 functional, 10 partial, 6 loading) and client 15/15 launched in a production Forge client under Xvfb/llvmpipe (4 functional, 11 partial) - see [docs/REQUIRED_MOD_COMPATIBILITY.md](docs/REQUIRED_MOD_COMPATIBILITY.md) |
 
 Read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before running a production world, and
 [docs/DEVELOPMENT_HANDOFF.md](docs/DEVELOPMENT_HANDOFF.md) for the current audit.

@@ -101,11 +101,11 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   block (`compat/evidence/gameplay-mods-20261122T043800Z.md`).
   The full set (19/19 incl. Ksyxis) also starts; Ksyxis is removed for the shared-chunk
   check because force-loaded tickets disappear while it is installed.
-* Compatibility score: no target is FULLY COMPATIBLE yet. 2 server targets FUNCTIONAL, 8
-  PARTIAL, 10 LOADING, 15 client-only targets NOT TESTED. The deployment is a headless
-  server cluster: client rendering targets (shaders, Embeddium/Oculus, ...) do not run on
-  the server and are out of scope for server functionality, but they are not claimed as
-  compatible either. Matrix and evidence: `docs/REQUIRED_MOD_COMPATIBILITY.md`.
+* Compatibility score: 4 server targets FUNCTIONAL, 10 PARTIAL, 6 LOADING; client
+  production run: 4 FUNCTIONAL (Embeddium, Oculus, BSL, ImmediatelyFast), 11 PARTIAL.
+  All 35 targets have been executed at least once. Matrix and evidence:
+  `docs/REQUIRED_MOD_COMPATIBILITY.md` and
+  `compat/evidence/client-matrix-20261122T052900Z.md`.
 * Entity mirroring (TODO 1) and player mirroring (TODO 2) are implemented and verified on a
   two-server cluster; player evidence is in
   `compat/evidence/player-mirroring-20261115T030505Z.md`. Live inventory, ender chest,
@@ -162,9 +162,9 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   (the master-outage backlog is live-verified in
   `compat/evidence/offline-backlog-20261122T041340Z.md`), (2) extend the player-driven harness
   (`tools/compat/mcbot.js` now sends look/move/chat/use/attack in addition to the hotbar slot)
-  into gameplay checks for the 10 LOADING server rows, (3) the 15-target client matrix, which
-  needs a GPU machine, (4) the Radium/ServerCore profile decision and the Ksyxis `/forceload`
-  reproduction. The fenced handover is implemented and live-verified
+  into gameplay checks for the remaining 6 LOADING server rows, (3) hardware-GPU visual
+  checks for the 11 PARTIAL client rows (Complementary/Sildur pipelines, culling, Dynamic FPS,
+  RRLS), (4) the Radium/ServerCore profile decision and the Ksyxis `/forceload` reproduction. The fenced handover is implemented and live-verified
   (`compat/evidence/chunk-handover-20261122T035205Z.md`). Larger features still missing:
   raid/dragon fight-state transfer (their boss bars are replicated), the MultiPaper-style
   proxy-side master plugin and a graphical `/multiforge map`.
