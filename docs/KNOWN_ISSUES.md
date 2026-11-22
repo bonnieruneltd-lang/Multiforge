@@ -98,7 +98,11 @@ fresh-world startup is still cheapest when one server warms the spawn area first
 If the master disappears while servers run, chunk IO falls back to local region files and
 ownership keeps working locally. Chunks vanilla writes while the connection is down are now
 remembered (`ChunkSyncIo.recordOfflineWrite`) and uploaded after the reconnect
-(`flushBacklog`); the same happens for an upload that failed. The backlog is bounded at
+(`flushBacklog`); the same happens for an upload that failed. This was verified live on
+2026-11-22: with the master killed, both servers queued 47 chunks each, the backlog drained to
+0 after the restart with zero IO failures, and a deleted local region file was reloaded from
+the master with the offline and peer-forwarded blocks intact
+(`compat/evidence/offline-backlog-20261122T041340Z.md`). The backlog is bounded at
 65,536 chunks per server (further offline writes stay local and log once) and lives in
 memory, so a server that stops while the master is down still requires a restart before its
 changes reach the master. If the master drops again during the replay, the chunk stays in the

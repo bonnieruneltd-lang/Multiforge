@@ -155,16 +155,16 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   `compat/evidence/server-features-20261121T065500Z.md` and the 18/18 deployment run in
   `compat/evidence/cluster-20261121T072841Z.md`. Details in TODO.md items 9, 11, 16, 17, 19
   and KNOWN_ISSUES.md.
-* Highest-value next work: (1) verify the chunk sequencing/acknowledgements and the
-  offline-write re-upload (disconnect a peer during a block storm, watch `seq gaps=`; kill the
-  master, edit blocks, restart it, watch `local-backlog=` drain), (2) extend the player-driven
-  harness (`tools/compat/mcbot.js` now sends look/move/chat/use/attack in addition to the
-  hotbar slot) into gameplay checks for the 10 LOADING server rows, (3) the 15-target client
-  matrix, which needs a GPU machine, (4) the Radium/ServerCore profile decision and the Ksyxis
-  `/forceload` reproduction. The fenced handover is implemented and live-verified
+* Highest-value next work: (1) verify the chunk sequencing gap path under forced packet loss
+  (the master-outage backlog is live-verified in
+  `compat/evidence/offline-backlog-20261122T041340Z.md`), (2) extend the player-driven harness
+  (`tools/compat/mcbot.js` now sends look/move/chat/use/attack in addition to the hotbar slot)
+  into gameplay checks for the 10 LOADING server rows, (3) the 15-target client matrix, which
+  needs a GPU machine, (4) the Radium/ServerCore profile decision and the Ksyxis `/forceload`
+  reproduction. The fenced handover is implemented and live-verified
   (`compat/evidence/chunk-handover-20261122T035205Z.md`). Larger features still missing:
-  mob-navigation/raid/dragon/projectile handover, the MultiPaper-style proxy-side master
-  plugin and a graphical `/multiforge map`.
+  mob-navigation/raid/dragon/projectile handover beyond the current follow, the
+  MultiPaper-style proxy-side master plugin and a graphical `/multiforge map`.
 * Do not restart or rewrite working subsystems. Read `DEVELOPMENT_HANDOFF.md` for the
   session audit and `KNOWN_ISSUES.md` for the interaction findings (Timber 3.0, Radium ×
   ServerCore, Ksyxis × forceload, master region compression label).

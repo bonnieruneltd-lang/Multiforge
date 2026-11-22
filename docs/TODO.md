@@ -286,7 +286,7 @@ and the segmented master region cache are done.
   two-server run happened in this session): per-chunk sequence numbers and acknowledgements,
   chunk gzip off the server thread with an inline fallback and a draining shutdown, the
   `ChunkKey` cache for the entity tick path, re-upload of chunks written during a master
-  outage, the config-reload leftovers (master ping loop, compression threshold wording) and
+  outage (live-verified: `compat/evidence/offline-backlog-20261122T041340Z.md`), the config-reload leftovers (master ping loop, compression threshold wording) and
   extended `tools/compat/mcbot.js` commands (look/move/chat/use/attack). Limits: KNOWN_ISSUES
   5, 9 and 24. New unit tests: `SequenceTrackerTest`, `RetransmitBufferTest`,
   `BoundedTaskExecutorTest`.
