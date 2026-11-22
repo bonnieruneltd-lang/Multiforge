@@ -273,6 +273,16 @@ final class TestServerClient extends ServerBoundMessageHandler implements AutoCl
     }
 
     @Override
+    public void handle(com.multiforge.protocol.messages.serverbound.ChunkHandoverStartMessage message) {
+        record(message);
+    }
+
+    @Override
+    public void handle(com.multiforge.protocol.messages.serverbound.ChunkHandoverCompleteMessage message) {
+        record(message);
+    }
+
+    @Override
     public void handle(PlayerUpdateMessage message) {
         record(message);
     }

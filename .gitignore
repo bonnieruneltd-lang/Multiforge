@@ -1,5 +1,6 @@
 # Gradle
 .gradle/
+.gradle-home/
 build/
 !gradle/wrapper/gradle-wrapper.jar
 /out/
@@ -46,12 +47,17 @@ secrets.properties
 .runtime/
 /run2/
 /multiforge-forge/run2/
+multiforge-master.properties
 dev-server-args.json
 *.pid
 
 # Python tooling
 __pycache__/
 *.pyc
+
+# Node tooling (headless compatibility bot)
+node_modules/
+package-lock.json
 
 # Local JDK used for builds (installed per session, never committed)
 /.jdk/

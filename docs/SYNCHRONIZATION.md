@@ -7,8 +7,8 @@ invariants behind it, and the failure behaviour. Read it together with
 ## Invariants
 
 1. **A chunk has at most one owner.** Ownership is granted by the master on
-   `LockChunkMessage` (first come, first served) and released on `UnlockChunkMessage`,
-   unload or disconnect. Only the owner ticks the chunk.
+   `LockChunkMessage` (first come, first served), moved by a fenced handover (below) or
+   released on `UnlockChunkMessage`, unload or disconnect. Only the owner ticks the chunk.
 2. **Every player is online on at most one server.** The master rejects a second
    `PlayerConnectMessage` for the same UUID while the first server still holds it.
 3. **Chunk data is never silently lost.** If the master is unreachable, writes fall back to
@@ -43,6 +43,39 @@ See [CHUNK_MANAGEMENT.md](CHUNK_MANAGEMENT.md) for the full flow. Summary:
   The pending set is bounded and in memory (KNOWN_ISSUES 5).
 * `WillSaveChunkLaterMessage` tells the master to hold reads until the write lands, so
   another server cannot read a half-updated chunk.
+
+## Chunk ownership handover
+
+A player crossing a server boundary must be able to keep building while the chunk behind
+them is still loaded on the previous server. `ChunkManager.requestHandoversForPlayers` sends
+a `RequestChunkHandoverMessage` for every chunk that contains a real local player but is
+owned elsewhere (mirrored players do not count). The master runs a small state machine
+(`ChunkHandoverManager`):
+
+1. The requester must already subscribe to the chunk; otherwise the request is rejected.
+2. The master records a handover id and sends `ChunkHandoverStartMessage` to the current
+   owner. **Ownership does not change yet**; the old owner keeps ticking.
+3. The old owner sets `ChunkState.draining`, which makes `shouldTick` return false, then
+   saves exactly that chunk through `ChunkMap.save` (region, entities and POI) via the
+   `ChunkMapAccessor` mixin. Saving every loaded chunk through
+   `ServerChunkCache.save(true)` would stall the tick, so only the target chunk is written.
+4. When the master acknowledged every pending chunk upload, the owner sends
+   `ChunkHandoverReadyMessage(true)`. A chunk that still contains a real local player is
+   refused instead, so two servers cannot steal a chunk from under each other's players.
+5. The master force-locks the chunk for the requester, which advances the ownership epoch and
+   announces `SetChunkOwnerMessage` to every subscriber, then sends
+   `ChunkHandoverCompleteMessage` to both sides. The requester unfreezes its copy and
+   `EntitySyncManager.onChunkOwnershipGained` resends entity snapshots.
+
+Failure behaviour: a refusal, a disconnect or the timeout (5 s by default, configured with
+`multiforge.master.handoverTimeoutMillis`) leaves the chunk with the previous owner. A ready
+answer that arrives after the timeout is ignored because the id no longer matches. If the old
+owner disconnects mid-handover, the requester is granted ownership from the master's last
+stored copy; if the requester disconnects, the old owner keeps it. The ready message is only
+sent after the master acknowledged the chunk write, so the new owner cannot read a stale
+copy. Limits: entity data is saved by the same per-chunk save, but mob navigation state,
+raids, the dragon fight and projectile handover beyond the chunk resync are still tracked in
+[TODO.md](TODO.md) and [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## Block changes
 
@@ -150,23 +183,34 @@ Implemented:
   `PlayerExperiencePacket` and `PlayerEffectsUpdatePacket`. A newly created mirror already has
   the full state, because `PlayerCreatePacket` carries `saveWithoutId` (inventory, ender chest,
   hunger, experience, effects); only the deltas after that are sent. Effect duration is sent
-  when an effect appears or is extended, not while it counts down, because the mirror never
-  ticks the effect. When no peer connection is live the snapshots are dropped; the next
+  when an effect appears or is extended, and the whole effect map is refreshed once per second
+  so the mirror's countdown does not freeze at the last update (the mirror never ticks the
+  effect itself). When no peer connection is live the snapshots are dropped; the next
   handshake re-announces every local player with a full create packet. The receiving side
   applies changes only to an `ExternalPlayer`; a packet that names a locally hosted player is
   ignored (the local player is authoritative). Inventory changes also re-send the mirror's
   equipment to local clients.
 
-Not implemented yet: a full NBT resync when an entity crosses an ownership boundary,
-mob navigation handover, raids, the dragon fight and projectile ownership beyond the
-attacker/direct UUIDs above. See [TODO.md](TODO.md) and [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+A full NBT resync when an entity crosses an ownership boundary is implemented
+(`EntitySyncManager.onChunkOwnershipGained` re-snapshots every entity of a newly owned
+chunk). The fenced handover also sends the old owner's live entity snapshots to the new owner
+before the fence, and a projectile crossing into a peer-owned chunk requests a handover so it
+keeps being simulated. Still missing: mob navigation handover, raids, the dragon fight and
+projectile ownership beyond the chunk/entity resync above. See [TODO.md](TODO.md) and
+[KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## Players
 
 * **Mirroring**: every server with the player's chunk loaded keeps an `ExternalPlayer` copy
   (see the entity section). The copy is never ticked; its state comes from the owner's
   packets. `PlayerListMixin.save` refuses to write a mirror copy, so player files and
-  statistics can only be uploaded by the server the player is connected to.
+  statistics can only be uploaded by the server the player is connected to. Game mode and
+  tab-list display name changes are diffed once per tick and sent as
+  `PlayerListInfoPacket`; the receiver applies them to the mirror and broadcasts a vanilla
+  player-info update to its local clients. Every local player is also re-announced every
+  100 ticks, because a teleport into a chunk a peer already subscribes to does not fire a
+  new subscription event there; the create is idempotent and repairs a lost mirror after a
+  reconnect.
 * **Login**: `PlayerList.placeNewPlayer` claims the player at the master; a rejection
   disconnects the duplicate connection. The claim is released on logout and automatically
   on disconnect (master side).

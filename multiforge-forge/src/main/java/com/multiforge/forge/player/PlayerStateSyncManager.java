@@ -6,9 +6,11 @@ import com.multiforge.forge.peer.packet.PlayerEffectsUpdatePacket;
 import com.multiforge.forge.peer.packet.PlayerExperiencePacket;
 import com.multiforge.forge.peer.packet.PlayerFoodUpdatePacket;
 import com.multiforge.forge.peer.packet.PlayerInventoryUpdatePacket;
+import com.multiforge.forge.peer.packet.PlayerListInfoPacket;
 import com.multiforge.forge.peer.packet.PlayerSelectedSlotPacket;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -209,6 +211,30 @@ public final class PlayerStateSyncManager {
         }
 
         diffEffects(player, state);
+        diffListInfo(player, state);
+    }
+
+    /**
+     * Sends tab-list display name and game mode changes.
+     *
+     * <p>Both values are cached in the snapshot so a player who switches game mode
+     * or gets a custom tab-list name is reflected on every server immediately,
+     * instead of waiting for the next full player announcement. The values are sent
+     * together because a single packet carries both.</p>
+     *
+     * @param player local player
+     * @param state  snapshot of the same player
+     */
+    private void diffListInfo(ServerPlayer player, PlayerState state) {
+        Component displayName = player.getTabListDisplayName();
+        String json = displayName == null ? "" : Component.Serializer.toJson(displayName);
+        int gameMode = player.gameMode.getGameModeForPlayer().getId();
+        if (json.equals(state.displayNameJson) && gameMode == state.gameMode) {
+            return;
+        }
+        state.displayNameJson = json;
+        state.gameMode = gameMode;
+        server.peers().broadcast(new PlayerListInfoPacket(player.getUUID(), json, gameMode));
     }
 
     /**
@@ -257,22 +283,28 @@ public final class PlayerStateSyncManager {
     /**
      * Compares the player's effects with the snapshot and broadcasts changes.
      *
-     * <p>Duration is only transmitted when it grows (a potion refresh), not on
-     * every tick of the countdown: the mirror does not tick effects, so a
-     * decrement would produce a packet per tick and would not change the mirrored
-     * state anyway.</p>
+     * <p>Duration is retransmitted once per second while an effect is active so the
+     * mirror's countdown stays close to the owner's. A potion refresh sends
+     * immediately; the periodic refresh is the fallback because the mirror does not
+     * tick effects itself.</p>
      *
      * @param player local player
      * @param state  snapshot of the same player
      */
     private void diffEffects(ServerPlayer player, PlayerState state) {
+        int now = server.server().getTickCount();
+        // The mirror never ticks effects, so a duration that only counts down is
+        // not visible there. Resending every second keeps the mirror's duration
+        // close to the owner's without a packet per tick.
+        boolean refresh = now - state.effectsSentAtTick >= 20;
         Map<MobEffect, MobEffectInstance> current = new HashMap<>();
         for (MobEffectInstance effect : player.getActiveEffects()) {
             current.put(effect.getEffect(), effect);
         }
         for (MobEffectInstance effect : current.values()) {
             MobEffectInstance previous = state.effects.get(effect.getEffect());
-            if (previous != null
+            if (!refresh
+                    && previous != null
                     && previous.getAmplifier() == effect.getAmplifier()
                     && previous.isAmbient() == effect.isAmbient()
                     && previous.isVisible() == effect.isVisible()
@@ -281,6 +313,7 @@ public final class PlayerStateSyncManager {
                 continue;
             }
             state.effects.put(effect.getEffect(), new MobEffectInstance(effect));
+            state.effectsSentAtTick = now;
             server.peers().broadcast(new PlayerEffectsUpdatePacket(
                     player.getUUID(), false, effectId(effect.getEffect()), effect.save(new CompoundTag())));
         }
@@ -288,6 +321,7 @@ public final class PlayerStateSyncManager {
             if (current.containsKey(effect)) {
                 return false;
             }
+            state.effectsSentAtTick = now;
             server.peers().broadcast(new PlayerEffectsUpdatePacket(
                     player.getUUID(), true, effectId(effect), null));
             return true;
@@ -492,6 +526,9 @@ public final class PlayerStateSyncManager {
         private final ItemStack[] offhand;
         private final ItemStack[] enderChest;
         private final Map<MobEffect, MobEffectInstance> effects = new HashMap<>();
+
+        /** Tick when the effect map was last transmitted; drives the 1 s refresh. */
+        private int effectsSentAtTick;
         private int selected;
         private int foodLevel;
         private float saturation;
@@ -499,6 +536,10 @@ public final class PlayerStateSyncManager {
         private float experienceProgress;
         private int experienceLevel;
         private int totalExperience;
+        /** Last transmitted tab-list display name JSON; empty means none. */
+        private String displayNameJson = "";
+        /** Last transmitted vanilla game mode id, -1 before the first diff. */
+        private int gameMode = -1;
 
         private PlayerState(int itemCount, int armorCount, int offhandCount, int enderChestCount) {
             this.items = new ItemStack[itemCount];
@@ -537,6 +578,9 @@ public final class PlayerStateSyncManager {
             state.experienceProgress = player.experienceProgress;
             state.experienceLevel = player.experienceLevel;
             state.totalExperience = player.totalExperience;
+            Component displayName = player.getTabListDisplayName();
+            state.displayNameJson = displayName == null ? "" : Component.Serializer.toJson(displayName);
+            state.gameMode = player.gameMode.getGameModeForPlayer().getId();
             for (MobEffectInstance effect : player.getActiveEffects()) {
                 state.effects.put(effect.getEffect(), new MobEffectInstance(effect));
             }

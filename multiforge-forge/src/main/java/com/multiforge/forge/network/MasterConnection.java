@@ -10,6 +10,8 @@ import com.multiforge.protocol.messages.masterbound.MasterBoundProtocol;
 import com.multiforge.protocol.messages.masterbound.PingMessage;
 import com.multiforge.protocol.messages.serverbound.AddChunkSubscriberMessage;
 import com.multiforge.protocol.messages.serverbound.AddEntitySubscriberMessage;
+import com.multiforge.protocol.messages.serverbound.ChunkHandoverCompleteMessage;
+import com.multiforge.protocol.messages.serverbound.ChunkHandoverStartMessage;
 import com.multiforge.protocol.messages.serverbound.ChunkSubscribersSyncMessage;
 import com.multiforge.protocol.messages.serverbound.DataUpdateMessage;
 import com.multiforge.protocol.messages.serverbound.DownloadProgressMessage;
@@ -401,6 +403,35 @@ public final class MasterConnection extends ServerBoundMessageHandler {
         lastReply = System.currentTimeMillis();
         ChunkKey key = new ChunkKey(message.world, message.cx, message.cz);
         server.execute(() -> server.chunks().onOwnerChanged(key, message.owner, message.epoch));
+    }
+
+    /**
+     * The master asks this server, as the current owner, to drain a chunk so
+     * another server can take it over. World access is moved to the server thread.
+     *
+     * @param message handover start
+     */
+    @Override
+    public void handle(ChunkHandoverStartMessage message) {
+        lastReply = System.currentTimeMillis();
+        ChunkKey key = new ChunkKey(message.world, message.cx, message.cz);
+        server.execute(() -> server.chunks().onHandoverStart(
+                key, message.handoverId, message.newOwner));
+    }
+
+    /**
+     * Final result of a handover this server participated in. Ownership itself is
+     * applied through {@link #handle(SetChunkOwnerMessage)}; this only clears the
+     * pending handover bookkeeping.
+     *
+     * @param message handover result
+     */
+    @Override
+    public void handle(ChunkHandoverCompleteMessage message) {
+        lastReply = System.currentTimeMillis();
+        ChunkKey key = new ChunkKey(message.world, message.cx, message.cz);
+        server.execute(() -> server.chunks().onHandoverComplete(
+                key, message.handoverId, message.success, message.owner, message.epoch));
     }
 
     @Override

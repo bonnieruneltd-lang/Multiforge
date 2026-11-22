@@ -55,6 +55,8 @@ server (`ServerBoundProtocol`).
 | `LockChunkMessage(world, cx, cz)` | request ownership (first come, first served) |
 | `UnlockChunkMessage` | release ownership |
 | `RequestChunkOwnershipMessage(world, keys[])` | force-take a batch of chunks (redstone control) |
+| `RequestChunkHandoverMessage(world, cx, cz)` | fenced transfer of a loaded chunk the requester subscribes to; the current owner drains first |
+| `ChunkHandoverReadyMessage(world, cx, cz, id, ready)` | current owner finished saving (`ready=true`) or keeps the chunk (`ready=false`) |
 | `SyncChunkOwnerToAllMessage`, `SyncChunkSubscribersMessage`, `SyncEntitiesSubscribersMessage` | ask for authoritative state |
 | `SubscribeChunkMessage`, `UnsubscribeChunkMessage` | block change subscription |
 | `SubscribeEntitiesMessage`, `UnsubscribeEntitiesMessage` | entity subscription |
@@ -80,6 +82,8 @@ server (`ServerBoundProtocol`).
 | --- | --- |
 | `SetSecretMessage` | cluster secret (used by the built-in proxy) |
 | `SetChunkOwnerMessage(world, cx, cz, owner, epoch)` | ownership changed; empty owner = unowned; epoch fences stale peer packets |
+| `ChunkHandoverStartMessage(world, cx, cz, id)` | current owner must freeze, save and answer ready |
+| `ChunkHandoverCompleteMessage(world, cx, cz, id, success, owner, epoch)` | final handover result for both participants |
 | `ChunkSubscribersSyncMessage(owner, subscribers[], epoch)` | full state of a chunk |
 | `AddChunkSubscriberMessage` / `RemoveChunkSubscriberMessage` | subscription changes |
 | `AddEntitySubscriberMessage` / `RemoveEntitySubscriberMessage` | entity subscription changes |
@@ -163,6 +167,7 @@ varint frameLength, varint uncompressedLength, varint packetId, payload
 | 31 | `PlayerStatsIncreasePacket(uuid, entries[])` | batched statistic deltas (type id, value id, delta) |
 | 32 | `AdvancementProgressPacket(uuid, advancement, criterion)` | one advancement criterion was granted |
 | 33 | `ChunkSequenceAckPacket(world, x, z, epoch, contiguous)` | highest contiguous block/block-entity sequence a peer applied |
+| 34 | `PlayerListInfoPacket(uuid, displayName, gameMode)` | live tab-list display name / game-mode change of a mirrored player |
 
 The entity family (15-19) is the M1 mirroring protocol. Ids 20-21 extend it to players and
 ids 22-26 carry live player state; they are described in
@@ -170,8 +175,8 @@ ids 22-26 carry live player state; they are described in
 ([SYNCHRONIZATION.md](SYNCHRONIZATION.md#containers)), id 30 synchronizes the main scoreboard,
 and ids 31-32 carry live statistics/advancement progress
 ([SYNCHRONIZATION.md](SYNCHRONIZATION.md#scoreboards-statistics-and-advancements)). Id 33 is
-the sequencing acknowledgement described below. Ids were appended, so older peers keep their
-ids.
+the sequencing acknowledgement described below, and id 34 carries live tab-list name/game-mode
+changes of a mirrored player. Ids were appended, so older peers keep their ids.
 
 ### Ownership epochs
 

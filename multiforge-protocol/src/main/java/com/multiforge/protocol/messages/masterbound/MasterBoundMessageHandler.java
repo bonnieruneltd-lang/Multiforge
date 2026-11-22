@@ -94,4 +94,14 @@ public abstract class MasterBoundMessageHandler extends MessageHandler<MasterBou
     public abstract void handle(WriteUidMessage message);
 
     public abstract void handle(RequestEntityIdBlock message);
+
+    /**
+     * @param message request to move a loaded chunk's ownership to this server
+     */
+    public abstract void handle(RequestChunkHandoverMessage message);
+
+    /**
+     * @param message current owner's answer to a handover start
+     */
+    public abstract void handle(ChunkHandoverReadyMessage message);
 }

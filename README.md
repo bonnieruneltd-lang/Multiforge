@@ -31,10 +31,11 @@ integration tests and by running two real Forge servers against a master:
 | Area | Status |
 | --- | --- |
 | Master process (storage, ownership, subscriptions, proxy, CLI) | implemented |
-| Master protocol (86 message types, data streams, compression) | implemented, unit tested |
+| Master protocol (90 message types, data streams, compression) | implemented, unit tested |
 | Chunk data plane through the master (region, entities, poi) | implemented, verified live (previous session) |
 | Chunk generation lease (one generator per never-seen chunk) | implemented, integration tested |
 | Chunk ownership and tick gating | implemented, verified live (previous session) |
+| Fenced chunk handover / player-follow ownership | implemented; 8 master integration tests and verified live on two dev servers with bots walking across the border ([evidence 1](compat/evidence/chunk-handover-20261122T035205Z.md), [evidence 2](compat/evidence/handover-mirroring-20261122T040431Z.md)) |
 | Chunk unload status respected when redirecting reads | implemented, integration tested |
 | Block and block entity broadcasts | implemented |
 | Peer-to-peer chunk transfer with compression | implemented, verified live (previous session) |
@@ -47,8 +48,8 @@ integration tests and by running two real Forge servers against a master:
 | Entity id block allocation | implemented, integration tested |
 | Recovery after master or server disconnects | implemented (see KNOWN_ISSUES) |
 | Live entity mirroring (mobs, items, vehicles; movement/metadata/removals/damage) | implemented, verified on a two-server cluster (see [compat/evidence/entity-mirroring-20261111T212200Z.md](compat/evidence/entity-mirroring-20261111T212200Z.md)) |
-| Player mirroring across servers (tab list, movement, metadata, damage, logout) | implemented, verified on a two-server cluster with headless clients (see [compat/evidence/player-mirroring-20261115T030505Z.md](compat/evidence/player-mirroring-20261115T030505Z.md)) |
-| Live player state (inventory, ender chest, hotbar, hunger, experience, effects) | implemented, verified on a two-server cluster (see [compat/evidence/player-state-20261115T054356Z.md](compat/evidence/player-state-20261115T054356Z.md)) |
+| Player mirroring across servers (tab list, movement, metadata, damage, logout) | implemented, verified on a two-server cluster with headless clients; mirrors are re-announced every 5 s so a teleport into an already-subscribed chunk cannot leave a server without a copy (see [compat/evidence/player-mirroring-20261115T030505Z.md](compat/evidence/player-mirroring-20261115T030505Z.md)) |
+| Live player state (inventory, ender chest, hotbar, hunger, experience, effects, tab-list name/game mode) | implemented, verified on a two-server cluster (see [compat/evidence/player-state-20261115T054356Z.md](compat/evidence/player-state-20261115T054356Z.md) and [game-mode live run](compat/evidence/handover-mirroring-20261122T040431Z.md)) |
 | Cross-server container windows (chests, furnaces, ...) | implemented; open/click/close verified on a two-server cluster (see [compat/evidence/containers-epochs-userlists-20261115T074200Z.md](compat/evidence/containers-epochs-userlists-20261115T074200Z.md)) |
 | Ownership epochs on block/block-entity packets | implemented, master + protocol + master integration test |
 | Cross-server attacker attribution (death messages, kill credit) | implemented: causing/direct UUIDs + source position |

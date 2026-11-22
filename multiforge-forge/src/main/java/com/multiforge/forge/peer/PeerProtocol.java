@@ -22,6 +22,7 @@ import com.multiforge.forge.peer.packet.PlayerEffectsUpdatePacket;
 import com.multiforge.forge.peer.packet.PlayerExperiencePacket;
 import com.multiforge.forge.peer.packet.PlayerFoodUpdatePacket;
 import com.multiforge.forge.peer.packet.PlayerInventoryUpdatePacket;
+import com.multiforge.forge.peer.packet.PlayerListInfoPacket;
 import com.multiforge.forge.peer.packet.PlayerRemovePacket;
 import com.multiforge.forge.peer.packet.PlayerSelectedSlotPacket;
 import com.multiforge.forge.peer.packet.PlayerStatsIncreasePacket;
@@ -108,6 +109,9 @@ public final class PeerProtocol {
         // Per-chunk block/block-entity acknowledgements. Appended after the
         // progress family; never reorder.
         add(ChunkSequenceAckPacket.class, ChunkSequenceAckPacket::new);
+        // Live tab-list display name / game-mode changes. Appended after every
+        // earlier id; never reorder.
+        add(PlayerListInfoPacket.class, PlayerListInfoPacket::new);
     }
 
     private PeerProtocol() {

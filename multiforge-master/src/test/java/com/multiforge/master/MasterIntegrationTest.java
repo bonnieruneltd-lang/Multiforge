@@ -47,6 +47,10 @@ import com.multiforge.protocol.messages.serverbound.PlayerUpdateMessage;
 import com.multiforge.protocol.messages.serverbound.RemoveChunkSubscriberMessage;
 import com.multiforge.protocol.messages.serverbound.ServerStartedMessage;
 import com.multiforge.protocol.messages.serverbound.ServerBoundMessage;
+import com.multiforge.protocol.messages.masterbound.ChunkHandoverReadyMessage;
+import com.multiforge.protocol.messages.masterbound.RequestChunkHandoverMessage;
+import com.multiforge.protocol.messages.serverbound.ChunkHandoverCompleteMessage;
+import com.multiforge.protocol.messages.serverbound.ChunkHandoverStartMessage;
 import com.multiforge.protocol.messages.serverbound.SetChunkOwnerMessage;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -111,6 +115,7 @@ class MasterIntegrationTest {
         clients.clear();
         ChunkGenerationManager.clear();
         ChunkGenerationManager.configure(15_000L, 2_000L);
+        ChunkHandoverManager.clear();
     }
 
     /**
@@ -844,5 +849,210 @@ class MasterIntegrationTest {
         com.multiforge.protocol.messages.serverbound.SetSecretMessage secret =
                 a.await(com.multiforge.protocol.messages.serverbound.SetSecretMessage.class, message -> true, 1000L);
         assertFalse(secret.secret.isEmpty());
+    }
+
+    // ------------------------------------------------------------------
+    // Fenced chunk handover
+    // ------------------------------------------------------------------
+
+    @Test
+    void handoverWaitsForTheOwnerToDrainAndThenMovesOwnership() throws Exception {
+        TestServerClient a = client("h1-a");
+        TestServerClient b = client("h1-b");
+        String world = "handover_fenced_world";
+        SetChunkOwnerMessage before = own(a, world, 4, 4);
+
+        b.send(new SubscribeChunkMessage(world, 4, 4));
+        b.await(SetChunkOwnerMessage.class, message -> message.owner.equals("h1-a"), 5000L);
+        b.send(new RequestChunkHandoverMessage(world, 4, 4));
+        ChunkHandoverStartMessage start = a.await(ChunkHandoverStartMessage.class,
+                message -> message.world.equals(world) && message.cx == 4 && message.cz == 4, 5000L);
+        assertEquals("h1-b", start.newOwner, "the start message must name the requester");
+
+        // Ownership must not move before the current owner answered ready.
+        assertFalse(b.seen(SetChunkOwnerMessage.class,
+                message -> message.owner.equals("h1-b") && message.epoch > before.epoch, 250L));
+
+        a.send(new ChunkHandoverReadyMessage(world, 4, 4, start.handoverId, true));
+
+        ChunkHandoverCompleteMessage complete = b.await(ChunkHandoverCompleteMessage.class,
+                message -> message.handoverId == start.handoverId, 5000L);
+        assertTrue(complete.success, "handover must succeed after the owner drained");
+        assertEquals("h1-b", complete.owner);
+        SetChunkOwnerMessage after = b.await(SetChunkOwnerMessage.class,
+                message -> message.owner.equals("h1-b"), 5000L);
+        assertTrue(after.epoch > before.epoch, "ownership epoch must advance");
+        assertEquals(1L, ChunkHandoverManager.completedCount());
+        assertEquals(0, ChunkHandoverManager.activeCount());
+    }
+
+    @Test
+    void ownerCanRefuseAHandoverAndKeepsTheChunk() throws Exception {
+        TestServerClient a = client("h2-a");
+        TestServerClient b = client("h2-b");
+        String world = "handover_refused_world";
+        SetChunkOwnerMessage before = own(a, world, 5, 5);
+
+        b.send(new SubscribeChunkMessage(world, 5, 5));
+        b.await(SetChunkOwnerMessage.class, message -> message.owner.equals("h2-a"), 5000L);
+        b.send(new RequestChunkHandoverMessage(world, 5, 5));
+        ChunkHandoverStartMessage start = a.await(ChunkHandoverStartMessage.class,
+                message -> message.world.equals(world), 5000L);
+
+        a.send(new ChunkHandoverReadyMessage(world, 5, 5, start.handoverId, false));
+
+        ChunkHandoverCompleteMessage complete = b.await(ChunkHandoverCompleteMessage.class,
+                message -> message.handoverId == start.handoverId, 5000L);
+        assertFalse(complete.success);
+        assertEquals("h2-a", complete.owner);
+        assertEquals(before.epoch, complete.epoch);
+        assertFalse(b.seen(SetChunkOwnerMessage.class, message -> message.owner.equals("h2-b"), 300L));
+        assertEquals(1L, ChunkHandoverManager.refusedCount());
+    }
+
+    @Test
+    void handoverForAChunkTheRequesterDoesNotLoadIsRejected() throws Exception {
+        TestServerClient a = client("h3-a");
+        TestServerClient b = client("h3-b");
+        String world = "handover_unloaded_world";
+        own(a, world, 6, 6);
+
+        b.send(new RequestChunkHandoverMessage(world, 6, 6));
+
+        assertFalse(a.seen(ChunkHandoverStartMessage.class, message -> message.world.equals(world), 300L));
+        assertEquals(1L, ChunkHandoverManager.rejectedCount());
+        assertEquals(0, ChunkHandoverManager.activeCount());
+    }
+
+    @Test
+    void aTimedOutHandoverLeavesTheOldOwnerInPlaceAndIgnoresALateAnswer() throws Exception {
+        ChunkHandoverManager.configureTimeout(150L);
+        TestServerClient a = client("h4-a");
+        TestServerClient b = client("h4-b");
+        String world = "handover_timeout_world";
+        SetChunkOwnerMessage before = own(a, world, 7, 7);
+
+        b.send(new SubscribeChunkMessage(world, 7, 7));
+        b.await(SetChunkOwnerMessage.class, message -> message.owner.equals("h4-a"), 5000L);
+        b.send(new RequestChunkHandoverMessage(world, 7, 7));
+        ChunkHandoverStartMessage start = a.await(ChunkHandoverStartMessage.class,
+                message -> message.world.equals(world), 5000L);
+
+        ChunkHandoverCompleteMessage complete = b.await(ChunkHandoverCompleteMessage.class,
+                message -> message.handoverId == start.handoverId, 3000L);
+        assertFalse(complete.success);
+        assertEquals("h4-a", complete.owner);
+        assertEquals(1L, ChunkHandoverManager.timeoutCount());
+
+        // The old owner may finish its save after the master already gave up.
+        a.send(new ChunkHandoverReadyMessage(world, 7, 7, start.handoverId, true));
+        assertFalse(b.seen(SetChunkOwnerMessage.class, message -> message.owner.equals("h4-b"), 300L));
+        assertEquals(before.epoch, ChunkSubscriptionManager.currentEpoch(world, 7, 7));
+    }
+
+    @Test
+    void handoverCompletesWhenTheOldOwnerDisconnects() throws Exception {
+        TestServerClient a = client("h5-a");
+        TestServerClient b = client("h5-b");
+        String world = "handover_crash_world";
+        own(a, world, 8, 8);
+
+        b.send(new SubscribeChunkMessage(world, 8, 8));
+        b.await(SetChunkOwnerMessage.class, message -> message.owner.equals("h5-a"), 5000L);
+        b.send(new RequestChunkHandoverMessage(world, 8, 8));
+        a.await(ChunkHandoverStartMessage.class, message -> message.world.equals(world), 5000L);
+
+        a.close();
+
+        ChunkHandoverCompleteMessage complete = b.await(ChunkHandoverCompleteMessage.class,
+                message -> message.world.equals(world) && message.success, 5000L);
+        assertEquals("h5-b", complete.owner);
+        b.await(SetChunkOwnerMessage.class, message -> message.owner.equals("h5-b"), 5000L);
+        assertEquals(0, ChunkHandoverManager.activeCount());
+    }
+
+    @Test
+    void handoverOfAnUnownedChunkGrantsItDirectly() throws Exception {
+        TestServerClient b = client("h6-b");
+        String world = "handover_unowned_world";
+        b.send(new SubscribeChunkMessage(world, 9, 9));
+        b.send(new RequestChunkHandoverMessage(world, 9, 9));
+
+        ChunkHandoverCompleteMessage complete = b.await(ChunkHandoverCompleteMessage.class,
+                message -> message.world.equals(world) && message.success, 5000L);
+        assertEquals("h6-b", complete.owner);
+        b.await(SetChunkOwnerMessage.class, message -> message.owner.equals("h6-b"), 5000L);
+        assertEquals(1L, ChunkHandoverManager.completedCount());
+    }
+
+    @Test
+    void concurrentHandoverRequestsStartExactlyOneTransfer() throws Exception {
+        TestServerClient a = client("h7-a");
+        TestServerClient b = client("h7-b");
+        TestServerClient c = client("h7-c");
+        String world = "handover_race_world";
+        own(a, world, 10, 10);
+        b.send(new SubscribeChunkMessage(world, 10, 10));
+        c.send(new SubscribeChunkMessage(world, 10, 10));
+        b.await(SetChunkOwnerMessage.class, message -> message.owner.equals("h7-a"), 5000L);
+        c.await(SetChunkOwnerMessage.class, message -> message.owner.equals("h7-a"), 5000L);
+
+        b.send(new RequestChunkHandoverMessage(world, 10, 10));
+        c.send(new RequestChunkHandoverMessage(world, 10, 10));
+        ChunkHandoverStartMessage start = a.await(ChunkHandoverStartMessage.class,
+                message -> message.world.equals(world), 5000L);
+        assertTrue(start.newOwner.equals("h7-b") || start.newOwner.equals("h7-c"));
+
+        a.send(new ChunkHandoverReadyMessage(world, 10, 10, start.handoverId, true));
+
+        int successes = 0;
+        for (TestServerClient candidate : List.of(b, c)) {
+            if (candidate.seen(ChunkHandoverCompleteMessage.class,
+                    message -> message.handoverId == start.handoverId && message.success, 2000L)) {
+                successes++;
+            }
+        }
+        assertEquals(1, successes, "exactly one requester must win the handover");
+        b.await(SetChunkOwnerMessage.class, message -> message.owner.equals(start.newOwner), 5000L);
+        assertEquals(0, ChunkHandoverManager.activeCount());
+    }
+
+    @Test
+    void aDisconnectedRequesterLeavesTheChunkWithTheOldOwner() throws Exception {
+        TestServerClient a = client("h8-a");
+        TestServerClient b = client("h8-b");
+        String world = "handover_requester_crash_world";
+        own(a, world, 11, 11);
+
+        b.send(new SubscribeChunkMessage(world, 11, 11));
+        b.await(SetChunkOwnerMessage.class, message -> message.owner.equals("h8-a"), 5000L);
+        b.send(new RequestChunkHandoverMessage(world, 11, 11));
+        a.await(ChunkHandoverStartMessage.class, message -> message.world.equals(world), 5000L);
+
+        b.close();
+
+        ChunkHandoverCompleteMessage complete = a.await(ChunkHandoverCompleteMessage.class,
+                message -> message.world.equals(world) && !message.success, 5000L);
+        assertEquals("h8-a", complete.owner);
+        assertEquals("h8-a", ChunkSubscriptionManager.getOwner(world, 11, 11).getBungeeCordName());
+        assertEquals(0, ChunkHandoverManager.activeCount());
+    }
+
+    /**
+     * Subscribes and locks a chunk, returning the ownership announcement.
+     *
+     * @param owner server that becomes the owner
+     * @param world logical world name
+     * @param x     chunk X
+     * @param z     chunk Z
+     * @return ownership announcement with the epoch
+     * @throws Exception when the announcement does not arrive
+     */
+    private static SetChunkOwnerMessage own(TestServerClient owner, String world, int x, int z) throws Exception {
+        owner.send(new SubscribeChunkMessage(world, x, z));
+        owner.send(new LockChunkMessage(world, x, z));
+        return owner.await(SetChunkOwnerMessage.class,
+                message -> message.world.equals(world) && message.cx == x && message.cz == z
+                        && message.owner.equals(owner.name()), 5000L);
     }
 }

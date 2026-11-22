@@ -27,8 +27,11 @@ coding.
    `ServerPlayerMenuMixin`/`AbstractContainerMenuClickMixin` hooks (menu opens where the
    client is connected; the owner applies slot deltas). Cross-server damage now carries the
    causing/direct entity UUIDs and source position, and the owner rebuilds a real
-   `DamageSource`. Still missing: mob navigation handover, raids, dragon fight, projectile
-   ownership beyond the attacker/direct UUIDs. Sign editing and pistons are already covered
+   `DamageSource`. Projectile ownership is followed through the fenced handover: a projectile
+   that crosses into a chunk owned by another server requests that chunk, and the old owner
+   sends its live entity snapshots before the fence, so the server holding the real projectile
+   keeps simulating it. Still missing: mob navigation handover, raids and the dragon fight.
+   Sign editing and pistons are already covered
    by the generic paths: a sign calls `BlockEntity.setChanged()` and a piston move is a
    block/block-entity change, so `BlockEntityUpdatePacket`/`BlockChangePacket` carry them
    (not separately live-tested).
@@ -64,6 +67,22 @@ coding.
   KNOWN_ISSUES 24. Forge-side compile-verified; the pure ordering/ack logic is unit tested
   (`SequenceTrackerTest`, `RetransmitBufferTest`) and exposed in `/multiforge status` as
   `seq gaps=`/`dup=`.
+* **Fenced chunk handover / dynamic ownership** - done in this session.
+  `ChunkHandoverManager` moves a loaded chunk when a real player walks into a chunk owned by
+  another server: the old owner freezes (`ChunkState.draining`), saves exactly that chunk
+  through `ChunkMap.save` (region, entities, POI) and answers ready only after the master
+  acknowledged the writes; the master then force-locks the chunk, which advances the epoch and
+  announces `SetChunkOwnerMessage`. A local player in the chunk, a disconnect or the 5 s
+  timeout keeps the old owner. Six master integration tests cover success, refusal, unloaded
+  requester, timeout + late answer, old-owner disconnect and direct grant
+  (`handoverWaitsForTheOwnerToDrainAndThenMovesOwnership`, `ownerCanRefuseAHandoverAndKeepsTheChunk`,
+  `handoverForAChunkTheRequesterDoesNotLoadIsRejected`,
+  `aTimedOutHandoverLeavesTheOldOwnerInPlaceAndIgnoresALateAnswer`,
+  `handoverCompletesWhenTheOldOwnerDisconnects`, `handoverOfAnUnownedChunkGrantsItDirectly`).
+  Mod side compiles and the success, refusal and backoff paths are verified live on two dev
+  servers with headless bots (`compat/evidence/chunk-handover-20261122T035205Z.md`,
+  `compat/evidence/handover-mirroring-20261122T040431Z.md`); the timeout and
+  old-owner-disconnect paths are covered by the update tests. Limits: KNOWN_ISSUES 25.
 * **Master region format compatibility** - done. `ChunkSyncIo.encode` now writes true zlib
   (deflate with a zlib header) and `RegionFile` detects legacy gzip bytes mislabelled as
   version 2 and transcodes them on read. `RegionFileTest` proves a standard JDK inflater

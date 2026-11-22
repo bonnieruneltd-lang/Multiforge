@@ -661,6 +661,44 @@ public final class EntitySyncManager {
     }
 
     /**
+     * Sends the live state of every entity in a chunk to one server.
+     *
+     * <p>Used by a fenced handover before ownership changes: the old owner has
+     * simulated those entities and its copies are newer than the requester's
+     * mirrors. Applying the NBT snapshot (`EntityUpdateNBTPacket` updates an
+     * existing entity in place) means the new owner resumes from the simulated
+     * state instead of a stale copy.</p>
+     *
+     * @param key        chunk
+     * @param subscriber receiving server
+     */
+    public void sendChunkSnapshotsTo(ChunkKey key, String subscriber) {
+        if ((!server.config().entitySync() && !server.config().playerSync())
+                || subscriber == null || subscriber.equals(server.serverName())) {
+            return;
+        }
+        ServerLevel level = server.level(key.getName());
+        if (level == null || level.getChunkSource().getChunkNow(key.getX(), key.getZ()) == null) {
+            return;
+        }
+        int minX = key.getX() << 4;
+        int minZ = key.getZ() << 4;
+        AABB area = new AABB(minX, level.getMinBuildHeight(), minZ,
+                minX + 16, level.getMaxBuildHeight(), minZ + 16);
+        for (Entity entity : level.getEntities((Entity) null, area,
+                candidate -> Mth.floor(candidate.getX()) >> 4 == key.getX()
+                        && Mth.floor(candidate.getZ()) >> 4 == key.getZ())) {
+            if (entity instanceof ServerPlayer || entity.isPassenger() || !shouldMirror(entity)) {
+                continue;
+            }
+            EntityUpdateNBTPacket snapshot = snapshot(key, entity);
+            if (snapshot != null) {
+                server.peers().sendTo(List.of(subscriber), snapshot);
+            }
+        }
+    }
+
+    /**
      * Handles a peer's notification that the entity data of a chunk changed.
      *
      * <p>Entity data lives on the master, so a mirror that does not own the chunk

@@ -63,6 +63,18 @@ public class ChunkSubscriptionManager {
         return null;
     }
 
+    /**
+     * @param serverConnection server to check
+     * @param key              chunk
+     * @return {@code true} when the server currently has the chunk loaded
+     */
+    public static boolean isSubscribed(ServerConnection serverConnection, ChunkKey key) {
+        synchronized (ChunkLock.getChunkLock(key)) {
+            List<ServerConnection> serverConnections = chunkSubscribers.get(key);
+            return serverConnections != null && serverConnections.contains(serverConnection);
+        }
+    }
+
     public static ServerConnection lock(ServerConnection serverConnection, String world, int cx, int cz) {
         return lock(serverConnection, world, cx, cz, false);
     }

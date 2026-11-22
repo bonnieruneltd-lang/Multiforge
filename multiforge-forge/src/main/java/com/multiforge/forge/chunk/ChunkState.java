@@ -29,6 +29,16 @@ public final class ChunkState {
     /** Whether the chunk is currently loaded on this server. */
     private volatile boolean loaded;
 
+    /**
+     * Whether this owner has frozen the chunk for a handover.
+     *
+     * <p>Set when the master asks this server to drain a chunk and cleared when the
+     * handover completes, is refused or times out. While set, {@code shouldTick}
+     * returns {@code false} so no new block or entity change is produced after the
+     * chunk was saved.</p>
+     */
+    private volatile boolean draining;
+
     /** Whether this server subscribed to block changes of the chunk. */
     private volatile boolean subscribed;
 
@@ -133,6 +143,16 @@ public final class ChunkState {
     /** @param loaded new local load state */
     public void loaded(boolean loaded) {
         this.loaded = loaded;
+    }
+
+    /** @return whether a handover has frozen this chunk */
+    public boolean draining() {
+        return draining;
+    }
+
+    /** @param draining whether a handover has frozen this chunk */
+    public void draining(boolean draining) {
+        this.draining = draining;
     }
 
     /** @return whether block changes are subscribed */

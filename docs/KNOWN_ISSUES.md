@@ -14,10 +14,12 @@ the mitigation.
   (not even as a player mirror), the hit degrades to damage-type-only attribution. Projectile
   ownership still relies on the owner having a mirror of the shooter; there is no
   entity-handover protocol for a projectile that outlives its shooter's chunk.
-* **Ownership boundary crossings:** an entity that walks from a chunk owned by A into one
-  owned by B can still miss a packet in the handover tick. The new owner now re-sends an NBT
-  snapshot of every entity in the chunk to all entity subscribers when it gains ownership
-  (`EntitySyncManager.onChunkOwnershipGained`), and a peer's
+* **Ownership boundary crossings:** a player-driven crossing now uses a fenced handover
+  (`ChunkHandoverManager`): the old owner freezes, saves the chunk and acknowledges before the
+  epoch advances, so the new owner does not read a stale copy. An entity that walks from a
+  chunk owned by A into one owned by B can still miss a packet in the handover tick. The new
+  owner re-sends an NBT snapshot of every entity in the chunk to all entity subscribers when it
+  gains ownership (`EntitySyncManager.onChunkOwnershipGained`), and a peer's
   `EntityChunkChangedPacket` triggers the same resync on the owning server, so the window is
   one tick instead of "until the next spawn/save". A mirror that was already removed is
   recreated by the snapshot.
@@ -30,10 +32,12 @@ the mitigation.
 * **Live player state has the same eventual-consistency window.** Health and movement sync,
   and inventory, ender chest, hotbar, hunger, experience and effects are diffed once per tick,
   but a few details are not mirrored: potion *particles* on other players (vanilla derives them
-  from synched metadata, which does sync), a changed tab-list display name or game-mode icon,
-  the death animation (`tick death` is not simulated on the copy), the cursor stack, and the
-  countdown of an effect duration (the mirror holds the duration from the last add/extension
-  because the copy never ticks effects). An open container window is forwarded to the owner
+  from synched metadata, which does sync), the death animation (`tick death` is not simulated
+  on the copy), the cursor stack, and the effect countdown (the mirror never ticks effects;
+  the owner refreshes the whole effect map once per second, so the mirror is at most one
+  second behind). The tab-list display name and game-mode icon now follow the owner through
+  `PlayerListInfoPacket` (diffed once per tick), so only the cursor stack and the death
+  animation remain unmirrored. An open container window is forwarded to the owner
   (see section 2 and the Containers section of SYNCHRONIZATION.md), including clicks, but the
   cursor stack itself still lives only on the player's server. Player data files are still
   authoritative on the master at save/load time, and the mirror uses the profile properties
@@ -49,9 +53,10 @@ Remaining limitations:
 
 * Detection is a once-per-tick snapshot diff, so a change can take up to one tick (50 ms) to
   reach a mirror. MultiPaper reacts inside the mutating method instead.
-* Effect duration is sent when an effect is applied or extended, not while it counts down.
-  The mirror's `ActiveEffects` therefore shows the duration of the last update and not the
-  decreasing owner value.
+* Effect duration is refreshed once per second while an effect is active, so the mirror is at
+  most one second behind the owner; it still never ticks the effect itself, and effects
+  applied to the player by another hidden mechanism between refreshes appear within that
+  second.
 * Container windows are forwarded to the owning server (`ContainerSyncManager`): opening a
   chest/furnace in a foreign chunk sends `OpenContainerPacket`, clicks send only the changed
   container slots, and closing sends `ContainerClosePacket`. The menu itself runs on the
@@ -277,6 +282,27 @@ complete, so a gap indicates a reconnect during which the owner kept sending, or
 defect; the counter is visible as `seq gaps=` in `/multiforge status`. Pending acknowledgements
 are dropped at shutdown, which is harmless because a restarting peer reloads chunks from the
 cluster.
+
+### 25. Chunk handover limits
+
+`ChunkHandoverManager` moves a chunk only after the old owner saved it and the master
+acknowledged the upload. Remaining limits:
+
+* The 5 s drain budget (`multiforge.master.handoverTimeoutMillis`) is fixed per master. A
+  very large modded chunk that takes longer to serialize keeps the old owner; the next walk
+  over the border retries.
+* The owner refuses while a **real** local player is inside the chunk. If players from two
+  servers stand in the same chunk, the current owner keeps it and the other server retries at
+  the ownership-request interval, so blocks keep syncing but only one side ticks.
+* `ChunkMap.save` writes region, entity and POI data of that chunk, but mob navigation state is
+  not persisted by vanilla at all; a mob whose path crosses the border may stand still for a
+  tick after the handover. Raids, the dragon fight and projectile handover beyond the chunk
+  resync remain separate gaps (TODO 5).
+* The mod-side freeze/save/ready path, the refusal path and the ten-second refusal backoff are
+  verified live on two dev servers with headless bots
+  (`compat/evidence/chunk-handover-20261122T035205Z.md`,
+  `compat/evidence/handover-mirroring-20261122T040431Z.md`); the timeout and
+  old-owner-disconnect paths are covered by master integration tests.
 
 ## Fixed issues worth knowing about (regression tests cover them)
 

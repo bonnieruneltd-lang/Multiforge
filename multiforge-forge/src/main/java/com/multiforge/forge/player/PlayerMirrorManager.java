@@ -4,10 +4,13 @@ import com.mojang.authlib.GameProfile;
 import com.multiforge.forge.MultiForgeServer;
 import com.multiforge.forge.entity.EntitySyncManager;
 import com.multiforge.forge.mixin.PlayerListAccessor;
+import com.multiforge.forge.mixin.ServerPlayerAccessor;
 import com.multiforge.forge.peer.PeerConnection;
 import com.multiforge.forge.peer.packet.PlayerCreatePacket;
+import com.multiforge.forge.peer.packet.PlayerListInfoPacket;
 import com.multiforge.forge.peer.packet.PlayerRemovePacket;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.server.level.ServerLevel;
@@ -55,6 +58,18 @@ public final class PlayerMirrorManager {
 
     /** How long a create is retried while the target chunk loads (ticks). */
     private static final int MAX_CREATE_RETRIES = 100;
+
+    /**
+     * Ticks between full re-announcements of every local player.
+     *
+     * <p>A teleport into a chunk that another server already has loaded does not
+     * fire an entity-subscription event there, so the normal "announce when the
+     * peer subscribes" path can miss the player and no mirror is created. A
+     * periodic create is idempotent on the receiver (it updates an existing
+     * mirror) and also repairs a mirror lost during a peer reconnect.</p>
+     */
+    private static final int REANNOUNCE_INTERVAL_TICKS = 100;
+
 
     private final MultiForgeServer server;
 
@@ -211,8 +226,12 @@ public final class PlayerMirrorManager {
             player.saveWithoutId(tag);
             PlayerCreatePacket packet = new PlayerCreatePacket(
                     server.chunks().worldName(level), player, tag);
+            PlayerListInfoPacket info = new PlayerListInfoPacket(
+                    player.getUUID(), displayNameJson(player),
+                    player.gameMode.getGameModeForPlayer().getId());
             if (targets != null) {
                 server.peers().sendTo(targets, packet);
+                server.peers().sendTo(targets, info);
                 return;
             }
             Set<String> destinations = new HashSet<>();
@@ -226,6 +245,9 @@ public final class PlayerMirrorManager {
             destinations.addAll(server.chunks().entitySubscribersOf(
                     server.chunks().keyOf(level, player.chunkPosition())));
             server.peers().sendTo(destinations, packet);
+            // The create packet carries the game mode; the info packet adds the
+            // custom tab-list display name that vanilla does not persist in NBT.
+            server.peers().sendTo(destinations, info);
         } catch (RuntimeException e) {
             LOGGER.warn("Could not announce player {}: {}",
                     player.getGameProfile().getName(), e.toString());
@@ -236,6 +258,59 @@ public final class PlayerMirrorManager {
     // ------------------------------------------------------------------
     // Mirror side
     // ------------------------------------------------------------------
+
+    /**
+     * Applies a tab-list display name / game-mode change from the hosting server.
+     *
+     * <p>Runs on the server thread. The values are written to the cached fields of
+     * the mirror and broadcast to local clients through the vanilla player-info
+     * packet, so the tab list icon and custom name update without a reconnect.</p>
+     *
+     * @param uuid        player UUID
+     * @param displayName display name JSON, empty for none
+     * @param gameMode    vanilla game mode id
+     */
+    public void onRemoteListInfo(UUID uuid, String displayName, int gameMode) {
+        server.execute(() -> {
+            ExternalPlayer player = externalPlayers.get(uuid);
+            if (player == null) {
+                return;
+            }
+            EntitySyncManager.applyRemote(() -> {
+                if (gameMode >= 0 && gameMode <= 3) {
+                    GameType type = PlayerCreatePacket.gameType(gameMode);
+                    if (player.gameMode.getGameModeForPlayer() != type) {
+                        player.setGameMode(type);
+                    }
+                }
+                Component name = null;
+                if (displayName != null && !displayName.isEmpty()) {
+                    try {
+                        name = Component.Serializer.fromJson(displayName);
+                    } catch (RuntimeException e) {
+                        LOGGER.warn("Ignoring invalid display name for mirrored player {}", uuid, e);
+                    }
+                }
+                ((ServerPlayerAccessor) (Object) player).multiforge$tabListDisplayName(name);
+                ((ServerPlayerAccessor) (Object) player).multiforge$hasTabListName(true);
+            });
+            server.server().getPlayerList().broadcastAll(
+                    new ClientboundPlayerInfoUpdatePacket(
+                            java.util.EnumSet.of(
+                                    ClientboundPlayerInfoUpdatePacket.Action.UPDATE_DISPLAY_NAME,
+                                    ClientboundPlayerInfoUpdatePacket.Action.UPDATE_GAME_MODE),
+                            List.of(player)));
+        });
+    }
+
+    /**
+     * @param player local player
+     * @return display-name JSON, empty when the player has no custom name
+     */
+    private static String displayNameJson(ServerPlayer player) {
+        Component displayName = player.getTabListDisplayName();
+        return displayName == null ? "" : Component.Serializer.toJson(displayName);
+    }
 
     /**
      * Queues a create received from a peer.
@@ -306,6 +381,22 @@ public final class PlayerMirrorManager {
                 removeExternal(player);
             }
             return;
+        }
+        if (tickCounter % REANNOUNCE_INTERVAL_TICKS == 0) {
+            for (ServerPlayer player : server.server().getPlayerList().getPlayers()) {
+                if (player instanceof ExternalPlayer || !(player.level() instanceof ServerLevel level)) {
+                    continue;
+                }
+                // Only peers that already entity-subscribe the player's chunk can
+                // create a mirror; re-announcing to everyone would send full player
+                // NBT to peers that do not load the chunk at all.
+                com.multiforge.protocol.ChunkKey key =
+                        server.chunks().keyOf(level, player.chunkPosition());
+                Collection<String> subscribers = server.chunks().entitySubscribersOf(key);
+                if (!subscribers.isEmpty()) {
+                    announce(player, subscribers);
+                }
+            }
         }
         for (Map.Entry<UUID, PendingCreate> entry : pending.entrySet()) {
             PendingCreate create = entry.getValue();

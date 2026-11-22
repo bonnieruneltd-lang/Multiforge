@@ -48,6 +48,9 @@ public class MasterBoundProtocol extends Protocol<MasterBoundMessage> {
         addMessage(WriteStatsMessage.class, WriteStatsMessage::new);
         addMessage(WriteTickTimeMessage.class, WriteTickTimeMessage::new);
         addMessage(WriteUidMessage.class, WriteUidMessage::new);
+        // Fenced chunk handover. Appended after every earlier id; never reorder.
+        addMessage(RequestChunkHandoverMessage.class, RequestChunkHandoverMessage::new);
+        addMessage(ChunkHandoverReadyMessage.class, ChunkHandoverReadyMessage::new);
     }
 
 }

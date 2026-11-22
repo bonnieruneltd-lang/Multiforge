@@ -162,6 +162,8 @@ public class ServerConnection extends MasterBoundMessageHandler {
         // Release generation leases last: the retried reads must no longer be
         // redirected to this connection's (now removed) subscriptions.
         ChunkGenerationManager.forget(this);
+        // A handover whose participant vanished must not wait for its timeout.
+        ChunkHandoverManager.onServerDisconnected(this);
 
         synchronized (connections) {
             connections.remove(this);
@@ -334,6 +336,17 @@ public class ServerConnection extends MasterBoundMessageHandler {
     @Override
     public void handle(RequestChunkOwnershipMessage message) {
         RequestChunkOwnershipHandler.handle(this, message);
+    }
+
+    @Override
+    public void handle(RequestChunkHandoverMessage message) {
+        RequestChunkHandoverHandler.handle(this, message);
+    }
+
+    @Override
+    public void handle(ChunkHandoverReadyMessage message) {
+        ChunkHandoverManager.ready(this, message.world, message.cx, message.cz,
+                message.handoverId, message.ready);
     }
 
     @Override

@@ -45,4 +45,14 @@ public abstract class ServerBoundMessageHandler extends MessageHandler<ServerBou
      * @param message progress of an in-flight download
      */
     public abstract void handle(DownloadProgressMessage message);
+
+    /**
+     * @param message instruction to drain a chunk for a handover
+     */
+    public abstract void handle(ChunkHandoverStartMessage message);
+
+    /**
+     * @param message final result of a handover
+     */
+    public abstract void handle(ChunkHandoverCompleteMessage message);
 }

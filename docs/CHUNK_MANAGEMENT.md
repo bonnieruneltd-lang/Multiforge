@@ -94,6 +94,21 @@ The master grants ownership on `LockChunkMessage` and answers with `SetChunkOwne
 (also broadcast to all subscribers). `onOwnerChanged` flips the local set; ticking starts on
 the next tick.
 
+### Moving ownership while both servers are loaded
+
+`LockChunkMessage` only queues behind the current owner. That is not enough when a player
+walks into a chunk another server is ticking: the old server may keep the chunk loaded for
+a long time. `ChunkManager.requestHandoversForPlayers` therefore sends
+`RequestChunkHandoverMessage` for every chunk containing a real local player but owned
+elsewhere. The master asks the current owner to freeze and save exactly that chunk
+(`ChunkHandoverStartMessage`); the owner sets `ChunkState.draining`, writes region, entity
+and POI data through `ChunkMap.save`, waits until the master acknowledged the uploads and
+answers `ChunkHandoverReadyMessage`. Only then does the master force-lock the chunk for the
+requester, which advances the ownership epoch. A local player inside the chunk makes the
+owner refuse, and a disconnect or the 5 s timeout leaves ownership unchanged. The full
+sequence and failure behaviour are in [SYNCHRONIZATION.md](SYNCHRONIZATION.md) ("Chunk
+ownership handover") and KNOWN_ISSUES 25.
+
 ### Releasing ownership
 
 * `ChunkEvent.Unload` releases ownership immediately and schedules the unsubscribe after

@@ -73,8 +73,12 @@ each other. A timeout that aborts the operation is mandatory.
 
 1. ~~Add an ownership epoch to the master and to block/block-entity packets; drop packets
    from older epochs.~~ Done (see TODO.md); acknowledgements are still missing.
-2. Implement freeze → drain → snapshot → fence → resume in the master and `ChunkManager`.
+2. ~~Implement freeze → drain → snapshot → fence → resume in the master and `ChunkManager`.~~
+   Done for player-driven ownership: `ChunkHandoverManager` + `ChunkManager.onHandoverStart`
+   freeze, save one chunk, wait for the master's write acknowledgement and then fence with the
+   next epoch. Automatic load-based migration and region-level ownership remain open.
 3. Trigger migration on player movement first (deterministic), then on tick-time load.
+   Player movement is done (`requestHandoversForPlayers`); tick-time load is not.
 4. Kill the old owner mid-migration and verify rollback or completion with no unowned chunk.
 5. Benchmark lock traffic with per-chunk ownership vs an 8×8 region prototype.
 

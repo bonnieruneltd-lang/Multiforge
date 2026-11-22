@@ -2,8 +2,10 @@ package com.multiforge.forge.chunk;
 
 import com.multiforge.forge.MultiForgeServer;
 import com.multiforge.forge.common.WorldDirectories;
+import com.multiforge.forge.mixin.ChunkMapAccessor;
 import com.multiforge.forge.peer.PeerConnection;
 import com.multiforge.forge.peer.PeerPacket;
+import com.multiforge.forge.player.ExternalPlayer;
 import com.multiforge.forge.peer.packet.BlockChangePacket;
 import com.multiforge.forge.peer.packet.BlockEntityUpdatePacket;
 import com.multiforge.forge.peer.packet.ChunkSequenceAckPacket;
@@ -13,7 +15,9 @@ import com.multiforge.protocol.ChunkKey;
 import com.multiforge.protocol.util.BoundedTaskExecutor;
 import com.multiforge.protocol.util.SequenceTracker;
 import com.multiforge.protocol.messages.masterbound.ChunkChangedStatusMessage;
+import com.multiforge.protocol.messages.masterbound.ChunkHandoverReadyMessage;
 import com.multiforge.protocol.messages.masterbound.LockChunkMessage;
+import com.multiforge.protocol.messages.masterbound.RequestChunkHandoverMessage;
 import com.multiforge.protocol.messages.masterbound.RequestChunkOwnershipMessage;
 import com.multiforge.protocol.messages.masterbound.SubscribeChunkMessage;
 import com.multiforge.protocol.messages.masterbound.SubscribeEntitiesMessage;
@@ -25,6 +29,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.ChunkPos;
@@ -60,6 +65,10 @@ import java.util.concurrent.ConcurrentHashMap;
  *       Ownership is requested lazily the first time a loaded chunk would tick and
  *       is released when the chunk unloads; if the owner disconnects the master
  *       hands ownership to the next requesting server, so nothing is lost.</li>
+ *   <li>A real player walking into a chunk owned by another server starts a
+ *       <b>fenced handover</b> ({@link #requestHandover}): the old owner freezes,
+ *       saves that chunk and acknowledges before the master advances the epoch.
+ *       The old owner refuses while it still hosts a real player in the chunk.</li>
  *   <li>Peers can fetch the newest copy of a chunk directly from memory instead of
  *       waiting for the next save to the master.</li>
  * </ul>
@@ -73,11 +82,46 @@ public final class ChunkManager {
 
     private static final Logger LOGGER = LoggerFactory.getLogger("MultiForge/Chunks");
 
+    /**
+     * Ticks this server waits for its chunk uploads before it declines a handover.
+     * One second shorter than the master's five-second drain budget, so the master
+     * normally receives a clean refusal instead of timing out.
+     */
+    private static final int HANDOVER_DRAIN_TIMEOUT_TICKS = 80;
+
+    /**
+     * Ticks a failed handover suppresses a new request for the same chunk.
+     *
+     * <p>A refusal is expected when the current owner also hosts a real player in
+     * the chunk; retrying every ownership interval would spam the master and the
+     * peer link. Ten seconds still reacts quickly when that player leaves.</p>
+     */
+    private static final int HANDOVER_RETRY_BACKOFF_TICKS = 200;
+
+
+
     private final MultiForgeServer server;
     private final Map<ChunkKey, ChunkState> states = new ConcurrentHashMap<>();
     private final Set<ChunkKey> ownedLocally = ConcurrentHashMap.newKeySet();
     private final Map<ChunkKey, Integer> unsubscribeAtTick = new ConcurrentHashMap<>();
     private final Map<ChunkKey, Integer> lastOwnershipRequest = new ConcurrentHashMap<>();
+    /**
+     * Handovers this server is draining. Only the server thread mutates it.
+     *
+     * <p>The write that flushes the chunk is asynchronous, so the ready answer is
+     * sent from {@link #tick()} once the master acknowledged every pending chunk
+     * write. The entry carries the master-assigned id so a late answer after a
+     * timeout can be recognised and discarded.</p>
+     */
+    private final Map<ChunkKey, PendingHandover> pendingHandovers = new ConcurrentHashMap<>();
+
+    /**
+     * Tick before which a new handover request for a chunk is suppressed after a
+     * refusal or timeout. Server thread only.
+     */
+    private final Map<ChunkKey, Integer> handoverBackoff = new ConcurrentHashMap<>();
+
+
     /**
      * Cache of the logical world name per dimension.
      *
@@ -245,6 +289,8 @@ public final class ChunkManager {
     public void tick() {
         flushAcks();
         drainBlockEntityUpdates();
+        tickHandovers();
+        requestHandoversForPlayers();
         if (unsubscribeAtTick.isEmpty()) {
             return;
         }
@@ -314,7 +360,21 @@ public final class ChunkManager {
      * @return {@code true} when this server owns the entity's chunk
      */
     public boolean shouldTick(ServerLevel level, Entity entity) {
-        return shouldTick(level, Mth.floor(entity.getX()) >> 4, Mth.floor(entity.getZ()) >> 4);
+        int chunkX = Mth.floor(entity.getX()) >> 4;
+        int chunkZ = Mth.floor(entity.getZ()) >> 4;
+        boolean mayTick = shouldTick(level, chunkX, chunkZ);
+        if (!mayTick && entity instanceof net.minecraft.world.entity.projectile.Projectile) {
+            // A projectile that crosses into a chunk another server owns would stop
+            // being simulated (only the owner ticks entities). Follow it: request a
+            // fenced handover so the server that holds the real projectile keeps
+            // simulating it. The throttle and the ten-second backoff prevent churn.
+            ChunkKey key = keyCache.get(level, worldName(level), chunkX, chunkZ);
+            ChunkState state = states.get(key);
+            if (state != null && state.owner() != null && !state.localOwner()) {
+                requestHandover(key);
+            }
+        }
+        return mayTick;
     }
 
     /**
@@ -335,7 +395,9 @@ public final class ChunkManager {
         ChunkState state = states.get(key);
         if (state != null) {
             if (state.localOwner()) {
-                return true;
+                // A frozen chunk is being drained for a handover. It must not
+                // produce another block/entity change after it was saved.
+                return !state.draining();
             }
             if (state.owner() != null) {
                 return false;
@@ -382,6 +444,202 @@ public final class ChunkManager {
     }
 
     /**
+     * Asks the master for a fenced handover of a chunk another server owns.
+     *
+     * <p>Throttled with the same interval as {@link #requestOwnership} so a player
+     * standing on an ownership border does not produce a request per tick. The
+     * master answers with {@code ChunkHandoverCompleteMessage}; the actual owner
+     * change still arrives as {@code SetChunkOwnerMessage}.</p>
+     *
+     * @param key chunk to take over
+     */
+    public void requestHandover(ChunkKey key) {
+        int now = server.server().getTickCount();
+        Integer retryAfter = handoverBackoff.get(key);
+        if (retryAfter != null) {
+            if (retryAfter > now) {
+                return;
+            }
+            handoverBackoff.remove(key, retryAfter);
+        }
+        Integer last = lastOwnershipRequest.get(key);
+        if (last != null && now - last < server.config().chunkOwnershipRequestIntervalTicks()) {
+            return;
+        }
+        lastOwnershipRequest.put(key, now);
+        if (server.config().debugLogging()) {
+            LOGGER.info("Requesting handover of {}", key);
+        }
+        server.master().send(new RequestChunkHandoverMessage(key.getName(), key.getX(), key.getZ()));
+    }
+
+    /**
+     * Requests ownership of every chunk that contains a real local player but is
+     * ticked by another server.
+     *
+     * <p>This is the dynamic ownership half of the handover: without it a player
+     * who walks across a server boundary keeps seeing the previous server's
+     * authoritative copy until that server unloads the chunk. Mirrored players are
+     * skipped because they do not represent a connection on this server.</p>
+     *
+     * <p>Runs once per tick on the server thread; the cost is one pass over the
+     * (small) local player list per level.</p>
+     */
+    private void requestHandoversForPlayers() {
+        for (ServerLevel level : server.server().getAllLevels()) {
+            for (ServerPlayer player : level.players()) {
+                if (player instanceof ExternalPlayer) {
+                    continue;
+                }
+                ChunkKey key = keyCache.get(level, worldName(level),
+                        Mth.floor(player.getX()) >> 4, Mth.floor(player.getZ()) >> 4);
+                ChunkState state = states.get(key);
+                if (state == null || state.localOwner() || state.owner() == null
+                        || state.owner().equals(server.serverName())) {
+                    continue;
+                }
+                requestHandover(key);
+            }
+        }
+    }
+
+    /**
+     * Freezes the chunk and flushes it so another server can become authoritative.
+     *
+     * <p>Called on the server thread from the master connection handler. The chunk
+     * is saved through the vanilla per-chunk path, whose {@code ChunkStorage}
+     * writes MultiForge already intercepts; the ready answer is delayed until those
+     * uploads are acknowledged (see {@link #tickHandovers()}). A chunk with a real
+     * local player inside is refused: the current server must stay authoritative
+     * for that player.</p>
+     *
+     * @param key        chunk to drain
+     * @param handoverId master-assigned id, echoed in the ready message
+     * @param newOwner   server that will own the chunk
+     */
+    public void onHandoverStart(ChunkKey key, long handoverId, String newOwner) {
+        ChunkState state = states.get(key);
+        if (state == null || !state.localOwner()) {
+            sendHandoverReady(key, handoverId, false);
+            return;
+        }
+        ServerLevel level = server.level(key.getName());
+        if (level == null || hasLocalPlayerIn(level, key)) {
+            sendHandoverReady(key, handoverId, false);
+            return;
+        }
+        LevelChunk chunk = level.getChunkSource().getChunkNow(key.getX(), key.getZ());
+        if (chunk == null) {
+            sendHandoverReady(key, handoverId, false);
+            return;
+        }
+
+        state.draining(true);
+        // Send the live entity state to the requester before the fence. The old
+        // owner simulated these entities; without this the new owner would resume
+        // from its older mirror copy (visible for projectiles and mobs that moved).
+        server.entities().sendChunkSnapshotsTo(key, newOwner);
+        try {
+            ((ChunkMapAccessor) level.getChunkSource().chunkMap).multiforge$save(chunk);
+        } catch (RuntimeException e) {
+            state.draining(false);
+            LOGGER.warn("Failed to drain chunk {} for handover {}", key, handoverId, e);
+            sendHandoverReady(key, handoverId, false);
+            return;
+        }
+        pendingHandovers.put(key, new PendingHandover(handoverId, server.server().getTickCount()));
+    }
+
+    /**
+     * Clears the local handover bookkeeping after the master reports the result.
+     *
+     * @param key        chunk
+     * @param handoverId master-assigned id
+     * @param success    whether ownership moved to the requester
+     * @param owner      owner after the attempt
+     * @param epoch      ownership epoch after the attempt
+     */
+    public void onHandoverComplete(ChunkKey key, long handoverId, boolean success, String owner, long epoch) {
+        pendingHandovers.remove(key);
+        ChunkState state = states.get(key);
+        if (state != null) {
+            state.draining(false);
+        }
+        if (success) {
+            handoverBackoff.remove(key);
+        } else {
+            handoverBackoff.put(key, server.server().getTickCount() + HANDOVER_RETRY_BACKOFF_TICKS);
+        }
+        if (server.config().debugLogging()) {
+            LOGGER.info("Handover {} of {} finished: success={} owner={} epoch={}",
+                    handoverId, key, success, owner, epoch);
+        }
+    }
+
+    /**
+     * Sends the ready answers whose chunk writes the master has acknowledged, and
+     * fails the ones that outlive the drain budget.
+     *
+     * <p>Runs once per tick on the server thread. The budget is one second shorter
+     * than the master timeout so a slow upload produces a clean refusal before the
+     * master abandons the handover.</p>
+     */
+    private void tickHandovers() {
+        if (pendingHandovers.isEmpty()) {
+            return;
+        }
+        int now = server.server().getTickCount();
+        for (Map.Entry<ChunkKey, PendingHandover> entry : pendingHandovers.entrySet()) {
+            ChunkKey key = entry.getKey();
+            PendingHandover pending = entry.getValue();
+            // Two ticks give the peer connection time to deliver the entity snapshots
+            // sent before the save, so the new owner applies them before it ticks.
+            if (now - pending.startedAt >= 2 && server.chunkIo().pendingWriteCount() == 0) {
+                if (pendingHandovers.remove(key, pending)) {
+                    sendHandoverReady(key, pending.id, true);
+                }
+            } else if (now - pending.startedAt > HANDOVER_DRAIN_TIMEOUT_TICKS) {
+                if (pendingHandovers.remove(key, pending)) {
+                    ChunkState state = states.get(key);
+                    if (state != null) {
+                        state.draining(false);
+                    }
+                    sendHandoverReady(key, pending.id, false);
+                    LOGGER.warn("Timed out draining chunk {} for handover {}", key, pending.id);
+                }
+            }
+        }
+    }
+
+    /**
+     * @param key        chunk
+     * @param handoverId master-assigned id
+     * @param ready      whether the drain completed
+     */
+    private void sendHandoverReady(ChunkKey key, long handoverId, boolean ready) {
+        server.master().send(new ChunkHandoverReadyMessage(
+                key.getName(), key.getX(), key.getZ(), handoverId, ready));
+    }
+
+    /**
+     * @param level level of the chunk
+     * @param key   chunk
+     * @return {@code true} when a real (not mirrored) player is inside the chunk
+     */
+    private static boolean hasLocalPlayerIn(ServerLevel level, ChunkKey key) {
+        for (ServerPlayer player : level.players()) {
+            if (player instanceof ExternalPlayer) {
+                continue;
+            }
+            if ((Mth.floor(player.getX()) >> 4) == key.getX()
+                    && (Mth.floor(player.getZ()) >> 4) == key.getZ()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Applies an ownership change announced by the master.
      *
      * @param key   chunk
@@ -417,6 +675,11 @@ public final class ChunkManager {
         state.owner(normalized);
         boolean local = server.serverName().equals(normalized);
         state.localOwner(local);
+        if (!local) {
+            // A handover this server was draining for is over (completed or
+            // refused); there is nothing left to freeze.
+            state.draining(false);
+        }
         if (local) {
             ownedLocally.add(key);
             // The request bookkeeping is only needed while a request is pending.
@@ -1151,8 +1414,25 @@ public final class ChunkManager {
         worldNameCache = null;
         pendingAcks.clear();
         dirtyAckChunks.clear();
+        pendingHandovers.clear();
+        handoverBackoff.clear();
         keyCache.clear();
         chunksWithEntitySubscribers.set(0);
+    }
+
+    /**
+     * A chunk this server saved for a handover and whose uploads are still in
+     * flight. Immutable; replaced, never mutated.
+     */
+    private static final class PendingHandover {
+
+        private final long id;
+        private final int startedAt;
+
+        private PendingHandover(long id, int startedAt) {
+            this.id = id;
+            this.startedAt = startedAt;
+        }
     }
 
     /**

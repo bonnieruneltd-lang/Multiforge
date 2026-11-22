@@ -30,6 +30,9 @@ public class ServerBoundProtocol extends Protocol<ServerBoundMessage> {
         addMessage(KeyValueStringMapMessageReply.class, KeyValueStringMapMessageReply::new);
         addMessage(IntegerPairMessageReply.class, IntegerPairMessageReply::new);
         addMessage(DownloadProgressMessage.class, DownloadProgressMessage::new);
+        // Fenced chunk handover. Appended after every earlier id; never reorder.
+        addMessage(ChunkHandoverStartMessage.class, ChunkHandoverStartMessage::new);
+        addMessage(ChunkHandoverCompleteMessage.class, ChunkHandoverCompleteMessage::new);
     }
 
 }
