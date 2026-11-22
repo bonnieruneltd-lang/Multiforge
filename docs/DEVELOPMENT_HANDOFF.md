@@ -330,7 +330,11 @@ two processes.
 * **Mod profiles closed:** Ksyxis 1.4.6 did not reproduce the `/forceload` ticket loss on
   47.4.29; Radium/ServerCore and BetterAutoSave are documented deployment choices
   (`docs/COMPATIBILITY_PROFILES.md`, `compat/evidence/mod-profile-20261122T070103Z.md`).
-* **Not yet verified live:** client rendering on a hardware GPU (compatibility rows).
+* **Client matrix runner validated:** `tools/compat/run_client_matrix.sh --allow-software` completed
+  a production-client run on this tree under Xvfb/llvmpipe: `Verdict: STARTED`, all client mods
+  loaded, `BSL_v10.1.8.zip` `VERIFIED` with no shader compile error
+  (`compat/evidence/client-matrix-20261122T080046Z.md`). Software GL cannot close the client
+  rows; a hardware-GPU run is the remaining validation step.
 * **Docs:** NETWORKING (ids 37-38), SYNCHRONIZATION, TODO, KNOWN_ISSUES, README, AGENT_GUIDE and
   the new `docs/COMPLETION.md` scorecard were updated in the same change. Test counts are now
   protocol 75, master 56, api 4, example 3.

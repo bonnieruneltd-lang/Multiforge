@@ -1,0 +1,194 @@
+{
+  "label": "20261122T080046Z",
+  "host": {
+    "checks": [
+      {
+        "name": "os",
+        "status": "WARN",
+        "detail": "Debian GNU/Linux 12 (bookworm) (docs/CLIENT_MATRIX.md documents Ubuntu 22.04/24.04)"
+      },
+      {
+        "name": "java",
+        "status": "PASS",
+        "detail": "/workspace/.tools/jdk-17.0.21.1+2/bin/java (openjdk version \"17.0.21.1\" 2026-11-17)"
+      },
+      {
+        "name": "memory",
+        "status": "PASS",
+        "detail": "125.8 GiB total (8 GiB recommended)"
+      },
+      {
+        "name": "disk",
+        "status": "PASS",
+        "detail": "13.0 GiB free at /workspace/.runtime/client (10 GiB recommended)"
+      },
+      {
+        "name": "display",
+        "status": "PASS",
+        "detail": "DISPLAY=:99 reachable"
+      },
+      {
+        "name": "gpu-device",
+        "status": "FAIL",
+        "detail": "no /dev/dri; no GPU device (shader compilation needs a real GL context)"
+      },
+      {
+        "name": "opengl",
+        "status": "FAIL",
+        "detail": "no usable GLX renderer: glxinfo missing (install mesa-utils)"
+      }
+    ],
+    "facts": {
+      "os": "Debian GNU/Linux 12 (bookworm)",
+      "java": {
+        "path": "/workspace/.tools/jdk-17.0.21.1+2/bin/java",
+        "major": 17,
+        "vendor": "openjdk version \"17.0.21.1\" 2026-11-17"
+      },
+      "memory_gib": 125.8,
+      "disk_free_gib": 13.0,
+      "display": ":99",
+      "dri": [],
+      "gl": {
+        "renderer": "",
+        "version": "",
+        "class": "NONE"
+      }
+    }
+  },
+  "prepare": null,
+  "launch": {
+    "command": "python3 /workspace/tools/compat/launch_client.py run --launcher-dir /workspace/.runtime/launcher --game-dir /workspace/.runtime/client/minecraft --assets-dir /home/node/.gradle/caches/forge_gradle/assets --java /workspace/.tools/jdk-17.0.21.1+2/bin/java --memory-mb 4096",
+    "exit": null,
+    "seconds": 150.7,
+    "timed_out": false,
+    "menu_seen": true
+  },
+  "analysis": {
+    "log": "/workspace/.runtime/client/minecraft/logs/debug.log",
+    "bytes": 408944,
+    "reached_menu": true,
+    "crash": false,
+    "mixin_errors": [],
+    "shader_errors": [],
+    "shader_enabled": true,
+    "shader_disabled": false,
+    "missing_deps": [],
+    "forge": {
+      "version": "47.4.29",
+      "minecraft": "1.20.1"
+    },
+    "renderer": "",
+    "mentions_llvmpipe": true,
+    "registered_mixin_configs": 33,
+    "statuses": [
+      {
+        "key": "anti-cords-leaker",
+        "name": "Anti Cords Leaker",
+        "kind": "resourcepack",
+        "status": "VERIFIED",
+        "detail": "installed in resourcepacks/ (packs are not listed in the log's mod table)"
+      },
+      {
+        "key": "badoptimizations",
+        "name": "BadOptimizations",
+        "kind": "mod",
+        "status": "LOADED",
+        "detail": "Found valid mod file BadOptimizations-2.4.1-1.20.1.jar"
+      },
+      {
+        "key": "bsl-shaders",
+        "name": "BSL Shaders",
+        "kind": "shader",
+        "status": "VERIFIED",
+        "detail": "Oculus reports the pack in use and logged no shader compile error"
+      },
+      {
+        "key": "complementary-reimagined",
+        "name": "Complementary Shaders - Reimagined",
+        "kind": "shader",
+        "status": "INSTALLED",
+        "detail": "installed; not the active pack for this run"
+      },
+      {
+        "key": "cull-leaves",
+        "name": "Cull Leaves",
+        "kind": "mod",
+        "status": "LOADED",
+        "detail": "Found valid mod file cullleaves-forge-4.1.1+1.20.1.jar"
+      },
+      {
+        "key": "dynamic-fps",
+        "name": "Dynamic FPS",
+        "kind": "mod",
+        "status": "LOADED",
+        "detail": "Found valid mod file dynamic-fps-3.11.4+minecraft-1.20.0-forge.jar"
+      },
+      {
+        "key": "embeddium",
+        "name": "Embeddium",
+        "kind": "mod",
+        "status": "LOADED",
+        "detail": "Found valid mod file embeddium-0.3.31+mc1.20.1.jar"
+      },
+      {
+        "key": "entityculling",
+        "name": "Entity Culling",
+        "kind": "mod",
+        "status": "LOADED",
+        "detail": "Found valid mod file entityculling-forge-1.12.1-mc1.20.1.jar"
+      },
+      {
+        "key": "immediatelyfast",
+        "name": "ImmediatelyFast",
+        "kind": "mod",
+        "status": "LOADED",
+        "detail": "Found valid mod file ImmediatelyFast-Forge-1.5.5+1.20.4.jar"
+      },
+      {
+        "key": "kerria",
+        "name": "Kerria",
+        "kind": "mod",
+        "status": "LOADED",
+        "detail": "Found valid mod file Kerria-1.4.0+1.20.1-forge.jar"
+      },
+      {
+        "key": "obe",
+        "name": "Optimized Block Entities [OBE]",
+        "kind": "mod",
+        "status": "LOADED",
+        "detail": "Found valid mod file obe+1.20.1-forge-1.2.13-srg.jar"
+      },
+      {
+        "key": "oculus",
+        "name": "Oculus",
+        "kind": "mod",
+        "status": "LOADED",
+        "detail": "Found valid mod file oculus-mc1.20.1-1.8.0.jar"
+      },
+      {
+        "key": "rrls",
+        "name": "Remove Reloading Screen",
+        "kind": "mod",
+        "status": "LOADED",
+        "detail": "Found valid mod file rrls-4.0.6.1+mc1.20.1-forge.jar"
+      },
+      {
+        "key": "embeddium-extra",
+        "name": "Embeddium (Rubidium) Extra",
+        "kind": "mod",
+        "status": "LOADED",
+        "detail": "Found valid mod file rubidium-extra-0.5.4.4+mc1.20.1-build.131.jar"
+      },
+      {
+        "key": "sildurs-vibrant-lite",
+        "name": "Sildur's Vibrant Shaders (Lite)",
+        "kind": "shader",
+        "status": "INSTALLED",
+        "detail": "installed; not the active pack for this run"
+      }
+    ],
+    "verdict": "STARTED",
+    "highlights": []
+  }
+}

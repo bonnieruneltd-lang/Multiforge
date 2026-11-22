@@ -200,9 +200,10 @@ official names while the jars are SRG-named. Use the matrix instance for that.
 
 ## Recorded run
 
-`compat/evidence/client-matrix-20261122T052900Z.md` is the matrix run in this repository's
-container: no `/dev/dri`, Mesa `llvmpipe`, Xvfb, production Forge 47.4.29. It records
-`STARTED`, all 15 client targets launched, the resource pack installed and
-`Oculus: Using shaderpack: BSL_v10.1.8.zip` with no compile error, finishing with
-4 FUNCTIONAL and 11 PARTIAL. It is deliberately labelled software GL, so the PARTIAL rows stay
-open until a hardware-GPU run; the same file lists what each row still needs.
+`compat/evidence/client-matrix-20261122T080046Z.md` is a fresh run of this runner on the
+current tree: Debian container, no `/dev/dri`, Xvfb `:99`, Mesa llvmpipe, production Forge
+47.4.29. It reached the menu (`Verdict: STARTED`), loaded all client mods, selected
+`BSL_v10.1.8.zip` (`VERIFIED`, no shader compile error) and recorded the build/console logs.
+It is labelled software GL, so the PARTIAL rows stay open until a hardware-GPU run; the file
+lists exactly what each row still needs. An earlier software run is
+`client-matrix-20261122T052900Z.md`.
