@@ -83,7 +83,7 @@ public final class ChunkState {
     private final com.multiforge.protocol.util.SenderSequenceTable inboundSequences =
             new com.multiforge.protocol.util.SenderSequenceTable(256);
 
-    /** Maximum number of sent updates kept per chunk for gap retransmission. */
+    /** Maximum number of sent updates kept per chunk and peer for gap retransmission. */
     public static final int RETRANSMIT_HISTORY = 128;
 
     /**

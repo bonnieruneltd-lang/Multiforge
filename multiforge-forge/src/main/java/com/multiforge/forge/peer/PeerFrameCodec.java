@@ -42,10 +42,12 @@ public final class PeerFrameCodec {
      * <p>Without it a ten byte frame could announce a two gigabyte payload and
      * make the decoder allocate it on a Netty thread before any data arrived.
      * Override with {@code -Dmultiforge.peer.maxFrameBytes} when a deployment
-     * really needs larger chunk frames.</p>
+     * really needs larger chunk frames. The default is deliberately below the
+     * master frame limit because the inflater holds the compressed input, the
+     * uncompressed output and the target buffer at the same time.</p>
      */
     static final int MAX_FRAME_BYTES =
-            Integer.getInteger("multiforge.peer.maxFrameBytes", 64 * 1024 * 1024);
+            Integer.getInteger("multiforge.peer.maxFrameBytes", 16 * 1024 * 1024);
 
     private PeerFrameCodec() {
     }

@@ -304,7 +304,8 @@ shutdown, which is harmless because a restarting peer reloads chunks from the cl
 * The peer frame decoder trusted the announced uncompressed length and allocated it before
   inflating. A tiny frame could therefore request a multi-gigabyte buffer on a Netty thread.
   Both the frame length and the uncompressed length are capped by
-  `-Dmultiforge.peer.maxFrameBytes` (64 MiB default).
+  `-Dmultiforge.peer.maxFrameBytes` (16 MiB default; the inflater holds the compressed input,
+  the uncompressed output and the target buffer at the same time).
 * A fallback `ChunkStorage` created by `LocalChunkStorage` was registered by the constructor
   mixin, so a local backup write (or a read fallback while the master was up) re-entered
   `ChunkSyncIo` and would recurse until the stack overflowed. The instance is unregistered
