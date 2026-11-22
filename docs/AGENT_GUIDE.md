@@ -101,7 +101,7 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   block (`compat/evidence/gameplay-mods-20261122T043800Z.md`).
   The full set (19/19 incl. Ksyxis) also starts; Ksyxis is removed for the shared-chunk
   check because force-loaded tickets disappear while it is installed.
-* Compatibility score: 4 server targets FUNCTIONAL, 10 PARTIAL, 6 LOADING; client
+* Compatibility score: 5 server targets FUNCTIONAL, 10 PARTIAL, 5 LOADING; client
   production run: 4 FUNCTIONAL (Embeddium, Oculus, BSL, ImmediatelyFast), 11 PARTIAL.
   All 35 targets have been executed at least once. Matrix and evidence:
   `docs/REQUIRED_MOD_COMPATIBILITY.md` and
@@ -162,7 +162,7 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   (the master-outage backlog is live-verified in
   `compat/evidence/offline-backlog-20261122T041340Z.md`), (2) extend the player-driven harness
   (`tools/compat/mcbot.js` now sends look/move/chat/use/attack in addition to the hotbar slot)
-  into gameplay checks for the remaining 6 LOADING server rows, (3) hardware-GPU visual
+  into gameplay checks for the remaining 5 LOADING server rows, (3) hardware-GPU visual
   checks for the 11 PARTIAL client rows (Complementary/Sildur pipelines, culling, Dynamic FPS,
   RRLS), (4) the Radium/ServerCore profile decision and the Ksyxis `/forceload` reproduction. The fenced handover is implemented and live-verified
   (`compat/evidence/chunk-handover-20261122T035205Z.md`). Larger features still missing:

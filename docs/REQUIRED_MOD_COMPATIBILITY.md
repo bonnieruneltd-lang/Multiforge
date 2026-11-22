@@ -5,7 +5,7 @@ support. It is not a wish list: every row names the exact artifact that was pinn
 where it belongs, what was executed against it and what is still unverified.
 
 **Current result: all 35 targets exercised on this build. Server deployment: 20/20 installed,
-started and player-checked (4 FUNCTIONAL, 10 PARTIAL, 6 LOADING). Client: 15/15 launched in a
+started and player-checked (5 FUNCTIONAL, 10 PARTIAL, 5 LOADING). Client: 15/15 launched in a
 production Forge client under Xvfb/llvmpipe (4 FUNCTIONAL, 11 PARTIAL, 0 NOT TESTED).**
 The player-driven server run is `compat/evidence/gameplay-mods-20261122T043800Z.md`; the client
 run is `compat/evidence/client-matrix-20261122T052900Z.md`.
@@ -139,7 +139,7 @@ the twentieth target is a data pack and is enabled from `world/datapacks/`. Evid
 | 6 | Fast Leaf Decay | `fastleafdecay` | 2.0.0 | `fastleafdecay-forge-1.20-26.3.jar` | — | FUNCTIONAL | Multi-version jar that lists 1.20.1. After the Timber trunk break, the three leaf blocks in the test tree were air within 3 s (`compat/evidence/gameplay-mods-20261122T043800Z.md`), which is the mod's accelerated decay rather than vanilla timing. |
 | 7 | AI Improvements | `aiimprovements` | 0.5.2 | `AI-Improvements-1.20-0.5.2.jar` | — | LOADING | Loaded. AI behaviour needs a mob-based test. |
 | 8 | Async Locator | `asynclocator` | 1.20-1.3.0 | `async-locator-forge-1.20-1.3.0.jar` | — | FUNCTIONAL | `/locate structure minecraft:village_plains` returned a result in 1 ms on the live server; no tick-thread stall (20 TPS). |
-| 9 | Get It Together, Drops! | `getittogetherdrops` | v1.3 | `getittogetherdrops-forge-1.20-1.3.jar` | — | LOADING | Loaded. Item-merging needs a drop test. |
+| 9 | Get It Together, Drops! | `getittogetherdrops` | v1.3 | `getittogetherdrops-forge-1.20-1.3.jar` | — | FUNCTIONAL | Two stone blocks two blocks apart were broken by a survival player; the two cobblestone drops merged into a single `Count: 2b` item entity within the configured 2-block radius (`compat/evidence/gameplay-mods-20261122T043800Z.md`). |
 | 10 | Ksyxis | `ksyxis` | 1.4.6 | `Ksyxis-1.4.6.jar` | — | FUNCTIONAL | With Ksyxis the server loaded 1 spawn chunk and reached `Done` in ~10 s; without it the same world loaded 554 chunks over ~69 s. Its stated function (remove unneeded spawn chunks) is observable. Note: with Ksyxis installed `/forceload` tickets were dropped immediately in this environment, so the cluster sync harness runs with Ksyxis removed on both servers; revisit if that interaction matters for your world. |
 | 11 | Noisium | `noisium` | 2.3.0+mc1.20-1.20.1 | `noisium-forge-2.3.0+mc1.20-1.20.1.jar` | — | PARTIAL | Worldgen completed without errors on the shared world; no benchmark of its noise optimisation was made. |
 | 12 | Radium | `radium` | 0.12.4 | `radium-mc1.20.1-0.12.4+git.26c9d8e.jar` | — | PARTIAL | Loaded and TPS stayed at 20. Mixin conflict with ServerCore: `ServerChunkCacheMixin->@Redirect::servercore$noList` was skipped because Radium's lithium redirect has higher priority (logged once, non-fatal). Radium also makes BetterAutoSave disable its sync chunk-load detector. |
@@ -185,7 +185,7 @@ change the support matrix and must not be hidden:
 | Area | Remaining work |
 | --- | --- |
 | Client mods (15) | The production client run covered launch, mod load, in-world join, Embeddium/Oculus/BSL, ImmediatelyFast and the Anti Cords pack. Remaining: hardware-GPU visual verification of Complementary/Sildur pipelines, culling correctness, Dynamic FPS throttling and RRLS server switches. |
-| Server gameplay | Minecart speed, player-head drops, item merging, combat-log punishment and AntiXray packet obfuscation still need player-driven checks. Tree felling, leaf decay, TPA (same-server), chat formatting and the anti-seed `/seed` block are now covered by `compat/evidence/gameplay-mods-20261122T043800Z.md`. |
+| Server gameplay | Minecart speed, player-head drops, combat-log punishment and AntiXray packet obfuscation still need player-driven checks. Tree felling, leaf decay, TPA (same-server), chat formatting, anti-seed `/seed` and natural item merging are covered by `compat/evidence/gameplay-mods-20261122T043800Z.md`. |
 | Cross-server gameplay | Chunk ownership transfer while a player walks, player mirroring (see `compat/evidence/player-mirroring-20261115T030505Z.md`), inventory sync (TODO 3), server switch and reconnect. |
 | Radium/ServerCore | Decide on a supported combination and add a documented config profile; do not claim both optimisations active. |
 | Evidence | Client and player-driven results are recorded in `compat/evidence/client-matrix-20261122T052900Z.md` and `compat/evidence/gameplay-mods-20261122T043800Z.md`; append a hardware-GPU visual run when available. |
@@ -198,9 +198,9 @@ matrix deliberately keeps most rows below that bar.
 | Status | Client | Server | Total |
 | --- | --- | --- | --- |
 | NOT TESTED | 0 | 0 | 0 |
-| LOADING | 0 | 6 | 6 |
+| LOADING | 0 | 5 | 5 |
 | PARTIAL | 11 | 10 | 21 |
-| FUNCTIONAL | 4 | 4 | 8 |
+| FUNCTIONAL | 4 | 5 | 9 |
 | FULLY COMPATIBLE | 0 | 0 | 0 |
 | BLOCKED | 0 | 0 | 0 |
 
