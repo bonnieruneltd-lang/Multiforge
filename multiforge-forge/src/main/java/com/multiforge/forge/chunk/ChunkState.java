@@ -77,11 +77,17 @@ public final class ChunkState {
      * changes.</p>
      */
     private final com.multiforge.protocol.util.SequenceTracker outboundSequences =
-            new com.multiforge.protocol.util.SequenceTracker(256);
+            new com.multiforge.protocol.util.SequenceTracker(RETRANSMIT_HISTORY);
 
-    /** Ordering state of every peer that sent updates for this chunk. */
+    /**
+     * Ordering state of every peer that sent updates for this chunk.
+     *
+     * <p>The receive window equals the sender history ({@value #RETRANSMIT_HISTORY}):
+     * a gap the sender can still retransmit stays a gap, a wider one cannot be
+     * repaired from the bounded history and resynchronises instead of stalling.</p>
+     */
     private final com.multiforge.protocol.util.SenderSequenceTable inboundSequences =
-            new com.multiforge.protocol.util.SenderSequenceTable(256);
+            new com.multiforge.protocol.util.SenderSequenceTable(RETRANSMIT_HISTORY);
 
     /** Maximum number of sent updates kept per chunk and peer for gap retransmission. */
     public static final int RETRANSMIT_HISTORY = 128;

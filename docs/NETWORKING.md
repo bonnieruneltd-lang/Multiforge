@@ -195,9 +195,9 @@ Each tracker orders its stream:
 
 * the next expected number is applied (`ACCEPTED`);
 * a number above the next expected one is applied but reported as a gap from that point on
-  (`GAP`). A gap wider than the receiver window (256) or the first packet of a sender the
-  tracker has never seen adopts the newest value as the baseline, so an unrepairable hole
-  cannot stall the acknowledgement stream forever;
+  (`GAP`). A gap wider than the receiver window (128, equal to the sender history) or the first
+  packet of a sender the tracker has never seen adopts the newest value as the baseline, so an
+  unrepairable hole cannot stall the acknowledgement stream forever;
 * an already applied or older number is dropped (`DUPLICATE`);
 * anything from an older epoch is dropped (`STALE_EPOCH`).
 
@@ -213,8 +213,11 @@ disconnected while the owner kept sending, and they turn a silent inconsistency 
 detected gap.
 
 Both fields are appended, so a peer running an older build omits them and decoding yields 0
-("no sequencing information", applied as before). The new packet id (33) requires both sides
-to run a build that knows it; peer protocols are upgraded together with the cluster.
+("no sequencing information", applied as before). Updates without a positive epoch *or*
+sequence are never acknowledged, because an ack with contiguous 0 would make the sender
+retransmit them forever; the sender also does not keep retransmit history for them. The new
+packet id (33) requires both sides to run a build that knows it; peer protocols are upgraded
+together with the cluster.
 
 `EntityHurtPacket` also appends optional fields: the causing entity UUID, the direct entity
 UUID and the source position. The owner resolves them and builds a real `DamageSource`, so

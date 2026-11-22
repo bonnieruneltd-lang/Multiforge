@@ -743,7 +743,7 @@ public final class ChunkManager {
                 sequenceDuplicates.incrementAndGet();
                 LOGGER.debug("Dropped duplicate block change for {} (epoch {}, sequence {})",
                         key, packet.epoch, packet.sequence);
-                queueAck(key, connection, packet.epoch);
+                queueAck(key, connection, packet.epoch, packet.sequence);
                 return;
             }
             if (ordering == SequenceTracker.Result.GAP) {
@@ -758,7 +758,7 @@ public final class ChunkManager {
             if (level.getChunkSource().getChunkNow(packet.x >> 4, packet.z >> 4) == null) {
                 // The chunk is not loaded here; it will be read from the cluster
                 // when it is, so the update does not have to be kept.
-                queueAck(key, connection, packet.epoch);
+                queueAck(key, connection, packet.epoch, packet.sequence);
                 return;
             }
             BlockState state = Block.stateById(packet.stateId);
@@ -768,7 +768,7 @@ public final class ChunkManager {
             } finally {
                 applyingRemote.set(Boolean.FALSE);
             }
-            queueAck(key, connection, packet.epoch);
+            queueAck(key, connection, packet.epoch, packet.sequence);
         });
     }
 
@@ -798,7 +798,7 @@ public final class ChunkManager {
                 sequenceDuplicates.incrementAndGet();
                 LOGGER.debug("Dropped duplicate block entity update for {} (epoch {}, sequence {})",
                         key, packet.epoch, packet.sequence);
-                queueAck(key, connection, packet.epoch);
+                queueAck(key, connection, packet.epoch, packet.sequence);
                 return;
             }
             if (ordering == SequenceTracker.Result.GAP) {
@@ -808,13 +808,13 @@ public final class ChunkManager {
             }
             ServerLevel level = server.level(packet.world);
             if (level == null || level.getChunkSource().getChunkNow(packet.x >> 4, packet.z >> 4) == null) {
-                queueAck(key, connection, packet.epoch);
+                queueAck(key, connection, packet.epoch, packet.sequence);
                 return;
             }
             BlockPos pos = new BlockPos(packet.x, packet.y, packet.z);
             BlockEntity blockEntity = level.getBlockEntity(pos);
             if (blockEntity == null) {
-                queueAck(key, connection, packet.epoch);
+                queueAck(key, connection, packet.epoch, packet.sequence);
                 return;
             }
             applyingRemote.set(Boolean.TRUE);
@@ -825,7 +825,7 @@ public final class ChunkManager {
             } finally {
                 applyingRemote.set(Boolean.FALSE);
             }
-            queueAck(key, connection, packet.epoch);
+            queueAck(key, connection, packet.epoch, packet.sequence);
         });
     }
 
@@ -865,7 +865,14 @@ public final class ChunkManager {
      * @param connection sender
      * @param epoch      ownership epoch the update was ordered under
      */
-    private void queueAck(ChunkKey key, PeerConnection connection, long epoch) {
+    private void queueAck(ChunkKey key, PeerConnection connection, long epoch, long sequence) {
+        if (epoch <= 0L || sequence <= 0L) {
+            // No ownership epoch or sequence information (older peer, or a change
+            // made before the master announced ownership). Such a packet is applied
+            // as before but cannot be acknowledged: the ack would carry contiguous 0
+            // and make the sender retransmit the same updates forever.
+            return;
+        }
         if (connection == null || !connection.isActive()) {
             return;
         }
@@ -934,6 +941,11 @@ public final class ChunkManager {
      * @param packet   update to resend on request
      */
     private void recordForRetransmit(ChunkState state, long epoch, long sequence, PeerPacket packet) {
+        if (epoch <= 0L) {
+            // Updates without an epoch are never acknowledged (see queueAck), so
+            // keeping them would only fill the bounded history.
+            return;
+        }
         for (PeerConnection connection : server.peers().connections()) {
             String peer = connection.remoteName();
             if (peer == null) {

@@ -268,14 +268,15 @@ kept per sender (`SenderSequenceTable`) because more than one server can change 
 same chunk while ownership settles; a shared counter would treat the other sender's numbers as
 duplicates and drop updates. The sender keeps the last 128 updates of each chunk **per peer**
 (`ChunkState.retransmitBuffer`), so one peer's acknowledgement cannot discard entries another
-peer still needs; a gap that is more than 128 updates old, or wider than the receiver window of
-256, cannot be filled from memory. Instead of stalling, the receiver adopts the newest value as
-the baseline (logged as a gap) and the next full chunk load repairs the state. The first packet
-of a sender the tracker has never seen is used as the baseline too, because earlier numbers were
-never sent to that peer. On a single TCP connection packets are ordered and complete, so a gap
-indicates a reconnect during which the owner kept sending, or a software defect; the counter is
-visible as `seq gaps=` in `/multiforge status`. Pending acknowledgements are dropped at
-shutdown, which is harmless because a restarting peer reloads chunks from the cluster.
+peer still needs; a gap that is more than 128 updates old, or wider than the receiver window
+(also 128), cannot be filled from memory. Instead of stalling, the receiver adopts the newest
+value as the baseline (logged as a gap) and the next full chunk load repairs the state. The
+first packet of a sender the tracker has never seen is used as the baseline too, because earlier
+numbers were never sent to that peer. On a single TCP connection packets are ordered and
+complete, so a gap indicates a reconnect during which the owner kept sending, or a software
+defect; the counter is visible as `seq gaps=` in `/multiforge status`. Pending acknowledgements
+are dropped at shutdown, which is harmless because a restarting peer reloads chunks from the
+cluster.
 
 ## Fixed issues worth knowing about (regression tests cover them)
 
