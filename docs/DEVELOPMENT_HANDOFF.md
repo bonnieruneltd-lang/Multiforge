@@ -345,6 +345,11 @@ two processes.
   BungeeCord plugin unchanged, accepted both backends, accepted a proxied client and passed the
   cluster 18/18 (`bungee-plugin-20261122T082425Z.md`). Configuration and limits:
   `docs/PROXY_PLUGINS.md`.
+* **Production gameplay checks:** Combatlog is live-verified (tag message plus
+  `has died of cowardice` on disconnect) in a real Forge 47.4.29 install. Just Player Heads
+  produced no head on a player kill despite chance 1.0, and Beautified Chat cross-server arrived
+  as plain text; both are recorded as negative results (`gameplay-mods-20261122T083900Z.md`).
+  Dev runs cannot load these mods (SRG refmaps), hence the production install.
 * **Docs:** NETWORKING (ids 37-38), SYNCHRONIZATION, TODO, KNOWN_ISSUES, README, AGENT_GUIDE and
   the new `docs/COMPLETION.md` scorecard were updated in the same change. Test counts are now
   protocol 75, master 56, api 4, example 3.

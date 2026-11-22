@@ -166,7 +166,7 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
 * Highest-value next work: (1) hardware-GPU visual checks for the 9 PARTIAL client rows
   (Complementary/Sildur pipelines, culling, Dynamic FPS, RRLS), (2) extend the player-driven
   harness (`tools/compat/mcbot.js` now sends look/move/chat/use/attack in addition to the
-  hotbar slot) into gameplay checks for the remaining 4 LOADING server rows. The fenced
+  hotbar slot) into gameplay checks for the remaining 3 LOADING server rows. The fenced
   handover, both fight types and forced packet loss are implemented and live-verified
   (`compat/evidence/chunk-handover-20261122T035205Z.md`,
   `compat/evidence/fight-sync-20261122T074549Z.md`,
