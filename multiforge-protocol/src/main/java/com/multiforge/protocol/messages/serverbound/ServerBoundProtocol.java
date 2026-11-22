@@ -33,6 +33,7 @@ public class ServerBoundProtocol extends Protocol<ServerBoundMessage> {
         // Fenced chunk handover. Appended after every earlier id; never reorder.
         addMessage(ChunkHandoverStartMessage.class, ChunkHandoverStartMessage::new);
         addMessage(ChunkHandoverCompleteMessage.class, ChunkHandoverCompleteMessage::new);
+        addMessage(WeatherStateMessage.class, WeatherStateMessage::new);
     }
 
 }

@@ -8,6 +8,8 @@ import com.multiforge.forge.peer.packet.TimeSyncPacket;
 import com.multiforge.forge.peer.packet.TimeUpdatePacket;
 import com.multiforge.forge.peer.packet.WeatherUpdatePacket;
 import com.multiforge.forge.peer.packet.WorldBorderUpdatePacket;
+import com.multiforge.protocol.messages.masterbound.ReportWeatherMessage;
+import com.multiforge.protocol.messages.serverbound.WeatherStateMessage;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtIo;
@@ -114,6 +116,10 @@ public final class WorldSyncManager {
         private int rainTime;
         private boolean thundering;
         private int thunderTime;
+        /** Skip the next weather poll after a master state was applied. */
+        private boolean skipWeatherPoll;
+        /** Highest master weather version applied for this world. */
+        private long weatherVersion;
         private final Map<String, String> gameRules = new HashMap<>();
         private double borderCenterX;
         private double borderCenterZ;
@@ -257,13 +263,32 @@ public final class WorldSyncManager {
         boolean thundering = data.isThundering();
         int rainTime = data.getRainTime();
         int thunderTime = data.getThunderTime();
+        if (state.skipWeatherPoll) {
+            // This poll follows the application of a master state; reporting it
+            // would echo the timers straight back and create a version loop.
+            state.skipWeatherPoll = false;
+            state.raining = raining;
+            state.rainTime = rainTime;
+            state.thundering = thundering;
+            state.thunderTime = thunderTime;
+            return;
+        }
         boolean changed = state.initialized
                 && (raining != state.raining
                         || thundering != state.thundering
                         || rainTime > state.rainTime
                         || thunderTime > state.thunderTime);
         if (changed) {
-            server.peers().broadcast(new WeatherUpdatePacket(world, raining, rainTime, thundering, thunderTime));
+            if (server.master().isConnected()) {
+                // The master sequences transitions; peers apply the versioned
+                // WeatherStateMessage. This removes last-writer-wins between peers
+                // when two servers change weather at the same time.
+                server.master().send(new ReportWeatherMessage(
+                        world, raining, rainTime, thundering, thunderTime));
+            } else {
+                server.peers().broadcast(new WeatherUpdatePacket(
+                        world, raining, rainTime, thundering, thunderTime));
+            }
             if (server.config().debugLogging()) {
                 LOGGER.info("Broadcast weather for {}: rain={}, thunder={}", world, raining, thundering);
             }
@@ -481,26 +506,88 @@ public final class WorldSyncManager {
         if (!server.config().syncWeather() || !server.config().worldSync()) {
             return;
         }
+        applyWeather(packet.world, 0L, packet.raining, packet.rainTime,
+                packet.thundering, packet.thunderTime, false);
+    }
+
+    /**
+     * Applies a master-sequenced weather state.
+     *
+     * <p>The version is checked on the server thread: a delayed broadcast with an
+     * older version is dropped instead of rolling the weather back. The peer
+     * fallback ({@link #onRemoteWeather}) is unversioned and only used while the
+     * master is unreachable.</p>
+     *
+     * @param message master weather state
+     */
+    public void onMasterWeather(WeatherStateMessage message) {
+        if (!server.config().syncWeather() || !server.config().worldSync()) {
+            return;
+        }
+        applyWeather(message.world, message.version, message.raining, message.rainTime,
+                message.thundering, message.thunderTime, true);
+    }
+
+    /**
+     * Re-reports the current weather of every loaded level after a reconnect.
+     *
+     * <p>While the master was down, peer fallback may have changed the weather and
+     * the master's replayed snapshot can therefore be older. Reporting the local
+     * state makes the master assign a newer version instead of leaving the cluster
+     * on the stale replay.</p>
+     */
+    public void onMasterReconnected() {
+        if (!server.config().syncWeather() || !server.config().worldSync()) {
+            return;
+        }
+        for (ServerLevel level : server.server().getAllLevels()) {
+            String world = server.chunks().worldName(level);
+            ServerLevelData data = (ServerLevelData) level.getLevelData();
+            server.master().send(new ReportWeatherMessage(world, data.isRaining(),
+                    data.getRainTime(), data.isThundering(), data.getThunderTime()));
+        }
+    }
+
+    /**
+     * Applies one weather state on the server thread.
+     *
+     * @param world       logical world name
+     * @param version     master version, ignored when {@code versioned} is false
+     * @param raining     whether it is raining
+     * @param rainTime    remaining rain ticks
+     * @param thundering  whether it is thundering
+     * @param thunderTime remaining thunder ticks
+     * @param versioned   whether to enforce the master version
+     */
+    private void applyWeather(String world, long version, boolean raining, int rainTime,
+                              boolean thundering, int thunderTime, boolean versioned) {
         server.execute(() -> {
-            ServerLevel level = server.level(packet.world);
+            ServerLevel level = server.level(world);
             if (level == null) {
                 return;
             }
             synchronized (lock) {
+                LevelState snapshot = states.computeIfAbsent(world, ignored -> new LevelState());
+                if (versioned && version <= snapshot.weatherVersion) {
+                    return;
+                }
+                if (versioned) {
+                    snapshot.weatherVersion = version;
+                }
                 ServerLevelData data = (ServerLevelData) level.getLevelData();
-                data.setRaining(packet.raining);
-                data.setRainTime(packet.rainTime);
-                data.setThundering(packet.thundering);
-                data.setThunderTime(packet.thunderTime);
-                LevelState state = states.computeIfAbsent(packet.world, ignored -> new LevelState());
-                state.raining = packet.raining;
-                state.rainTime = packet.rainTime;
-                state.thundering = packet.thundering;
-                state.thunderTime = packet.thunderTime;
+                data.setRaining(raining);
+                data.setRainTime(rainTime);
+                data.setThundering(thundering);
+                data.setThunderTime(thunderTime);
+                snapshot.raining = raining;
+                snapshot.rainTime = rainTime;
+                snapshot.thundering = thundering;
+                snapshot.thunderTime = thunderTime;
+                snapshot.skipWeatherPoll = true;
             }
             if (server.config().debugLogging()) {
-                LOGGER.info("Applied weather for {}: rain={}, thunder={}",
-                        packet.world, packet.raining, packet.thundering);
+                LOGGER.info("Applied weather for {}: rain={}, thunder={} (version {})",
+                        world, raining, thundering, versioned ? version : 0L);
             }
         });
     }

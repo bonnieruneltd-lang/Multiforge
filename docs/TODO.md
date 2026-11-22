@@ -30,7 +30,9 @@ coding.
    `DamageSource`. Projectile ownership is followed through the fenced handover: a projectile
    that crosses into a chunk owned by another server requests that chunk, and the old owner
    sends its live entity snapshots before the fence, so the server holding the real projectile
-   keeps simulating it. Still missing: mob navigation handover, raids and the dragon fight.
+   keeps simulating it. Mob navigation is transferred by `MobNavigationPacket` (destination,
+   speed and combat target; the new owner recomputes the path). Still missing: raids and the
+   dragon fight.
    Sign editing and pistons are already covered
    by the generic paths: a sign calls `BlockEntity.setChanged()` and a piston move is a
    block/block-entity change, so `BlockEntityUpdatePacket`/`BlockChangePacket` carry them
@@ -127,9 +129,15 @@ coding.
     applies them to a locally hosted player under an echo guard. This closes the handover
     window where a player transfers before the files are saved. Files remain authoritative on
     the master at save/load time.
-12. **Weather conflict resolution**: weather is last-writer-wins on a state transition; time already
-    follows upstream's forced/periodic semantics. A master-owned logical clock would remove the
-    remaining one-tick jitter after a lag spike.
+12. **Weather conflict resolution** - done: while the master is connected,
+    `ReportWeatherMessage`/`WeatherStateMessage` sequence each transition with a per-world
+    version (`WorldWeatherManager`); receivers apply only a newer version, a new server gets
+    the state in the hello replay and a reconnecting server reports its local state so the
+    outage fallback is not rolled back. The peer `WeatherUpdatePacket` remains the fallback
+    when the master is down. Time already follows upstream's forced/periodic semantics; the
+    remaining one-tick jitter after a lag spike is unchanged. Verified live: two bots saw the
+    same rain start/end and the master advanced only two semantic versions
+    (`compat/evidence/weather-ordering-20261122T042413Z.md`).
 13. **Master high availability** - single-leader part done (session 6): `LeaderElection`
     takes an exclusive OS lock on `master-leader.lock` when `leader-election=true` (default
     off); a standby waits and takes over when the leader exits, and the built-in proxy and

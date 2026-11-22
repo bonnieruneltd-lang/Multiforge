@@ -9,6 +9,7 @@ import com.multiforge.forge.peer.packet.EntityRemovePacket;
 import com.multiforge.forge.peer.packet.EntityUpdateNBTPacket;
 import com.multiforge.forge.peer.packet.EntityUpdatePacket;
 import com.multiforge.forge.peer.packet.EntityUpdateWithDependenciesPacket;
+import com.multiforge.forge.peer.packet.MobNavigationPacket;
 import com.multiforge.protocol.ChunkKey;
 import io.netty.buffer.Unpooled;
 import net.minecraft.core.BlockPos;
@@ -47,6 +48,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.navigation.PathNavigation;
 import net.minecraft.world.entity.decoration.LeashFenceKnotEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
@@ -696,6 +698,90 @@ public final class EntitySyncManager {
                 server.peers().sendTo(List.of(subscriber), snapshot);
             }
         }
+    }
+
+    /**
+     * Sends the navigation and combat target of every mob in a chunk to one peer.
+     *
+     * <p>Used by a fenced handover before ownership changes. Vanilla does not save
+     * either value in NBT, so the normal entity snapshot would leave the new owner
+     * with a mob that stands still. Only the destination is sent; the new owner
+     * recomputes the path.</p>
+     *
+     * @param key        chunk
+     * @param subscriber receiving server
+     */
+    public void sendMobNavigationTo(ChunkKey key, String subscriber) {
+        if (!server.config().entitySync() || subscriber == null
+                || subscriber.equals(server.serverName())) {
+            return;
+        }
+        ServerLevel level = server.level(key.getName());
+        if (level == null || level.getChunkSource().getChunkNow(key.getX(), key.getZ()) == null) {
+            return;
+        }
+        int minX = key.getX() << 4;
+        int minZ = key.getZ() << 4;
+        AABB area = new AABB(minX, level.getMinBuildHeight(), minZ,
+                minX + 16, level.getMaxBuildHeight(), minZ + 16);
+        for (Entity entity : level.getEntities((Entity) null, area,
+                candidate -> Mth.floor(candidate.getX()) >> 4 == key.getX()
+                        && Mth.floor(candidate.getZ()) >> 4 == key.getZ())) {
+            if (!(entity instanceof Mob mob)) {
+                continue;
+            }
+            PathNavigation navigation = mob.getNavigation();
+            boolean hasPath = navigation.isInProgress() && navigation.getTargetPos() != null;
+            LivingEntity target = mob.getTarget();
+            if (!hasPath && target == null) {
+                continue;
+            }
+            BlockPos destination = navigation.getTargetPos();
+            double x = destination == null ? mob.getX() : destination.getX() + 0.5D;
+            double y = destination == null ? mob.getY() : destination.getY();
+            double z = destination == null ? mob.getZ() : destination.getZ() + 0.5D;
+            server.peers().sendTo(List.of(subscriber), new MobNavigationPacket(
+                    key.getName(), mob.getUUID(), hasPath, x, y, z, 1.0D,
+                    target != null, target == null ? null : target.getUUID()));
+        }
+    }
+
+    /**
+     * Applies a mob navigation/combat target received from the old owner.
+     *
+     * <p>Runs on the server thread. The packet normally arrives just before the
+     * ownership announcement, so the path is already set when the new owner starts
+     * ticking the mob.</p>
+     *
+     * @param packet navigation state
+     */
+    public void onRemoteMobNavigation(MobNavigationPacket packet) {
+        schedule("mob navigation " + packet.uuid, () -> {
+            ServerLevel level = server.level(packet.world);
+            if (level == null) {
+                return true;
+            }
+            Entity entity = level.getEntity(packet.uuid);
+            if (entity == null) {
+                // The snapshot may still be in flight; retry on the next tick.
+                return false;
+            }
+            if (!(entity instanceof Mob mob)) {
+                return true;
+            }
+            applyRemoteInternal(() -> {
+                if (packet.hasPath) {
+                    mob.getNavigation().moveTo(packet.x, packet.y, packet.z, packet.speed);
+                }
+                if (packet.hasTarget) {
+                    Entity target = level.getEntity(packet.target);
+                    if (target instanceof LivingEntity living) {
+                        mob.setTarget(living);
+                    }
+                }
+            });
+            return true;
+        });
     }
 
     /**

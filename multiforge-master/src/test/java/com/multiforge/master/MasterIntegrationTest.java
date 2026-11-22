@@ -48,9 +48,11 @@ import com.multiforge.protocol.messages.serverbound.RemoveChunkSubscriberMessage
 import com.multiforge.protocol.messages.serverbound.ServerStartedMessage;
 import com.multiforge.protocol.messages.serverbound.ServerBoundMessage;
 import com.multiforge.protocol.messages.masterbound.ChunkHandoverReadyMessage;
+import com.multiforge.protocol.messages.masterbound.ReportWeatherMessage;
 import com.multiforge.protocol.messages.masterbound.RequestChunkHandoverMessage;
 import com.multiforge.protocol.messages.serverbound.ChunkHandoverCompleteMessage;
 import com.multiforge.protocol.messages.serverbound.ChunkHandoverStartMessage;
+import com.multiforge.protocol.messages.serverbound.WeatherStateMessage;
 import com.multiforge.protocol.messages.serverbound.SetChunkOwnerMessage;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -116,6 +118,7 @@ class MasterIntegrationTest {
         ChunkGenerationManager.clear();
         ChunkGenerationManager.configure(15_000L, 2_000L);
         ChunkHandoverManager.clear();
+        WorldWeatherManager.clear();
     }
 
     /**
@@ -1036,6 +1039,84 @@ class MasterIntegrationTest {
         assertEquals("h8-a", complete.owner);
         assertEquals("h8-a", ChunkSubscriptionManager.getOwner(world, 11, 11).getBungeeCordName());
         assertEquals(0, ChunkHandoverManager.activeCount());
+    }
+
+    // ------------------------------------------------------------------
+    // Master-ordered weather
+    // ------------------------------------------------------------------
+
+    @Test
+    void weatherReportsAreSequencedAndBroadcast() throws Exception {
+        TestServerClient a = client("weather-a");
+        TestServerClient b = client("weather-b");
+        String world = "weather_world";
+
+        a.send(new ReportWeatherMessage(world, true, 6000, false, 0));
+
+        WeatherStateMessage firstA = a.await(WeatherStateMessage.class,
+                message -> message.world.equals(world) && message.version == 1L, 5000L);
+        WeatherStateMessage firstB = b.await(WeatherStateMessage.class,
+                message -> message.world.equals(world) && message.version == 1L, 5000L);
+        assertTrue(firstA.raining);
+        assertTrue(firstB.raining);
+        assertEquals(6000, firstB.rainTime);
+
+        a.send(new ReportWeatherMessage(world, false, 200, true, 100));
+
+        WeatherStateMessage second = b.await(WeatherStateMessage.class,
+                message -> message.world.equals(world) && message.version == 2L, 5000L);
+        assertFalse(second.raining);
+        assertTrue(second.thundering);
+        assertEquals(200, second.rainTime);
+        assertEquals(100, second.thunderTime);
+        assertEquals(2L, WorldWeatherManager.version(world));
+    }
+
+    @Test
+    void weatherStateIsReplayedWhenAServerConnects() throws Exception {
+        TestServerClient a = client("weather-replay-a");
+        String world = "weather_replay_world";
+        a.send(new ReportWeatherMessage(world, true, 1234, true, 567));
+        a.await(WeatherStateMessage.class, message -> message.world.equals(world), 5000L);
+
+        TestServerClient late = client("weather-replay-b");
+
+        WeatherStateMessage replay = late.await(WeatherStateMessage.class,
+                message -> message.world.equals(world), 5000L);
+        assertEquals(1L, replay.version);
+        assertTrue(replay.raining);
+        assertTrue(replay.thundering);
+        assertEquals(1234, replay.rainTime);
+        assertEquals(567, replay.thunderTime);
+    }
+
+    @Test
+    void weatherVersionsAreIndependentPerWorld() throws Exception {
+        TestServerClient a = client("weather-worlds");
+        a.send(new ReportWeatherMessage("weather_a", true, 10, false, 0));
+        a.send(new ReportWeatherMessage("weather_b", false, 20, false, 0));
+
+        a.await(WeatherStateMessage.class,
+                message -> message.world.equals("weather_a") && message.version == 1L, 5000L);
+        a.await(WeatherStateMessage.class,
+                message -> message.world.equals("weather_b") && message.version == 1L, 5000L);
+        assertEquals(1L, WorldWeatherManager.version("weather_a"));
+        assertEquals(1L, WorldWeatherManager.version("weather_b"));
+    }
+
+    @Test
+    void identicalWeatherDoesNotAdvanceVersion() throws Exception {
+        TestServerClient a = client("weather-dup");
+        String world = "weather_dup_world";
+        a.send(new ReportWeatherMessage(world, true, 6000, false, 0));
+        a.await(WeatherStateMessage.class,
+                message -> message.world.equals(world) && message.version == 1L, 5000L);
+
+        // Same flags, different timer: every server decrements its own timer, so
+        // this must not produce a second version/broadcast.
+        a.send(new ReportWeatherMessage(world, true, 5900, false, 0));
+        Thread.sleep(300L);
+        assertEquals(1L, WorldWeatherManager.version(world));
     }
 
     /**

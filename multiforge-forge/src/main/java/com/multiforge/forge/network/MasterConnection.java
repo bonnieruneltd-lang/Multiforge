@@ -29,6 +29,7 @@ import com.multiforge.protocol.messages.serverbound.ServerStartedMessage;
 import com.multiforge.protocol.messages.serverbound.SetChunkOwnerMessage;
 import com.multiforge.protocol.messages.serverbound.SetSecretMessage;
 import com.multiforge.protocol.messages.serverbound.ShutdownMessage;
+import com.multiforge.protocol.messages.serverbound.WeatherStateMessage;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
@@ -432,6 +433,17 @@ public final class MasterConnection extends ServerBoundMessageHandler {
         ChunkKey key = new ChunkKey(message.world, message.cx, message.cz);
         server.execute(() -> server.chunks().onHandoverComplete(
                 key, message.handoverId, message.success, message.owner, message.epoch));
+    }
+
+    /**
+     * Applies the master-sequenced weather state on the server thread.
+     *
+     * @param message versioned weather state
+     */
+    @Override
+    public void handle(WeatherStateMessage message) {
+        lastReply = System.currentTimeMillis();
+        server.world().onMasterWeather(message);
     }
 
     @Override

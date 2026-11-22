@@ -163,8 +163,8 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   needs a GPU machine, (4) the Radium/ServerCore profile decision and the Ksyxis `/forceload`
   reproduction. The fenced handover is implemented and live-verified
   (`compat/evidence/chunk-handover-20261122T035205Z.md`). Larger features still missing:
-  mob-navigation/raid/dragon/projectile handover beyond the current follow, the
-  MultiPaper-style proxy-side master plugin and a graphical `/multiforge map`.
+  raids, the dragon fight, the MultiPaper-style proxy-side master plugin and a graphical
+  `/multiforge map`.
 * Do not restart or rewrite working subsystems. Read `DEVELOPMENT_HANDOFF.md` for the
   session audit and `KNOWN_ISSUES.md` for the interaction findings (Timber 3.0, Radium ×
   ServerCore, Ksyxis × forceload, master region compression label).

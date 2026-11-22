@@ -55,4 +55,9 @@ public abstract class ServerBoundMessageHandler extends MessageHandler<ServerBou
      * @param message final result of a handover
      */
     public abstract void handle(ChunkHandoverCompleteMessage message);
+
+    /**
+     * @param message master-ordered weather state
+     */
+    public abstract void handle(WeatherStateMessage message);
 }

@@ -17,6 +17,7 @@ import com.multiforge.forge.peer.packet.GameRuleUpdatePacket;
 import com.multiforge.forge.peer.packet.HelloPacket;
 import com.multiforge.forge.peer.packet.KeepAlivePacket;
 import com.multiforge.forge.peer.packet.LevelDataUpdatePacket;
+import com.multiforge.forge.peer.packet.MobNavigationPacket;
 import com.multiforge.forge.peer.packet.PlayerCreatePacket;
 import com.multiforge.forge.peer.packet.PlayerEffectsUpdatePacket;
 import com.multiforge.forge.peer.packet.PlayerExperiencePacket;
@@ -112,6 +113,9 @@ public final class PeerProtocol {
         // Live tab-list display name / game-mode changes. Appended after every
         // earlier id; never reorder.
         add(PlayerListInfoPacket.class, PlayerListInfoPacket::new);
+        // Mob navigation/combat target carried across a fenced handover. Appended
+        // after every earlier id; never reorder.
+        add(MobNavigationPacket.class, MobNavigationPacket::new);
     }
 
     private PeerProtocol() {

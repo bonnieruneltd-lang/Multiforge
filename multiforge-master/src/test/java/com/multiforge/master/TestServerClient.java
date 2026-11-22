@@ -283,6 +283,11 @@ final class TestServerClient extends ServerBoundMessageHandler implements AutoCl
     }
 
     @Override
+    public void handle(com.multiforge.protocol.messages.serverbound.WeatherStateMessage message) {
+        record(message);
+    }
+
+    @Override
     public void handle(PlayerUpdateMessage message) {
         record(message);
     }

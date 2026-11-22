@@ -195,9 +195,10 @@ A full NBT resync when an entity crosses an ownership boundary is implemented
 (`EntitySyncManager.onChunkOwnershipGained` re-snapshots every entity of a newly owned
 chunk). The fenced handover also sends the old owner's live entity snapshots to the new owner
 before the fence, and a projectile crossing into a peer-owned chunk requests a handover so it
-keeps being simulated. Still missing: mob navigation handover, raids, the dragon fight and
-projectile ownership beyond the chunk/entity resync above. See [TODO.md](TODO.md) and
-[KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+keeps being simulated. Mob navigation is carried across the fence by
+`MobNavigationPacket`: the old owner sends the path destination, speed and combat target, and
+the new owner restarts the path (the path nodes are recomputed, not copied). Still missing:
+raids and the dragon fight. See [TODO.md](TODO.md) and [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## Players
 
@@ -268,7 +269,7 @@ projectile ownership beyond the chunk/entity resync above. See [TODO.md](TODO.md
 | Value | Packet | Conflict policy |
 | --- | --- | --- |
 | day time | `TimeSyncPacket` | forced changes always win; periodic updates only fix a server >1s behind |
-| rain/thunder + timers | `WeatherUpdatePacket` | last writer wins |
+| rain/thunder + timers | `WeatherUpdatePacket` (peer fallback) / `ReportWeatherMessage` + `WeatherStateMessage` (master) | master sequences every transition with a per-world version; peers fall back to last-writer-wins only while the master is down |
 | world border | `WorldBorderUpdatePacket` | last writer wins |
 | gamerules | `GameRuleUpdatePacket` | applied with a validated `/gamerule` command |
 | level data (difficulty, spawn) | `LevelDataUpdatePacket` | compact NBT subset, applied through the level API |
@@ -281,9 +282,15 @@ deliberately a subset (difficulty and spawn); it is not a second `level.dat` cha
 Time is broadcast every second. A packet carries game time and a force flag: a periodic
 update is only applied by a server that is more than a second behind, while a forced update
 (command, sleep) is always applied. This mirrors upstream and prevents another server's
-periodic broadcast from overwriting a `/time set`. Weather is broadcast only when the
+periodic broadcast from overwriting a `/time set`. Weather is reported only when the
 rain/thunder state flips or a timer jumps upwards; comparing decrementing timers every second
-would make every server rebroadcast forever.
+would make every server rebroadcast forever. While the master connection is live the report
+goes through `WorldWeatherManager`, which assigns a monotonically increasing version per world
+and broadcasts `WeatherStateMessage`; receivers apply only a newer version, so two simultaneous
+`/weather` commands cannot end in a different order on different servers. A server that
+connects receives the current state in the hello handshake, and a reconnecting server reports
+its local weather so a peer-fallback change made during the outage is not rolled back. The peer
+`WeatherUpdatePacket` remains the fallback while the master is unreachable.
 
 ## Files
 

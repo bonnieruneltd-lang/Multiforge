@@ -419,6 +419,7 @@ public final class MultiForgeServer {
         announce();
         entityIds.prefetch();
         world.invalidate();
+        world.onMasterReconnected();
         chunks.onMasterReconnected();
         files.onMasterReconnected();
         chunkIo.flushBacklog();

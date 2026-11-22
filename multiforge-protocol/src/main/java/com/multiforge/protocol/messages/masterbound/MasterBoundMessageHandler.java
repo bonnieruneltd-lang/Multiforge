@@ -104,4 +104,9 @@ public abstract class MasterBoundMessageHandler extends MessageHandler<MasterBou
      * @param message current owner's answer to a handover start
      */
     public abstract void handle(ChunkHandoverReadyMessage message);
+
+    /**
+     * @param message local weather transition to sequence
+     */
+    public abstract void handle(ReportWeatherMessage message);
 }

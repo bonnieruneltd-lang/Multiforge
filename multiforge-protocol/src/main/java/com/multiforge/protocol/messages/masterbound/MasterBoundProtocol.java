@@ -51,6 +51,7 @@ public class MasterBoundProtocol extends Protocol<MasterBoundMessage> {
         // Fenced chunk handover. Appended after every earlier id; never reorder.
         addMessage(RequestChunkHandoverMessage.class, RequestChunkHandoverMessage::new);
         addMessage(ChunkHandoverReadyMessage.class, ChunkHandoverReadyMessage::new);
+        addMessage(ReportWeatherMessage.class, ReportWeatherMessage::new);
     }
 
 }

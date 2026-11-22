@@ -133,6 +133,10 @@ public class ServerConnection extends MasterBoundMessageHandler {
 
         send(new SetSecretMessage(MultiForgeMaster.SECRET));
 
+        // Replay the master-sequenced weather so a server that joins mid-rain
+        // applies the same versioned state before its first poll.
+        WorldWeatherManager.replay(this);
+
         // A server that just connected does not know the addresses of peers that
         // started earlier (the master only broadcasts Start messages when a server
         // announces itself). Replay them so peer-to-peer chunk transfers work
@@ -347,6 +351,11 @@ public class ServerConnection extends MasterBoundMessageHandler {
     public void handle(ChunkHandoverReadyMessage message) {
         ChunkHandoverManager.ready(this, message.world, message.cx, message.cz,
                 message.handoverId, message.ready);
+    }
+
+    @Override
+    public void handle(ReportWeatherMessage message) {
+        ReportWeatherHandler.handle(this, message);
     }
 
     @Override

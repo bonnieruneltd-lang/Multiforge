@@ -53,6 +53,12 @@ client.on('end', (reason) => {
   console.log(`[bot] END ${reason}`);
   process.exit(0);
 });
+// Weather and game-mode changes delivered as game_state_change: reason 1 begins
+// rain, 2 ends rain, 3 changes game mode, 4 enters credits. The harness uses the
+// rain reasons to verify master-sequenced weather independently of RCON output.
+client.on('game_state_change', (packet) => {
+  console.log(`[bot] GAMESTATE reason=${packet.reason} value=${packet.gameMode}`);
+});
 
 net.createServer((socket) => {
   socket.setEncoding('utf8');

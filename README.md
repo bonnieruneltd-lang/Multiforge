@@ -43,7 +43,7 @@ integration tests and by running two real Forge servers against a master:
 | Player data, statistics, advancements through the master | implemented |
 | level.dat / uid.dat / shared files / real-time file sync | implemented (restored this session) |
 | User lists (whitelist/ops/bans) | file sync + live reload (no restart) |
-| Time, weather, gamerules, world border, difficulty/spawn sync | implemented (restored this session) |
+| Time, weather, gamerules, world border, difficulty/spawn sync | implemented; weather is master-sequenced with a per-world version and live-verified ([evidence](compat/evidence/weather-ordering-20261122T042413Z.md)); peer fallback while the master is down |
 | Cluster-wide chat | implemented |
 | Entity id block allocation | implemented, integration tested |
 | Recovery after master or server disconnects | implemented; master-outage backlog live-verified (47 chunks each, drained to 0, local region deleted and reloaded from the master) ([evidence](compat/evidence/offline-backlog-20261122T041340Z.md)) |

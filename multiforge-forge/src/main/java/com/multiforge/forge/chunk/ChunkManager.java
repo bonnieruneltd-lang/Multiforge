@@ -539,6 +539,7 @@ public final class ChunkManager {
         // owner simulated these entities; without this the new owner would resume
         // from its older mirror copy (visible for projectiles and mobs that moved).
         server.entities().sendChunkSnapshotsTo(key, newOwner);
+        server.entities().sendMobNavigationTo(key, newOwner);
         try {
             ((ChunkMapAccessor) level.getChunkSource().chunkMap).multiforge$save(chunk);
         } catch (RuntimeException e) {

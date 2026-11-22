@@ -110,11 +110,15 @@ backlog and is retried on the next reconnect. `/multiforge status` shows `local-
 
 ### 6. World state conflicts
 
-Time, weather, gamerules, difficulty, spawn and world border are peer-to-peer and use a
+Time, gamerules, difficulty, spawn and world border are peer-to-peer and use a
 last-writer-wins policy sampled once per second. Time is broadcast unconditionally every second
-(upstream behaviour), so it can jitter by a tick; weather is only broadcast on a state change
-or a timer reset, which avoids a feedback loop between servers that all decrement the timer.
-A visible flicker is possible if two admins change the same value within one second.
+(upstream behaviour), so it can jitter by a tick. Weather is master-sequenced while the master
+is connected: every transition gets a version and a receiver drops an older one, so two
+simultaneous changes converge; while the master is down the peer `WeatherUpdatePacket` fallback
+is still last-writer-wins. A visible flicker is possible if two admins change the same non-weather
+value within one second. Weather convergence was verified live with two bots
+(`compat/evidence/weather-ordering-20261122T042413Z.md`): the master advanced only the two
+semantic versions for a rain→clear sequence and both clients saw both transitions.
 
 ### 7. User list reload conflicts
 
@@ -298,10 +302,10 @@ acknowledged the upload. Remaining limits:
 * The owner refuses while a **real** local player is inside the chunk. If players from two
   servers stand in the same chunk, the current owner keeps it and the other server retries at
   the ownership-request interval, so blocks keep syncing but only one side ticks.
-* `ChunkMap.save` writes region, entity and POI data of that chunk, but mob navigation state is
-  not persisted by vanilla at all; a mob whose path crosses the border may stand still for a
-  tick after the handover. Raids, the dragon fight and projectile handover beyond the chunk
-  resync remain separate gaps (TODO 5).
+* `ChunkMap.save` writes region, entity and POI data of that chunk; mob navigation state is not
+  persisted by vanilla, so `MobNavigationPacket` carries the destination/speed/combat target
+  before the fence and the new owner recomputes the path. Raids and the dragon fight remain
+  separate gaps (TODO 5).
 * The mod-side freeze/save/ready path, the refusal path and the ten-second refusal backoff are
   verified live on two dev servers with headless bots
   (`compat/evidence/chunk-handover-20261122T035205Z.md`,
