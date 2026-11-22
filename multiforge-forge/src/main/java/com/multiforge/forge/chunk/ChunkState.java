@@ -76,6 +76,13 @@ public final class ChunkState {
     private final com.multiforge.protocol.util.SequenceTracker sequences =
             new com.multiforge.protocol.util.SequenceTracker(256);
 
+    /** Maximum number of sent updates kept per chunk for gap retransmission. */
+    public static final int RETRANSMIT_HISTORY = 128;
+
+    /** Sent updates of this chunk that a peer may still ask for. */
+    private final com.multiforge.protocol.util.RetransmitBuffer<com.multiforge.forge.peer.PeerPacket> retransmit =
+            new com.multiforge.protocol.util.RetransmitBuffer<>(RETRANSMIT_HISTORY);
+
     /** @return owning server name, or {@code null} */
     public String owner() {
         return owner;
@@ -217,6 +224,19 @@ public final class ChunkState {
     /** @return highest contiguous sequence received for the current epoch */
     public long contiguousSequence() {
         return sequences.contiguous();
+    }
+
+    /**
+     * Bounded history of sent block/block-entity updates of this chunk.
+     *
+     * <p>Lives on the chunk state instead of a separate map so the broadcast path
+     * does not need another concurrent lookup. Entries are dropped as peers
+     * acknowledge them; the buffer is cleared when the state is dropped.</p>
+     *
+     * @return retransmit history for this chunk
+     */
+    public com.multiforge.protocol.util.RetransmitBuffer<com.multiforge.forge.peer.PeerPacket> retransmitBuffer() {
+        return retransmit;
     }
 
     /** @return live set of servers that have the chunk loaded */

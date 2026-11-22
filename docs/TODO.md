@@ -271,3 +271,11 @@ and the segmented master region cache are done.
   extended `tools/compat/mcbot.js` commands (look/move/chat/use/attack). Limits: KNOWN_ISSUES
   5, 9 and 24. New unit tests: `SequenceTrackerTest`, `RetransmitBufferTest`,
   `BoundedTaskExecutorTest`.
+* **Bug hunt on the new protocol logic** found and fixed three defects: an evicted sequence
+  value could be applied twice when it was retransmitted (now remembered in a bounded evicted
+  history), the batched acknowledgement could drop one peer's value when ownership changed
+  within a tick (the previous peer is answered immediately), and the sequence window is now
+  tested by randomised property/recovery runs (`SequenceTrackerPropertyTest`,
+  `SequenceRecoveryRandomTest`) plus a concurrency stress run for the compression executor
+  (`BoundedTaskExecutorStressTest`). Optimisations from the same pass are listed in
+  PERFORMANCE.md section 4 item 4.

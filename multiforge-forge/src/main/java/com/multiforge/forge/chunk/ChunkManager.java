@@ -11,7 +11,6 @@ import com.multiforge.forge.peer.packet.EntityChunkChangedPacket;
 import com.multiforge.forge.peer.packet.SendChunkPacket;
 import com.multiforge.protocol.ChunkKey;
 import com.multiforge.protocol.util.BoundedTaskExecutor;
-import com.multiforge.protocol.util.RetransmitBuffer;
 import com.multiforge.protocol.util.SequenceTracker;
 import com.multiforge.protocol.messages.masterbound.ChunkChangedStatusMessage;
 import com.multiforge.protocol.messages.masterbound.LockChunkMessage;
@@ -89,6 +88,16 @@ public final class ChunkManager {
      * nothing.</p>
      */
     private final Map<ResourceKey<Level>, String> worldNames = new ConcurrentHashMap<>();
+    /**
+     * Last level and logical name returned by {@link #worldName(ServerLevel)}.
+     *
+     * <p>Entities of one level tick consecutively, so a single-entry cache removes
+     * the {@link ConcurrentHashMap} lookup from the per-entity-tick path. The name
+     * is written before the level, so a reader that sees the matching level also
+     * sees the matching name; both fields are volatile for that reason.</p>
+     */
+    private volatile ServerLevel cachedWorldLevel;
+    private volatile String cachedWorldName;
     private final ThreadLocal<Boolean> applyingRemote = ThreadLocal.withInitial(() -> Boolean.FALSE);
     private final Set<BlockEntity> pendingBlockEntities = ConcurrentHashMap.newKeySet();
     /**
@@ -102,9 +111,6 @@ public final class ChunkManager {
     private final java.util.concurrent.atomic.AtomicInteger chunksWithEntitySubscribers =
             new java.util.concurrent.atomic.AtomicInteger();
 
-    /** Maximum number of sent updates kept per chunk for gap retransmission. */
-    private static final int OUTBOX_CAPACITY = 128;
-
     /** Gap detections on the received block/block-entity stream, for `/multiforge status`. */
     private final java.util.concurrent.atomic.AtomicLong sequenceGaps =
             new java.util.concurrent.atomic.AtomicLong();
@@ -117,17 +123,10 @@ public final class ChunkManager {
      * Received updates waiting to be acknowledged, at most one per chunk.
      *
      * <p>Acknowledging once per chunk per tick keeps the cost proportional to the
-     * number of changed chunks instead of the number of changed blocks.</p>
+     * number of changed chunks instead of the number of changed blocks. Only the
+     * server thread touches this map (through {@code queueAck} and {@code flushAcks}).</p>
      */
     private final Map<ChunkKey, PendingAck> pendingAcks = new ConcurrentHashMap<>();
-
-    /**
-     * Bounded history of sent block/block-entity updates per chunk.
-     *
-     * <p>Only entries above the peer's highest contiguous acknowledgement are
-     * retransmitted, so a healthy connection normally keeps nothing.</p>
-     */
-    private final Map<ChunkKey, RetransmitBuffer<PeerPacket>> outbox = new ConcurrentHashMap<>();
 
     /**
      * Compression pool for peer chunk replies.
@@ -230,7 +229,6 @@ public final class ChunkManager {
         }
         if (state.isIdle()) {
             states.remove(key, state);
-            outbox.remove(key);
             pendingAcks.remove(key);
         }
     }
@@ -633,7 +631,7 @@ public final class ChunkManager {
         long sequence = chunkState.nextSequence(epoch);
         BlockChangePacket packet = new BlockChangePacket(
                 key.getName(), pos.getX(), pos.getY(), pos.getZ(), Block.getId(state), epoch, sequence);
-        recordForRetransmit(key, epoch, sequence, packet);
+        recordForRetransmit(chunkState, epoch, sequence, packet);
         server.peers().broadcast(packet);
     }
 
@@ -706,7 +704,7 @@ public final class ChunkManager {
         BlockEntityUpdatePacket packet = new BlockEntityUpdatePacket(
                 key.getName(), pos.getX(), pos.getY(), pos.getZ(),
                 blockEntity.saveWithFullMetadata(), epoch, sequence);
-        recordForRetransmit(key, epoch, sequence, packet);
+        recordForRetransmit(chunkState, epoch, sequence, packet);
         server.peers().broadcast(packet);
     }
 
@@ -836,11 +834,11 @@ public final class ChunkManager {
      */
     public void onSequenceAck(ChunkSequenceAckPacket packet, PeerConnection connection) {
         ChunkKey key = new ChunkKey(packet.world, packet.x, packet.z);
-        RetransmitBuffer<PeerPacket> buffer = outbox.get(key);
-        if (buffer == null) {
+        ChunkState state = states.get(key);
+        if (state == null) {
             return;
         }
-        List<PeerPacket> missing = buffer.acknowledge(packet.epoch, packet.contiguous);
+        List<PeerPacket> missing = state.retransmitBuffer().acknowledge(packet.epoch, packet.contiguous);
         if (missing.isEmpty()) {
             return;
         }
@@ -867,15 +865,19 @@ public final class ChunkManager {
             return;
         }
         long contiguous = current.contiguousSequence();
-        pendingAcks.merge(key, new PendingAck(connection, epoch, contiguous), (old, candidate) -> {
-            if (candidate.epoch > old.epoch) {
-                return candidate;
-            }
-            if (candidate.epoch < old.epoch) {
-                return old;
-            }
-            return candidate.contiguous >= old.contiguous ? candidate : old;
-        });
+        PendingAck existing = pendingAcks.get(key);
+        if (existing == null) {
+            pendingAcks.put(key, new PendingAck(connection, epoch, contiguous));
+            return;
+        }
+        if (existing.connection != connection) {
+            // The chunk changed owner within one tick. Answer the previous peer now
+            // instead of dropping its acknowledgement, then track the new one.
+            existing.send(key);
+            pendingAcks.put(key, new PendingAck(connection, epoch, contiguous));
+            return;
+        }
+        existing.merge(epoch, contiguous);
     }
 
     /** Sends the batched acknowledgements. Called once per tick on the server thread. */
@@ -885,28 +887,23 @@ public final class ChunkManager {
         }
         for (Map.Entry<ChunkKey, PendingAck> entry : pendingAcks.entrySet()) {
             PendingAck ack = pendingAcks.remove(entry.getKey());
-            if (ack == null || !ack.connection.isActive()) {
-                continue;
+            if (ack != null) {
+                ack.send(entry.getKey());
             }
-            ChunkKey key = entry.getKey();
-            ack.connection.send(new ChunkSequenceAckPacket(
-                    key.getName(), key.getX(), key.getZ(), ack.epoch, ack.contiguous));
         }
     }
 
     /**
      * Remembers a sent update so a peer can ask for it again.
      *
-     * @param key      chunk
+     * @param state    chunk state holding the bounded history
      * @param epoch    ownership epoch of the update
      * @param sequence sequence number of the update
      * @param packet   update to resend on request
      */
-    private void recordForRetransmit(ChunkKey key, long epoch, long sequence, PeerPacket packet) {
-        RetransmitBuffer<PeerPacket> buffer = outbox.computeIfAbsent(
-                key, ignored -> new RetransmitBuffer<>(OUTBOX_CAPACITY));
-        if (buffer.record(epoch, sequence, packet) > 0) {
-            LOGGER.debug("Retransmit history for {} overflowed; the oldest update was dropped", key);
+    private void recordForRetransmit(ChunkState state, long epoch, long sequence, PeerPacket packet) {
+        if (state.retransmitBuffer().record(epoch, sequence, packet) > 0) {
+            LOGGER.debug("Retransmit history of a chunk overflowed; the oldest update was dropped");
         }
     }
 
@@ -1048,8 +1045,15 @@ public final class ChunkManager {
      * @return logical world name of the level
      */
     public String worldName(ServerLevel level) {
-        return worldNames.computeIfAbsent(level.dimension(),
+        String cached = cachedWorldName;
+        if (cached != null && cachedWorldLevel == level) {
+            return cached;
+        }
+        String name = worldNames.computeIfAbsent(level.dimension(),
                 ignored -> WorldDirectories.worldName(level));
+        cachedWorldName = name;
+        cachedWorldLevel = level;
+        return name;
     }
 
     /**
@@ -1094,8 +1098,9 @@ public final class ChunkManager {
         unsubscribeAtTick.clear();
         lastOwnershipRequest.clear();
         worldNames.clear();
+        cachedWorldName = null;
+        cachedWorldLevel = null;
         pendingAcks.clear();
-        outbox.clear();
         keyCache.clear();
         chunksWithEntitySubscribers.set(0);
     }
@@ -1103,19 +1108,37 @@ public final class ChunkManager {
     /**
      * Acknowledgement waiting for the next tick.
      *
-     * <p>Only the newest epoch and the highest contiguous value per chunk are
-     * kept: acknowledging a value twice is harmless but wasteful.</p>
+     * <p>Only the newest epoch and the highest contiguous value per chunk are kept:
+     * acknowledging a value twice is harmless but wasteful. The instance is reused
+     * and mutated on the server thread, so a busy chunk does not allocate one
+     * object per update.</p>
      */
     private static final class PendingAck {
 
-        private final PeerConnection connection;
-        private final long epoch;
-        private final long contiguous;
+        private PeerConnection connection;
+        private long epoch;
+        private long contiguous;
 
         private PendingAck(PeerConnection connection, long epoch, long contiguous) {
             this.connection = connection;
             this.epoch = epoch;
             this.contiguous = contiguous;
+        }
+
+        private void merge(long candidateEpoch, long candidateContiguous) {
+            if (candidateEpoch > epoch) {
+                epoch = candidateEpoch;
+                contiguous = candidateContiguous;
+            } else if (candidateEpoch == epoch && candidateContiguous > contiguous) {
+                contiguous = candidateContiguous;
+            }
+        }
+
+        private void send(ChunkKey key) {
+            if (connection.isActive()) {
+                connection.send(new ChunkSequenceAckPacket(
+                        key.getName(), key.getX(), key.getZ(), epoch, contiguous));
+            }
         }
     }
 }

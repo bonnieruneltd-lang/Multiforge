@@ -77,6 +77,19 @@ class SequenceTrackerTest {
     }
 
     @Test
+    void anEvictedValueIsStillRecognisedAsDuplicateWhenItArrivesAgain() {
+        SequenceTracker tracker = new SequenceTracker(2);
+        tracker.observe(1L, 1L);
+        assertEquals(SequenceTracker.Result.GAP, tracker.observe(1L, 3L));
+        assertEquals(SequenceTracker.Result.GAP, tracker.observe(1L, 5L));
+        // The window now holds two values; the next gap evicts the highest one.
+        assertEquals(SequenceTracker.Result.GAP, tracker.observe(1L, 7L));
+        assertEquals(2, tracker.pending());
+        assertEquals(SequenceTracker.Result.DUPLICATE, tracker.observe(1L, 7L),
+                "a value that was applied once must never be applied twice, even after eviction");
+    }
+
+    @Test
     void resetForgetsEverything() {
         SequenceTracker tracker = new SequenceTracker(8);
         tracker.observe(2L, 1L);

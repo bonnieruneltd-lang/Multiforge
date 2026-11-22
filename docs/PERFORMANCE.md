@@ -168,6 +168,12 @@ disposable world and two Forge servers are required).
    owner are rejected by `SequenceTracker`, gaps are acknowledged with
    `ChunkSequenceAckPacket` and retransmitted from a 128-entry `RetransmitBuffer` per chunk.
    Limits: KNOWN_ISSUES 24. This was a correctness feature, not a speed one.
+4. **Follow-up hot-path tweaks** - `worldName(level)` keeps a single volatile level/name pair,
+   so the per-entity tick no longer performs a `ConcurrentHashMap` lookup (entities of one
+   level tick consecutively). The retransmit history moved from a `Map<ChunkKey, ...>` onto
+   `ChunkState`, removing one lookup per broadcast, and the batched acknowledgement reuses one
+   mutable `PendingAck` per chunk instead of allocating per update. `SequenceTracker` skips the
+   `contains` calls while both receive sets are empty, which is the normal case.
 4. ~~Inline `Inflater` per peer connection~~ - done. `PeerFrameCodec.Decoder` and
    `Encoder` keep one resettable `Inflater`/`Deflater` per connection and end them
    when the handler is removed, instead of allocating native compressor state per

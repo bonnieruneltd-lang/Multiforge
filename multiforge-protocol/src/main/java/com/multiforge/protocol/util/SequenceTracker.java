@@ -46,6 +46,17 @@ public final class SequenceTracker {
     /** Maximum number of out-of-order sequence numbers kept per chunk. */
     private final int window;
 
+    /**
+     * Number of values that were evicted from the receive window but are still
+     * remembered for duplicate detection.
+     *
+     * <p>Evicted values have been applied once. Without remembering them, a
+     * retransmission of an evicted value would look like a new gap and be applied
+     * twice. The history is small and bounded; a value older than this is treated
+     * as new, which only costs a redundant idempotent update.</p>
+     */
+    public static final int EVICTED_HISTORY = 1024;
+
     /** Current ownership epoch of this tracker. */
     private long epoch;
 
@@ -57,6 +68,9 @@ public final class SequenceTracker {
 
     /** Received values above {@link #contiguous}, bounded by {@link #window}. */
     private final TreeSet<Long> ahead = new TreeSet<>();
+
+    /** Applied values evicted from {@link #ahead}, still duplicate-checked. */
+    private final TreeSet<Long> evicted = new TreeSet<>();
 
     /** @param window maximum number of out-of-order values to remember */
     public SequenceTracker(int window) {
@@ -79,6 +93,7 @@ public final class SequenceTracker {
             nextOutgoing = 1L;
             contiguous = 0L;
             ahead.clear();
+            evicted.clear();
         }
         return nextOutgoing++;
     }
@@ -105,8 +120,11 @@ public final class SequenceTracker {
             epoch = packetEpoch;
             contiguous = 0L;
             ahead.clear();
+            evicted.clear();
         }
-        if (sequence <= contiguous || ahead.contains(sequence)) {
+        if (sequence <= contiguous
+                || (!ahead.isEmpty() && ahead.contains(sequence))
+                || (!evicted.isEmpty() && evicted.contains(sequence))) {
             return Result.DUPLICATE;
         }
         ahead.add(sequence);
@@ -118,9 +136,25 @@ public final class SequenceTracker {
             // Do not grow without bound when a sender never fills the hole; the
             // sender retransmits from its buffer, so forgetting the furthest
             // value only delays it until the next acknowledgement.
-            ahead.pollLast();
+            rememberEvicted(ahead.pollLast());
         }
         return Result.GAP;
+    }
+
+    /**
+     * Remembers a value that leaves the receive window so it is still recognised
+     * as a duplicate when a retransmission arrives.
+     *
+     * @param sequence evicted sequence number
+     */
+    private void rememberEvicted(Long sequence) {
+        if (sequence == null) {
+            return;
+        }
+        evicted.add(sequence);
+        while (evicted.size() > EVICTED_HISTORY) {
+            evicted.pollFirst();
+        }
     }
 
     private void advance() {
@@ -137,6 +171,7 @@ public final class SequenceTracker {
         nextOutgoing = 1L;
         contiguous = 0L;
         ahead.clear();
+        evicted.clear();
     }
 
     /** @return current ownership epoch known to this tracker */

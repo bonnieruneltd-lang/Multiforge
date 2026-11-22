@@ -265,10 +265,13 @@ Every block and block-entity update carries a per-chunk sequence number, and the
 acknowledges the highest contiguous value per chunk per tick. The sender remembers the last
 128 updates per chunk (`RetransmitBuffer`); a gap that is more than 128 updates old cannot be
 filled from memory, is logged once per gap and stays until the chunk is loaded again from the
-master/owner copy. On a single TCP connection packets are ordered and complete, so a gap
-indicates a reconnect during which the owner kept sending, or a software defect; the counter
-is visible as `seq gaps=` in `/multiforge status`. Pending acknowledgements are dropped at
-shutdown, which is harmless because a restarting peer reloads chunks from the cluster.
+master/owner copy. The receiver remembers the last 1024 values it had to evict from its
+out-of-order window so a retransmission of an already applied value is still recognised as a
+duplicate instead of being applied twice (`SequenceTracker.EVICTED_HISTORY`). On a single TCP
+connection packets are ordered and complete, so a gap indicates a reconnect during which the
+owner kept sending, or a software defect; the counter is visible as `seq gaps=` in
+`/multiforge status`. Pending acknowledgements are dropped at shutdown, which is harmless
+because a restarting peer reloads chunks from the cluster.
 
 ## Fixed issues worth knowing about (regression tests cover them)
 
