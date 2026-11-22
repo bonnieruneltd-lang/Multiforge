@@ -330,11 +330,14 @@ two processes.
 * **Mod profiles closed:** Ksyxis 1.4.6 did not reproduce the `/forceload` ticket loss on
   47.4.29; Radium/ServerCore and BetterAutoSave are documented deployment choices
   (`docs/COMPATIBILITY_PROFILES.md`, `compat/evidence/mod-profile-20261122T070103Z.md`).
-* **Client matrix runner validated:** `tools/compat/run_client_matrix.sh --allow-software` completed
-  a production-client run on this tree under Xvfb/llvmpipe: `Verdict: STARTED`, all client mods
-  loaded, `BSL_v10.1.8.zip` `VERIFIED` with no shader compile error
-  (`compat/evidence/client-matrix-20261122T080046Z.md`). Software GL cannot close the client
-  rows; a hardware-GPU run is the remaining validation step.
+* **Client matrix runner validated and extended:** `tools/compat/run_client_matrix.sh --allow-software`
+  completed a production-client run on this tree under Xvfb/llvmpipe: `Verdict: STARTED`, all
+  client mods loaded, `BSL_v10.1.8.zip` `VERIFIED` with no shader compile error
+  (`compat/evidence/client-matrix-20261122T080046Z.md`). The client was then driven in-world
+  with `xdotool` and screenshots: Entity Culling's F3 counters showed 36 rendered / 741 skipped
+  entities and RRLS removed the resource-reload overlay, moving both rows to FUNCTIONAL
+  (`client-functional-checks-20261122T083000Z.md`). Shader fidelity and the remaining
+  performance/visual rows still need a hardware GPU.
 * **Proxy plugins (core parity) — complete:** `multiforge-velocity` and `multiforge-bungee`
   embed the master in the proxy and balance by tick time. Velocity was verified with two
   backends and a balanced client (`velocity-plugin-20261122T080834Z.md`); Waterfall 1.20 (the

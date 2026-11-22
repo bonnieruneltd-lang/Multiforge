@@ -7,7 +7,7 @@ The 15 client targets in `compat/required-mods.json` hook rendering directly
 `cluster_check.py` and `player_state_check.py` can prove that a jar loads, but they
 cannot prove that a frame is drawn, that a shader pack compiles, or that a mixin into
 `LevelRenderer` still applies. A production-client run has launched all 15 targets under
-software GL (4 FUNCTIONAL, 11 PARTIAL; see
+software GL (6 FUNCTIONAL, 9 PARTIAL; see
 [`REQUIRED_MOD_COMPATIBILITY.md`](REQUIRED_MOD_COMPATIBILITY.md)); the PARTIAL rows need a
 hardware GPU to finish.
 

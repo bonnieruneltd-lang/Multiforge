@@ -6,7 +6,7 @@ where it belongs, what was executed against it and what is still unverified.
 
 **Current result: all 35 targets exercised on this build. Server deployment: 20/20 installed,
 started and player-checked (5 FUNCTIONAL, 11 PARTIAL, 4 LOADING). Client: 15/15 launched in a
-production Forge client under Xvfb/llvmpipe (4 FUNCTIONAL, 11 PARTIAL, 0 NOT TESTED).**
+production Forge client under Xvfb/llvmpipe (6 FUNCTIONAL, 9 PARTIAL, 0 NOT TESTED).**
 The player-driven server run is `compat/evidence/gameplay-mods-20261122T043800Z.md`; the client
 run is `compat/evidence/client-matrix-20261122T052900Z.md`.
 Read the status column before quoting a number. The deployment this document supports is a
@@ -101,12 +101,12 @@ full verdict. Evidence: `compat/evidence/client-matrix-20261122T052900Z.md`.
 | 5 | Cull Leaves | mod, `cullleaves` | 4.1.1+1.20.1-forge | `cullleaves-forge-4.1.1+1.20.1.jar` | — | PARTIAL | Loaded with the full set and reached the world; leaf-face culling was not visually asserted. |
 | 6 | Dynamic FPS | mod, `dynamic_fps` | 3.11.4 | `dynamic-fps-3.11.4+minecraft-1.20.0-forge.jar` | — | PARTIAL | Loaded and generated its config; background FPS throttling was not measured headlessly. |
 | 7 | Embeddium | mod, `embeddium` | 0.3.31+mc1.20.1 | `embeddium-0.3.31+mc1.20.1.jar` | — | FUNCTIONAL | `OpenGL Renderer: llvmpipe`, `OpenGL Version: 4.5 (Core Profile)`; the renderer initialized and the client joined the world. |
-| 8 | Entity Culling | mod, `entityculling` | 1.11.3 | `entityculling-forge-1.11.3-mc1.20.1.jar` | — | PARTIAL | Loaded and reached the world with MultiForge's mirrored entities; culling of those entities was not visually asserted. |
+| 8 | Entity Culling | mod, `entityculling` | 1.11.3 | `entityculling-forge-1.11.3-mc1.20.1.jar` | — | FUNCTIONAL | In-world F3 shows `[Culling] Rendered Entities: 36 Skipped: 741` and `Ticked Entities: 19 Skipped: 741`, including MultiForge's mirrored entities; culling is active (`compat/evidence/client-f3-entity-culling-20261122T083000Z.png`). |
 | 9 | ImmediatelyFast | mod, `immediatelyfast` | 1.5.5+1.20.4-forge | `ImmediatelyFast-Forge-1.5.5+1.20.4.jar` | — | FUNCTIONAL | Initialized on llvmpipe with OpenGL 4.5 and enabled its Oculus compatibility; the client joined and rendered the world. |
 | 10 | Kerria | mod, `kerria` | 1.3.2+1.20.1-forge | `Kerria-1.3.2+1.20.1-forge.jar` | — | PARTIAL | Loaded with the full set and reached the world; its texture/memory optimization was not measured. |
 | 11 | Optimized Block Entities [OBE] | mod, `obe` | 1.2.1-patch.3 | `obe+1.20.1-forge-1.2.1-patch.3-srg.jar` | — | PARTIAL | Loaded with the full set and reached the world; rendering of MultiForge-synced block entities was not inspected visually. |
 | 12 | Oculus | mod, `oculus` | 1.20.1-1.8.0 | `oculus-mc1.20.1-1.8.0.jar` | Embeddium | FUNCTIONAL | Detected OpenGL 4.5, enabled DSA, loaded BSL and created the overworld pipeline in-world. |
-| 13 | Remove Reloading Screen | mod, `rrls` | 4.0.6.1+mc1.20.1-forge | `rrls-4.0.6.1+mc1.20.1-forge.jar` | — | PARTIAL | Loaded with the full set; the server-switch loading overlay was not exercised in the headless session. |
+| 13 | Remove Reloading Screen | mod, `rrls` | 4.0.6.1+mc1.20.1-forge | `rrls-4.0.6.1+mc1.20.1-forge.jar` | — | FUNCTIONAL | `F3+T` reloaded resources in-world with no "Reloading Resource Packs" overlay and the world kept rendering; the debug line `Reloaded resource packs` appeared (`compat/evidence/client-f3-rrls-20261122T083000Z.png`). The server-switch overlay was not exercised. |
 | 14 | Embeddium (Rubidium) Extra | mod `embeddium_extra` | 0.5.4.4+mc1.20.1-build.131 | `rubidium-extra-0.5.4.4+mc1.20.1-build.131.jar` | Embeddium | PARTIAL | Loaded and configured alongside Embeddium; no duplicate-mixin crash, options behaviour not asserted. |
 | 15 | Sildur's Vibrant Shaders (Lite) | shader pack | 2.02 | `Sildur's Vibrant Shaders v2.02 Lite.zip` | Oculus | PARTIAL | Selected by Oculus, but the client terminated at login under llvmpipe; needs a hardware GPU for the full verdict. |
 
@@ -184,7 +184,7 @@ change the support matrix and must not be hidden:
 
 | Area | Remaining work |
 | --- | --- |
-| Client mods (15) | The production client run covered launch, mod load, in-world join, Embeddium/Oculus/BSL, ImmediatelyFast and the Anti Cords pack. Remaining: hardware-GPU visual verification of Complementary/Sildur pipelines, culling correctness, Dynamic FPS throttling and RRLS server switches. |
+| Client mods (15) | The production client run covered launch, mod load, in-world join, Embeddium/Oculus/BSL, ImmediatelyFast, Entity Culling and RRLS resource reloads. Remaining: hardware-GPU visual verification of Complementary/Sildur pipelines, Cull Leaves, Dynamic FPS throttling, Kerria/OBE/BadOptimizations performance and the RRLS server-switch overlay. |
 | Server gameplay | End-to-end minecart transport, player-head drops, combat-log punishment and AntiXray packet obfuscation still need player-driven checks. Tree felling, leaf decay, TPA (same-server), chat formatting, anti-seed `/seed`, natural item merging and the minecart speed/forceload branch are covered by `compat/evidence/gameplay-mods-20261122T043800Z.md`. |
 | Cross-server gameplay | Chunk ownership transfer while a player walks, player mirroring (see `compat/evidence/player-mirroring-20261115T030505Z.md`), inventory sync (TODO 3), server switch and reconnect. |
 | Radium/ServerCore | Resolved as a documented deployment choice: `docs/COMPATIBILITY_PROFILES.md` (radium / servercore / both), because mixin priorities are static. |

@@ -163,7 +163,7 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   `compat/evidence/server-features-20261121T065500Z.md` and the 18/18 deployment run in
   `compat/evidence/cluster-20261121T072841Z.md`. Details in TODO.md items 9, 11, 16, 17, 19
   and KNOWN_ISSUES.md.
-* Highest-value next work: (1) hardware-GPU visual checks for the 11 PARTIAL client rows
+* Highest-value next work: (1) hardware-GPU visual checks for the 9 PARTIAL client rows
   (Complementary/Sildur pipelines, culling, Dynamic FPS, RRLS), (2) extend the player-driven
   harness (`tools/compat/mcbot.js` now sends look/move/chat/use/attack in addition to the
   hotbar slot) into gameplay checks for the remaining 4 LOADING server rows. The fenced
