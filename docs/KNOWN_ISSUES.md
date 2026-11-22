@@ -312,6 +312,10 @@ cluster.
   `ContainerClickPacket` created `new ArrayList<>(readVarInt())` before looking at the frame.
   Both are bounded by the remaining bytes (and a 4096-entry cap) now, like the master protocol
   arrays.
+* The data-stream manager buffered frames for every unknown stream id without a global limit, so
+  a peer could create millions of one-frame streams. Unknown streams are capped at 1024 and
+  their total buffered bytes at 64 MiB (`DataStreamManager.MAX_PENDING_STREAMS`,
+  `MAX_TOTAL_PENDING_BYTES`); `DataStreamTest` covers both.
 * A fallback `ChunkStorage` created by `LocalChunkStorage` was registered by the constructor
   mixin, so a local backup write (or a read fallback while the master was up) re-entered
   `ChunkSyncIo` and would recurse until the stack overflowed. The instance is unregistered

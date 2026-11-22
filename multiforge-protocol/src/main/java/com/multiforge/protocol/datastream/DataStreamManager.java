@@ -32,10 +32,16 @@ public class DataStreamManager<T extends Message> {
     private static final int MAX_PENDING_FRAMES = 1024;
     /** Maximum buffered bytes per unknown stream. */
     private static final long MAX_PENDING_BYTES = 32L * 1024 * 1024;
+    /** Maximum number of unknown stream ids buffered at once. */
+    static final int MAX_PENDING_STREAMS = 1024;
+    /** Maximum buffered bytes across all unknown streams. */
+    static final long MAX_TOTAL_PENDING_BYTES = 64L * 1024 * 1024;
 
     private final AtomicInteger streamIdIncrementer = new AtomicInteger(1);
     final Map<Integer, InboundDataStream> inboundDataStreams = new ConcurrentHashMap<>();
     private final Map<Integer, PendingFrames> pendingFrames = new ConcurrentHashMap<>();
+    /** Sum of {@link PendingFrames#bytes()} for every buffered stream; guarded by {@link #streamLock}. */
+    private long pendingBytes;
     /** Guards stream registration and dispatch so no frame can be lost or reordered. */
     private final Object streamLock = new Object();
     private final MessageHandler<T> messageHandler;
@@ -84,6 +90,7 @@ public class DataStreamManager<T extends Message> {
             inboundDataStreams.put(streamId, stream);
             PendingFrames pending = pendingFrames.remove(streamId);
             if (pending != null) {
+                pendingBytes -= pending.bytes();
                 for (byte[] frame : pending.frames) {
                     stream.doData(frame);
                 }
@@ -106,10 +113,24 @@ public class DataStreamManager<T extends Message> {
                 return;
             }
 
-            PendingFrames pending = pendingFrames.computeIfAbsent(streamId, ignored -> new PendingFrames());
+            PendingFrames pending = pendingFrames.get(streamId);
+            if (pending == null) {
+                if (pendingFrames.size() >= MAX_PENDING_STREAMS) {
+                    throw new IllegalStateException("Too many unknown data streams buffered");
+                }
+                pending = new PendingFrames();
+                pendingFrames.put(streamId, pending);
+            }
             if (!pending.offer(data)) {
                 pendingFrames.remove(streamId, pending);
+                pendingBytes -= pending.bytes();
                 throw new IllegalStateException("Too much data buffered for unknown stream " + streamId);
+            }
+            pendingBytes += data.length;
+            if (pendingBytes > MAX_TOTAL_PENDING_BYTES) {
+                pendingFrames.remove(streamId, pending);
+                pendingBytes -= pending.bytes();
+                throw new IllegalStateException("Too much data buffered for unknown data streams");
             }
         }
     }
@@ -137,6 +158,10 @@ public class DataStreamManager<T extends Message> {
             frames.addLast(frame);
             bytes += frame.length;
             return true;
+        }
+
+        private synchronized long bytes() {
+            return bytes;
         }
     }
 }

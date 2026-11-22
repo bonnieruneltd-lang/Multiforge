@@ -16,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests the data stream implementation in isolation.
@@ -107,6 +108,38 @@ class DataStreamTest {
         }
         assertEquals(1, frames.size(), "exactly one data frame is needed for 64 KiB");
         assertArrayEquals(payload, frames.get(0));
+    }
+
+    @Test
+    void unknownStreamIdsAreBounded() {
+        DataStreamManager<TestMessage> manager = new DataStreamManager<>(null);
+        int accepted = 0;
+        try {
+            for (int id = 0; id < DataStreamManager.MAX_PENDING_STREAMS + 10; id++) {
+                manager.handleInboundData(id, new byte[0]);
+                accepted++;
+            }
+            fail("unknown stream ids must be bounded");
+        } catch (IllegalStateException expected) {
+            assertEquals(DataStreamManager.MAX_PENDING_STREAMS, accepted);
+        }
+    }
+
+    @Test
+    void totalBufferedBytesAreBounded() {
+        DataStreamManager<TestMessage> manager = new DataStreamManager<>(null);
+        byte[] frame = new byte[1024 * 1024];
+        long buffered = 0;
+        int streams = 0;
+        try {
+            while (buffered <= DataStreamManager.MAX_TOTAL_PENDING_BYTES) {
+                manager.handleInboundData(streams++, frame);
+                buffered += frame.length;
+            }
+            fail("the total buffered inbound data must be bounded");
+        } catch (IllegalStateException expected) {
+            assertEquals(DataStreamManager.MAX_TOTAL_PENDING_BYTES, buffered);
+        }
     }
 
     /** Minimal handler that knows how to build data stream messages. */
