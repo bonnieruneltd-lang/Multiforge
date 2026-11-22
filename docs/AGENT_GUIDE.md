@@ -77,6 +77,7 @@ touching code, then read the architecture document of the subsystem you change.
 ./gradlew :multiforge-protocol:test    # 72 tests
 ./gradlew :multiforge-master:test      # 56 integration tests
 ./gradlew :multiforge-api:test :multiforge-example:test   # 4 + 3 tests
+tools/ci/live_cluster.sh               # master + two servers + bots + both harnesses
 ```
 
 For changes to chunk IO, ownership or player handling also run a live cluster (DEVELOPMENT.md)
@@ -166,12 +167,13 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   (`tools/compat/mcbot.js` now sends look/move/chat/use/attack in addition to the hotbar slot)
   into gameplay checks for the remaining 4 LOADING server rows, (3) hardware-GPU visual
   checks for the 11 PARTIAL client rows (Complementary/Sildur pipelines, culling, Dynamic FPS,
-  RRLS), (4) the Radium/ServerCore profile decision and the Ksyxis `/forceload` reproduction.
-  The fenced handover and both fight types are implemented and live-verified
+  RRLS). The fenced handover and both fight types are implemented and live-verified
   (`compat/evidence/chunk-handover-20261122T035205Z.md`,
-  `compat/evidence/fight-sync-20261122T064859Z.md`, 12/12). Larger features still missing: the
-  MultiPaper-style proxy-side master plugin. A graphical map is optional: upstream `/mpmap` is
-  textual and the text variant (`/multiforge map`) is implemented.
+  `compat/evidence/fight-sync-20261122T064859Z.md`, 12/12), and `tools/ci/live_cluster.sh`
+  reproduces the 18/18 + fight run in one command. Radium/ServerCore and Ksyxis are closed as
+  documented deployment profiles (`docs/COMPATIBILITY_PROFILES.md`). Larger features still
+  missing: the MultiPaper-style proxy-side master plugin. A graphical map is optional: upstream
+  `/mpmap` is textual and the text variant (`/multiforge map`) is implemented.
 * Do not restart or rewrite working subsystems. Read `DEVELOPMENT_HANDOFF.md` for the
   session audit and `KNOWN_ISSUES.md` for the interaction findings (Timber 3.0, Radium ×
   ServerCore, Ksyxis × forceload, master region compression label).

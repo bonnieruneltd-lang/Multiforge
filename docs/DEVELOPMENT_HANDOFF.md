@@ -306,12 +306,18 @@ two processes.
   including the four new ones (`RaidMixin`, `RaidsAccessor`, `EndDragonFightMixin`,
   `RaidAccessor`), and no `FightSyncManager` exception during the run.
 * **Live verified on a master + two dev servers (session 7):** the fresh cluster harness passed
-  18/18 (`compat/evidence/cluster-20261122T064320Z.md`). The new
-  `tools/compat/fight_sync_check.py` passed 12/12 (`compat/evidence/fight-sync-20261122T064859Z.md`):
-  both servers reported the same dragon UUID/portal/phase and the same raid id/wave with
-  exactly one `local=true`; moving the owner's bot away and the other bot in advanced the
-  ownership epoch twice for each fight (raid 7→8→9, dragon 5→6→7) while preserving the state.
-  The new `/multiforge fights` command made this observable.
+  18/18 (`compat/evidence/cluster-20261122T065754Z.md`). The new
+  `tools/compat/fight_sync_check.py` passed 12/12 (`compat/evidence/fight-sync-20261122T064859Z.md`)
+  and 7/7 on a fresh world without a raid (`fight-sync-20261122T065818Z.md`): both servers
+  reported the same dragon UUID/portal/phase and the same raid id/wave with exactly one
+  `local=true`; moving the owner's bot away and the other bot in advanced the ownership epoch
+  twice for each fight (raid 7→8→9, dragon 5→6→7) while preserving the state.
+* **Repeatable:** `tools/ci/live_cluster.sh` boots the master, both dev servers and the bots,
+  runs both harnesses and shuts everything down (exit 0 only on success); the GitHub Actions
+  template is `tools/ci/live-cluster-workflow.yml`. A full run passed 18/18 + 7/7 in ~3 minutes.
+* **Mod profiles closed:** Ksyxis 1.4.6 did not reproduce the `/forceload` ticket loss on
+  47.4.29; Radium/ServerCore and BetterAutoSave are documented deployment choices
+  (`docs/COMPATIBILITY_PROFILES.md`, `compat/evidence/mod-profile-20261122T070103Z.md`).
 * **Not yet verified live:** peer-level forced packet loss. It is tracked in TODO.md; the
   acknowledgement/retransmit logic is unit-tested under random loss.
 * **Docs:** NETWORKING (ids 37-38), SYNCHRONIZATION, TODO, KNOWN_ISSUES, README, AGENT_GUIDE and

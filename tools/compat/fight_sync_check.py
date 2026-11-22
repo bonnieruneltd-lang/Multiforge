@@ -258,7 +258,19 @@ def main(argv=None) -> int:
     if not state_a:
         return finish(cluster, results, Path(args.out))
 
-    # 2. Both servers must hold the same fight state.
+    # 2. Both servers must hold the same fight state. The owner broadcasts once
+    #    per second, so a just-started fight needs a short poll on the mirror.
+    def replicated():
+        fresh_a = dragon(cluster.fights("A"))
+        fresh_b = dragon(cluster.fights("B"))
+        if fresh_a and fresh_b and fresh_a["uuid"] == fresh_b["uuid"] \
+                and fresh_a["uuid"] not in (None, "null"):
+            return fresh_a, fresh_b
+        return None
+
+    replicated_state = wait_for(replicated, min(args.timeout_seconds, 20.0))
+    if replicated_state:
+        state_a, state_b = replicated_state
     same_uuid = bool(state_b) and state_b["uuid"] == state_a["uuid"]
     same_phase = bool(state_b) and all(state_b[key] == state_a[key]
                                        for key in ("killed", "previously", "respawning", "gateways"))

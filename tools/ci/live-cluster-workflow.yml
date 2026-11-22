@@ -1,0 +1,63 @@
+# Live two-server cluster check.
+#
+# Copy to .github/workflows/live-cluster.yml. It boots a master and two Forge dev
+# servers on one runner, connects the headless bots, runs the compatibility and
+# fight-state harnesses and uploads the evidence. Manual dispatch plus a weekly
+# run keeps the cost predictable; every push is covered by build.yml instead.
+name: live-cluster
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install bot dependencies
+        working-directory: tools/compat
+        run: npm install --no-audit --no-fund
+
+      - name: Build the mod and master
+        run: ./gradlew :multiforge-forge:compileJava :multiforge-master:fatJar
+
+      - name: Run the live cluster
+        env:
+          FRESH: '1'
+          HEAP: '1200M'
+        run: tools/ci/live_cluster.sh
+
+      - name: Upload evidence and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-cluster-evidence
+          path: |
+            compat/evidence/cluster-*.md
+            compat/evidence/cluster-*.json
+            compat/evidence/fight-sync-*.md
+            compat/evidence/fight-sync-*.json
+            .runtime/live-cluster/*.log
+          if-no-files-found: warn

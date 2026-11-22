@@ -149,6 +149,22 @@ asserts that both servers report the same raid id/wave and dragon UUID/phase wit
 handovers per fight, checking the epoch advances and the state is preserved. It exits non-zero
 on failure. Evidence: `compat/evidence/fight-sync-20261122T064859Z.md` (12/12).
 
+## One-command live cluster
+
+`tools/ci/live_cluster.sh` boots the master, two Forge dev servers and the headless bots, runs
+the compatibility and fight-state harnesses, and shuts everything down:
+
+```bash
+FRESH=1 tools/ci/live_cluster.sh                 # clean world, ~3 minutes
+MODS_DIR=.runtime/server-mods tools/ci/live_cluster.sh   # optional mods copied to run/mods
+HEAP=1200M RCON_PASSWORD=mfcompat tools/ci/live_cluster.sh
+```
+
+It writes evidence to `compat/evidence/` and logs to `.runtime/live-cluster/`, and exits
+non-zero unless both harnesses pass. `tools/ci/live-cluster-workflow.yml` is the GitHub
+Actions template (copy to `.github/workflows/live-cluster.yml`). The script replaces the manual
+steps above for CI; use the manual procedure when debugging a single step.
+
 ## Running behind BungeeCord or Velocity
 
 MultiForge servers can sit behind an external proxy. Two forwarding modes are supported:

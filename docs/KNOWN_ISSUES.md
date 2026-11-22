@@ -185,20 +185,24 @@ see it even though the server sends the packets.
 
 ## Interoperability and compatibility findings (session 3)
 
-### 15. `/forceload` tickets disappear while Ksyxis is installed
+### 15. `/forceload` with Ksyxis (not reproducible on the current build)
 
-With Ksyxis 1.4.6 loaded, `forceload add` reported success but `forceload query` immediately
-showed no ticket and the chunk did not stay loaded. Player-driven chunk loading is not
-affected. The compatibility harness removes Ksyxis from both servers so it can find a common
-spawn chunk; the full 19/19 startup including Ksyxis was verified separately.
+Session 3 saw force-loaded tickets disappear with Ksyxis 1.4.6. A fresh 2026-11-22 run on
+Forge 47.4.29 + Ksyxis 1.4.6 kept the ticket (`forceload query` still reported `[0, 0]` after
+three seconds) and the chunk stayed loaded (`compat/evidence/mod-profile-20261122T070103Z.md`).
+The workaround (remove Ksyxis from the servers used by the chunk harness) is kept only as a
+fallback; see [COMPATIBILITY_PROFILES.md](COMPATIBILITY_PROFILES.md).
 
-### 16. Radium wins a mixin redirect over ServerCore
+### 16. Radium wins a mixin redirect over ServerCore (documented profile)
 
 `servercore.common.mixins.json:optimizations.ticking.chunk.cache.ServerChunkCacheMixin`
 logs `@Redirect conflict` and is skipped because Radium's `lithium.mixins.json` redirect has
 priority 1000. The server is correct; one ServerCore optimisation is inactive. BetterAutoSave
 also disables its synchronous chunk-load detector because Radium overwrites
-`ServerChunkCache.getChunk`. There is no config profile yet that restores both.
+`ServerChunkCache.getChunk`. There is no runtime fix (mixin priorities are static), so the
+supported deployment choices are documented in
+[COMPATIBILITY_PROFILES.md](COMPATIBILITY_PROFILES.md): Radium alone, ServerCore alone, or
+both with the one skipped optimisation accepted.
 
 ### 17. BetterAutoSave probes `level.dat` before MultiForge downloads it
 
@@ -206,6 +210,9 @@ During startup BetterAutoSave logs `level.dat ... MISSING` because MultiForge fe
 `level.dat` from the master in `loadLevel`, after the first BetterAutoSave probe. The file
 is present afterwards (`Loaded level.dat (... bytes) from the master`) and the server runs.
 The message is cosmetic but confusing; a future adapter could delay the probe or silence it.
+BetterAutoSave 0.20.2 also cannot be loaded in a ForgeGradle **dev** run (`@Shadow m_129903_`
+missing because its production refmap targets SRG names); use a production installation for
+compatibility tests, as documented in [COMPATIBILITY_PROFILES.md](COMPATIBILITY_PROFILES.md).
 
 ### 18. Timber Strike 3.0 is mislabelled for 1.20.1
 

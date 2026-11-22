@@ -95,12 +95,19 @@ coding.
   (deflate with a zlib header) and `RegionFile` detects legacy gzip bytes mislabelled as
   version 2 and transcodes them on read. `RegionFileTest` proves a standard JDK inflater
   reads the stored chunk and that the legacy path still round-trips.
-* **Ksyxis `/forceload` interaction** (low/medium): while Ksyxis is loaded, force-loaded
-  tickets disappeared in the test environment. Reproduce with Ksyxis alone, determine
-  whether it matters for players, and document the workaround.
-* **Radium + ServerCore profile** (low): Radium wins a chunk-cache redirect and one
-  ServerCore optimisation is skipped. Provide a documented config profile instead of
-  claiming both are active.
+* **Ksyxis `/forceload` interaction** - done. Reproduced with Ksyxis 1.4.6 alone on Forge
+  47.4.29: `/forceload add 0 0` survived `forceload query` after three seconds and the chunk
+  stayed loaded, so the session-3 disappearance no longer occurs. The workaround (remove Ksyxis
+  from the servers used by `cluster_check.py`) is kept as a fallback and documented in
+  [COMPATIBILITY_PROFILES.md](COMPATIBILITY_PROFILES.md). Evidence:
+  `compat/evidence/mod-profile-20261122T070103Z.md`.
+* **Radium + ServerCore profile** - done. Both mods are supported but not additive: with both
+  installed, ServerCore's chunk-cache redirect is skipped because Radium's lithium redirect has
+  priority 1000, and BetterAutoSave disables its synchronous chunk-load detector. The supported
+  choices ("radium", "servercore", and the correct-but-not-additive "both") are documented in
+  [COMPATIBILITY_PROFILES.md](COMPATIBILITY_PROFILES.md) instead of claiming both are active.
+  The dev-run refmap limitation that forces these tests onto a production install is recorded
+  in the same evidence file.
 * **Player-driven compatibility tests** (highest for the 35 targets): a client or fake-player
   harness is required for minecarts, tree felling, leaf decay, head drops, item merging,
   combat log, TPA, chat, xray and the anti-seed data pack. The headless bot
