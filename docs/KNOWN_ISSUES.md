@@ -312,6 +312,15 @@ acknowledged the upload. Remaining limits:
   `compat/evidence/handover-mirroring-20261122T040431Z.md`); the timeout and
   old-owner-disconnect paths are covered by master integration tests.
 
+### 26. Boss bars are replicated, fight state is not
+
+Dragon, raid and plugin boss bars are forwarded as vanilla `ClientboundBossEventPacket`s
+(`BossEventPacket`, peer id 36), so every server shows the same bar. The underlying fight is
+still simulated only by the owner: raid wave NBT, dragon-fight phase state and the raid/dragon
+objects are not transferred on a handover. A raid or dragon that moves between servers can
+therefore lose its in-progress phases even though the bar remains correct. See TODO 5 and
+`compat/evidence/boss-bar-20261122T044950Z.md`.
+
 ## Fixed issues worth knowing about (regression tests cover them)
 
 * Data stream downloads were truncated at 64 KiB because the outbound stream reused the

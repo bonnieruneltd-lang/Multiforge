@@ -27,6 +27,7 @@
     "PlayerListAccessor",
     "PlayerListMixin",
     "ServerLevelMixin",
+    "ServerBossEventMixin",
     "ServerPlayerAccessor",
     "ServerScoreboardObjectiveMixin",
     "ServerPlayerHurtMixin",

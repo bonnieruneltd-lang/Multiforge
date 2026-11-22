@@ -56,6 +56,7 @@ integration tests and by running two real Forge servers against a master:
 | Main scoreboard (objectives, scores, teams, display slots) | implemented and verified live on two dev servers (peer packet 30; snapshot + incremental) |
 | Live statistics and advancement progress | implemented: 10 s statistic deltas + immediate criterion awards (peer packets 31-32); compile-verified, live check pending |
 | Master region file format | true zlib, readable by vanilla/tooling; legacy gzip transcoded on read (round-trip tested + live master bytes checked) |
+| Boss bars (dragon, raids, plugin bars) | implemented: owner forwards vanilla boss-event packets; verified live with two clients receiving the same add/progress/remove ([evidence](compat/evidence/boss-bar-20261122T044950Z.md)) |
 | Required-target detection and `/multiforge compat` | implemented |
 | Chunk-border debug visualization (`/multiforge borders`) | implemented (config `debug.chunkBorders`); compile-verified |
 | Prometheus `/metrics` endpoint for the master | implemented (`metrics-port`, default off); unit tested |

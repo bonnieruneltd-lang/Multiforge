@@ -31,8 +31,9 @@ coding.
    that crosses into a chunk owned by another server requests that chunk, and the old owner
    sends its live entity snapshots before the fence, so the server holding the real projectile
    keeps simulating it. Mob navigation is transferred by `MobNavigationPacket` (destination,
-   speed and combat target; the new owner recomputes the path). Still missing: raids and the
-   dragon fight.
+   speed and combat target; the new owner recomputes the path). Boss bars (dragon, raids,
+   plugin bars) are replicated by `BossEventPacket`. Still missing: the raid and dragon
+   **fight state** itself (waves/phases), not the visible bar.
    Sign editing and pistons are already covered
    by the generic paths: a sign calls `BlockEntity.setChanged()` and a piston move is a
    block/block-entity change, so `BlockEntityUpdatePacket`/`BlockChangePacket` carry them

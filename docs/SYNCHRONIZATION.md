@@ -197,8 +197,15 @@ chunk). The fenced handover also sends the old owner's live entity snapshots to 
 before the fence, and a projectile crossing into a peer-owned chunk requests a handover so it
 keeps being simulated. Mob navigation is carried across the fence by
 `MobNavigationPacket`: the old owner sends the path destination, speed and combat target, and
-the new owner restarts the path (the path nodes are recomputed, not copied). Still missing:
-raids and the dragon fight. See [TODO.md](TODO.md) and [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+the new owner restarts the path (the path nodes are recomputed, not copied). Boss bars are
+replicated by `BossEventPacket`: the owner forwards the encoded vanilla
+`ClientboundBossEventPacket` (add/progress/name/style/properties/remove) and every server
+sends it to its local players in that world, without creating or ticking a second
+`ServerBossEvent`. This covers dragon, raid and plugin bars; the raid/dragon **simulation**
+(raid waves, dragon fight phases) still runs only on the owner. Verified live with vanilla
+`/bossbar`: two clients received the same add, progress and remove packets
+(`compat/evidence/boss-bar-20261122T044950Z.md`). Still missing: raid and dragon fight state
+transfer itself. See [TODO.md](TODO.md) and [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 ## Players
 

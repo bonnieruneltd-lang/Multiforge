@@ -171,6 +171,7 @@ varint frameLength, varint uncompressedLength, varint packetId, payload
 | 33 | `ChunkSequenceAckPacket(world, x, z, epoch, contiguous)` | highest contiguous block/block-entity sequence a peer applied |
 | 34 | `PlayerListInfoPacket(uuid, displayName, gameMode)` | live tab-list display name / game-mode change of a mirrored player |
 | 35 | `MobNavigationPacket(world, uuid, path, speed, target)` | path destination and combat target of a mob crossing an ownership boundary |
+| 36 | `BossEventPacket(world, data)` | one encoded vanilla boss-bar packet (dragon/raid/plugin bars) |
 
 The entity family (15-19) is the M1 mirroring protocol. Ids 20-21 extend it to players and
 ids 22-26 carry live player state; they are described in
@@ -179,8 +180,9 @@ ids 22-26 carry live player state; they are described in
 and ids 31-32 carry live statistics/advancement progress
 ([SYNCHRONIZATION.md](SYNCHRONIZATION.md#scoreboards-statistics-and-advancements)). Id 33 is
 the sequencing acknowledgement described below, id 34 carries live tab-list name/game-mode
-changes of a mirrored player, and id 35 carries the navigation/combat target of a mob across
-an ownership handover. Ids were appended, so older peers keep their ids.
+changes of a mirrored player, id 35 carries the navigation/combat target of a mob across
+an ownership handover, and id 36 forwards vanilla boss-bar packets. Ids were appended, so
+older peers keep their ids.
 
 ### Ownership epochs
 

@@ -3,6 +3,7 @@ package com.multiforge.forge.peer;
 import com.multiforge.forge.peer.packet.AdvancementProgressPacket;
 import com.multiforge.forge.peer.packet.BlockChangePacket;
 import com.multiforge.forge.peer.packet.BlockEntityUpdatePacket;
+import com.multiforge.forge.peer.packet.BossEventPacket;
 import com.multiforge.forge.peer.packet.ChatMessagePacket;
 import com.multiforge.forge.peer.packet.ChunkSequenceAckPacket;
 import com.multiforge.forge.peer.packet.ContainerClickPacket;
@@ -116,6 +117,9 @@ public final class PeerProtocol {
         // Mob navigation/combat target carried across a fenced handover. Appended
         // after every earlier id; never reorder.
         add(MobNavigationPacket.class, MobNavigationPacket::new);
+        // Boss bars (dragon fight, raids, plugins). Appended after every earlier
+        // id; never reorder.
+        add(BossEventPacket.class, BossEventPacket::new);
     }
 
     private PeerProtocol() {

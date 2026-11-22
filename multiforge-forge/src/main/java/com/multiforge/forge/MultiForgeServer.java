@@ -21,6 +21,7 @@ import com.multiforge.forge.player.PlayerProgressSyncManager;
 import com.multiforge.forge.player.PlayerStateSyncManager;
 import com.multiforge.forge.player.PlayerSyncManager;
 import com.multiforge.forge.scoreboard.ScoreboardSyncManager;
+import com.multiforge.forge.world.BossEventSyncManager;
 import com.multiforge.forge.world.FileSyncer;
 import com.multiforge.forge.world.WorldSyncManager;
 import com.multiforge.protocol.ChunkKey;
@@ -93,6 +94,7 @@ public final class MultiForgeServer {
     private final ChunkBorderVisualizer borders;
     private final ChunkSyncIo chunkIo;
     private final WorldSyncManager world;
+    private final BossEventSyncManager bossEvents;
     private final PlayerSyncManager players;
     private final PlayerMirrorManager playerMirrors;
     private final PlayerStateSyncManager playerState;
@@ -126,6 +128,7 @@ public final class MultiForgeServer {
         this.borders = new ChunkBorderVisualizer(this);
         this.chunkIo = new ChunkSyncIo(this);
         this.world = new WorldSyncManager(this);
+        this.bossEvents = new BossEventSyncManager(this);
         this.players = new PlayerSyncManager(this);
         this.playerMirrors = new PlayerMirrorManager(this);
         this.playerState = new PlayerStateSyncManager(this);
@@ -547,6 +550,7 @@ public final class MultiForgeServer {
         players.clear();
         playerMirrors.clear();
         playerState.clear();
+        bossEvents.clear();
         containers.clear();
         scoreboards.clear();
         progress.clear();
@@ -628,6 +632,11 @@ public final class MultiForgeServer {
     /** @return world state synchronization */
     public WorldSyncManager world() {
         return world;
+    }
+
+    /** @return boss-bar replication (dragon/raid/plugin bars) */
+    public BossEventSyncManager bossEvents() {
+        return bossEvents;
     }
 
     /** @return player synchronization */
