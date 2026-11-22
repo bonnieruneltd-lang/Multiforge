@@ -118,6 +118,7 @@ MinecraftServer.stopServer (Mixin RETURN) -> flush uploads, close sockets
 | `Util.backgroundExecutor` (vanilla IO) | `ChunkStorage.read/write` hooks, NBT (de)serialization |
 | `MultiForge-MasterConnection` | pings, reconnect scheduling |
 | `MultiForge-PeerKeepAlive` | peer heartbeat and dead connection reaping |
+| `MultiForge-ChunkCompress` | gzip of an already serialized chunk snapshot and the peer reply (2 threads, bounded queue; the server thread compresses inline when the queue is full) |
 | Master: `MultiPaper-Netty-*` -> `MultiForge-Netty-*` | message handling, ownership arbitration |
 | Master: `ForkJoinPool.commonPool` | region file IO, file sync |
 
@@ -132,6 +133,10 @@ Rules:
 4. Chunk ownership state is read on the server thread and written from Netty handlers
    through `execute`; the containers are concurrent for the remaining cross-thread reads
    (API, commands).
+5. The compression pool only sees an immutable `CompoundTag` snapshot taken on the server
+   thread and only calls `PeerConnection.send`. It never reads a level or a chunk.
+   `ChunkManager.close` drains the queue before the peers are closed, so a queued reply is
+   not lost at shutdown.
 
 ## 5. Mixins and why they exist
 
