@@ -16,9 +16,14 @@
 //   slot <0-8>            send a held_item_slot packet
 //   look <yaw> <pitch>    send a look packet
 //   move <x> <y> <z>      send a position packet (player movement is client authoritative)
-//   chat <text>           send a chat message
+//   chat <text>           send a signed chat message or a /command through client.chat
+//   command <text>        same, but always sends the slash form
 //   use                   send a use_item packet (right click / place / eat)
+//   dig <x> <y> <z>       start and stop breaking a block
+//   place <x> <y> <z>     place the selected item against a block
+//   drop [all]            drop one item or the whole stack
 //   attack <entityId>     send a use_entity attack packet
+//   attackplayer <name>   attack a tracked player by name (player_info + named_entity_spawn)
 //   quit                  disconnect
 //
 // The movement/interaction commands are the extension points for the gameplay
@@ -59,6 +64,34 @@ client.on('end', (reason) => {
 client.on('game_state_change', (packet) => {
   console.log(`[bot] GAMESTATE reason=${packet.reason} value=${packet.gameMode}`);
 });
+// Chat/system output is needed by the gameplay checks (TPA, chat formatting,
+// anti-seed). Log the text forms a vanilla client would display.
+client.on('chat', (packet) => {
+  console.log(`[bot] CHATIN ${typeof packet.message === 'string' ? packet.message : JSON.stringify(packet)}`);
+});
+client.on('system_chat', (packet) => {
+  console.log(`[bot] SYSTEM ${typeof packet.content === 'string' ? packet.content : JSON.stringify(packet.content || packet)}`);
+});
+client.on('player_chat', (packet) => {
+  console.log(`[bot] PLAYERCHAT ${JSON.stringify(packet)}`);
+});
+
+// Minimal entity index: minecraft-protocol does not track entities itself, so
+// the gameplay checks record player UUIDs from player_info and their entity ids
+// from named_entity_spawn.
+const playersByName = {};
+const entityByUuid = {};
+client.on('player_info', (packet) => {
+  const entries = Array.isArray(packet.data) ? packet.data : [];
+  for (const entry of entries) {
+    const name = entry.name || entry.profileName;
+    const uuid = entry.UUID || entry.uuid || entry.id;
+    if (name && uuid) playersByName[name] = uuid;
+  }
+});
+client.on('named_entity_spawn', (packet) => {
+  if (packet.playerUUID) entityByUuid[packet.playerUUID] = packet.entityId;
+});
 
 net.createServer((socket) => {
   socket.setEncoding('utf8');
@@ -85,8 +118,14 @@ net.createServer((socket) => {
         console.log(`[bot] MOVE ${x} ${y} ${z}`);
       } else if (command === 'chat') {
         const message = line.slice('chat '.length);
-        client.write('chat', { message });
+        // client.chat handles signed chat/command packets and the slash form;
+        // writing the raw 'chat' packet for a command is rejected by 1.20.1.
+        client.chat(message);
         console.log(`[bot] CHAT ${message}`);
+      } else if (command === 'command') {
+        const message = line.slice('command '.length);
+        client.chat(message.startsWith('/') ? message : `/${message}`);
+        console.log(`[bot] COMMAND ${message}`);
       } else if (command === 'use') {
         client.write('use_item', { hand: 0 });
         console.log('[bot] USE');
@@ -94,6 +133,57 @@ net.createServer((socket) => {
         const target = parseInt(argument, 10);
         client.write('use_entity', { target, mouse: 1 });
         console.log(`[bot] ATTACK ${target}`);
+      } else if (command === 'dig') {
+        const [x, y, z, face] = line.split(/\s+/).slice(1).map(Number);
+        const location = { x, y, z };
+        client.write('block_dig', { status: 0, location, face: face || 1, sequence: 0 });
+        setTimeout(() => {
+          client.write('block_dig', { status: 2, location, face: face || 1, sequence: 0 });
+          console.log(`[bot] DIG ${x} ${y} ${z}`);
+        }, 900);
+      } else if (command === 'place') {
+        const [x, y, z, face] = line.split(/\s+/).slice(1).map(Number);
+        client.write('block_place', {
+          hand: 0,
+          location: { x, y, z },
+          direction: face || 1,
+          cursorX: 0.5,
+          cursorY: 0.5,
+          cursorZ: 0.5,
+          insideBlock: false,
+          sequence: 0
+        });
+        console.log(`[bot] PLACE ${x} ${y} ${z}`);
+      } else if (command === 'drop') {
+        client.write('block_dig', {
+          status: argument === 'all' ? 4 : 3,
+          location: { x: 0, y: 0, z: 0 },
+          face: 0,
+          sequence: 0
+        });
+        console.log(`[bot] DROP ${argument || 'one'}`);
+      } else if (command === 'attackplayer') {
+        const name = argument;
+        let hits = 0;
+        const timer = setInterval(() => {
+          const uuid = playersByName[name];
+          let targetId = uuid ? entityByUuid[uuid] : undefined;
+          if (targetId === undefined) {
+            // If player_info has not been decoded yet, fall back to the only
+            // spawned player entity that is not this bot.
+            const own = client.uuid || '';
+            const candidates = Object.entries(entityByUuid)
+              .filter(([candidate]) => candidate !== own && candidate !== own.replace(/-/g, ''));
+            if (candidates.length === 1) targetId = candidates[0][1];
+          }
+          if (targetId === undefined || hits++ > 20) {
+            clearInterval(timer);
+            console.log(`[bot] ATTACKPLAYER_END ${name}`);
+            return;
+          }
+          client.write('use_entity', { target: targetId, mouse: 1 });
+          console.log(`[bot] ATTACKPLAYER ${name} ${targetId}`);
+        }, 700);
       } else if (command === 'quit') {
         console.log('[bot] QUIT');
         client.end();

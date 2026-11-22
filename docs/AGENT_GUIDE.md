@@ -96,6 +96,9 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
 * Verified live: master + two Forge 47.4.29 servers with the pinned compatibility set.
   `tools/compat/cluster_check.py` passed 13/13 checks (blocks both directions, chest
   inventory, time, gamerule, single owner, 20 TPS, save-all) with 18/19 server mods loaded.
+  A player-driven run then verified Timber Strike (tree felling), Fast Leaf Decay, TPA
+  Teleport (same-server) and Beautified Chat formatting, and the anti-seed pack's `/seed`
+  block (`compat/evidence/gameplay-mods-20261122T043800Z.md`).
   The full set (19/19 incl. Ksyxis) also starts; Ksyxis is removed for the shared-chunk
   check because force-loaded tickets disappear while it is installed.
 * Compatibility score: no target is FULLY COMPATIBLE yet. 2 server targets FUNCTIONAL, 8

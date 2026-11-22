@@ -127,6 +127,11 @@ entity` output on both servers. It exits non-zero when a check fails and prints 
 used as evidence in `compat/evidence/`. See
 `compat/evidence/player-state-20261115T054356Z.md` for a recorded run.
 
+The same bot now also sends `dig`, `place`, `drop`, `command`, `attackplayer` and logs
+`game_state_change`/chat packets, which is what the player-driven compatibility checks use
+(e.g. Timber/FastLeafDecay, TPA and Beautified Chat in
+`compat/evidence/gameplay-mods-20261122T043800Z.md`).
+
 ## Running behind BungeeCord or Velocity
 
 MultiForge servers can sit behind an external proxy. Two forwarding modes are supported:

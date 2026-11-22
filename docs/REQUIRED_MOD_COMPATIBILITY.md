@@ -4,8 +4,11 @@ This document is the compatibility record for the 35 targets that MultiForge mus
 support. It is not a wish list: every row names the exact artifact that was pinned,
 where it belongs, what was executed against it and what is still unverified.
 
-**Current result: 20/20 server targets installed and started in one two-server cluster;
-15/15 client targets pinned but not testable in this container (no display, no GPU).**
+**Current result: 20/20 server targets installed and started in one two-server cluster
+(4 FUNCTIONAL, 10 PARTIAL, 6 LOADING); 15/15 client targets pinned but not testable in this
+container (no display, no GPU).** The player-driven run on 2026-11-22 moved Timber Strike and
+Fast Leaf Decay to FUNCTIONAL and Beautified Chat / TPA Teleport to PARTIAL
+(`compat/evidence/gameplay-mods-20261122T043800Z.md`).
 Read the status column before quoting a number. The deployment this document supports is a
 headless server cluster; client-side rendering targets (shaders, Embeddium/Oculus, Cull
 Leaves, Dynamic FPS, ...) do not run on the server and do not affect server functionality.
@@ -130,10 +133,10 @@ the twentieth target is a data pack and is enabled from `world/datapacks/`. Evid
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Darceno's Minecarts | `mr_darcenos_minecarts` | 1.3 | `darcenos-minecarts-1.3.jar` | — | LOADING | Loaded in the full cluster. Minecart speed/chunk-loading behaviour needs a player-driven test. The 1.3 `+mod` variant is pinned, not the `slower` variant. |
 | 2 | Just Player Heads | `justplayerheads` | 1.20.1-4.5 | `justplayerheads-1.20.1-4.5.jar` | Collective 8.86 | LOADING | Both mods loaded; head-drop behaviour needs a player kill. |
-| 3 | Timber Strike | `mr_timber_strike` | 1.3 | `timber-strike-1.3.jar` | — | PARTIAL | 3.0 is listed for 1.20.1 but ships 1.20.2+ syntax (`return run ...`); all 15 tree functions fail to parse on 1.20.1. 1.3 parses cleanly (`Failed to load function` count 0) and loads. Tree breaking still needs a player test. |
+| 3 | Timber Strike | `mr_timber_strike` | 1.3 | `timber-strike-1.3.jar` | — | FUNCTIONAL | 3.0 is listed for 1.20.1 but ships 1.20.2+ syntax (`return run ...`); all 15 tree functions fail to parse on 1.20.1. 1.3 parses cleanly and loads. Player test: one survival iron-axe break at the base of a 4-log oak trunk removed the other three logs and the leaves within 3 s (`compat/evidence/gameplay-mods-20261122T043800Z.md`). |
 | 4 | Lithostitched | `lithostitched` | 1.4.12 | `lithostitched-forge-1.20.1-1.4.12.jar` | — | PARTIAL | Loaded; Tectonic's worldgen and `/locate structure` ran over the shared world without errors. Its structure-injection edge cases were not enumerated. |
 | 5 | Tectonic | `tectonic` | 3.0.17 | `tectonic-3.0.17-forge-1.20.1.jar` | Lithostitched | PARTIAL | Terrain generated on `live1`, was stored by the master and loaded by `live2`; `/locate structure village_plains` returned `[1408, ~, -256]` on the same world. Biome/height parity across servers needs a seed-diff test. |
-| 6 | Fast Leaf Decay | `fastleafdecay` | 2.0.0 | `fastleafdecay-forge-1.20-26.3.jar` | — | LOADING | Multi-version jar that lists 1.20.1. Loaded; decay needs a player or scheduled-tick test. |
+| 6 | Fast Leaf Decay | `fastleafdecay` | 2.0.0 | `fastleafdecay-forge-1.20-26.3.jar` | — | FUNCTIONAL | Multi-version jar that lists 1.20.1. After the Timber trunk break, the three leaf blocks in the test tree were air within 3 s (`compat/evidence/gameplay-mods-20261122T043800Z.md`), which is the mod's accelerated decay rather than vanilla timing. |
 | 7 | AI Improvements | `aiimprovements` | 0.5.2 | `AI-Improvements-1.20-0.5.2.jar` | — | LOADING | Loaded. AI behaviour needs a mob-based test. |
 | 8 | Async Locator | `asynclocator` | 1.20-1.3.0 | `async-locator-forge-1.20-1.3.0.jar` | — | FUNCTIONAL | `/locate structure minecraft:village_plains` returned a result in 1 ms on the live server; no tick-thread stall (20 TPS). |
 | 9 | Get It Together, Drops! | `getittogetherdrops` | v1.3 | `getittogetherdrops-forge-1.20-1.3.jar` | — | LOADING | Loaded. Item-merging needs a drop test. |
@@ -144,10 +147,10 @@ the twentieth target is a data pack and is enabled from `world/datapacks/`. Evid
 | 14 | Shinoyuki-BetterAutoSave | `shinoyuki_betterautosave` | 0.20.2 | `shinoyuki_betterautosave-0.20.2-all.jar` | — | PARTIAL | Pipeline installed, two chunk workers started, `save-all flush` completed, graceful shutdown logged. It prints `level.dat ... MISSING` during early startup because MultiForge downloads `level.dat` in `loadLevel` after BetterAutoSave's first probe; the file exists afterwards. With Radium present its sync chunk-load detector is disabled (its own diagnostic). |
 | 15 | Structure Layout Optimizer | `structure_layout_optimizer` | 1.0.11 | `structure_layout_optimizer-forge-1.0.11.jar` | Resourceful Config 2.1.3 | LOADING | Requires Forge ≥ 47.3.12 (hence the 47.4.29 pin). Loaded and worldgen ran; structure layout behaviour needs structure-heavy chunks. |
 | 16 | AntiXray | `antixray` | 1.4.6+1.20.1 | `antixray-forge-1.4.6+1.20.1.jar` | — | LOADING | Loaded. Obfuscation is a per-player packet transformation; it needs a real client to verify. |
-| 17 | Beautified Chat [Server] | `beautifiedchatserver` | 1.20.1-4.0 | `beautifiedchatserver-1.20.1-4.0.jar` | — | LOADING | Loaded. Chat formatting needs a chat message from a player; MultiForge already forwards chat through its own peer packet, so this is the first target to re-test with a client. |
+| 17 | Beautified Chat [Server] | `beautifiedchatserver` | 1.20.1-4.0 | `beautifiedchatserver-1.20.1-4.0.jar` | — | PARTIAL | A player message produced the formatted component `04:36 \| TPABot: hello-cluster-test` with timestamp and colour fields (`compat/evidence/gameplay-mods-20261122T043800Z.md`); cross-server formatting was not separately asserted. |
 | 18 | Combatlog | `combatlog` | 2.8.5 | `combatlog-2.8.5-forge+1.20.1.jar` | — | LOADING | Loaded. Needs two players and PvP to verify logout punishment on the correct server. |
-| 19 | TPA Teleport | `tpateleport` | 1.0.0 | `tpateleport-1.0.0.jar` | — | LOADING | Loaded. Teleports across servers must hand the player to the target server; needs a client. |
-| 20 | UltimateAntiSeedCracker | data pack | 1.0.0 | `UltimateAntiSeedCracker.zip` | — | PARTIAL | Listed by `datapack list` on the live server. Its seed-cracking protection was not exercised (`/seed` and structure probing with a client). |
+| 19 | TPA Teleport | `tpateleport` | 1.0.0 | `tpateleport-1.0.0.jar` | — | PARTIAL | Same-server request/accept/teleport verified with two bots: `/tpa`, `/tpaccept <name>` and both positions converged (`compat/evidence/gameplay-mods-20261122T043800Z.md`). The cross-server hand-off still relies on MultiForge's normal player transfer and was not exercised here. |
+| 20 | UltimateAntiSeedCracker | data pack | 1.0.0 | `UltimateAntiSeedCracker.zip` | — | PARTIAL | Listed by `datapack list` and enabled on both servers. A non-op `/seed` returned `command.unknown.command` with a red `/seed` suggestion instead of a seed (`compat/evidence/gameplay-mods-20261122T043800Z.md`). Structure probing and other vectors were not exercised. |
 
 ### Required library dependencies
 
@@ -182,7 +185,7 @@ change the support matrix and must not be hidden:
 | Area | Remaining work |
 | --- | --- |
 | Client mods (15) | Run the manual client matrix on a machine with a GPU. Automate launch + log checks if a headless client with software GL is available; shader compilation still needs a real GL context. |
-| Server gameplay | Player-driven tests for minecarts, tree felling, leaf decay, head drops, item merging, combat log, TPA, chat, xray and the anti-seed datapack. These all need at least one real client or a fake-player harness. |
+| Server gameplay | Minecart speed, player-head drops, item merging, combat-log punishment and AntiXray packet obfuscation still need player-driven checks. Tree felling, leaf decay, TPA (same-server), chat formatting and the anti-seed `/seed` block are now covered by `compat/evidence/gameplay-mods-20261122T043800Z.md`. |
 | Cross-server gameplay | Chunk ownership transfer while a player walks, player mirroring (see `compat/evidence/player-mirroring-20261115T030505Z.md`), inventory sync (TODO 3), server switch and reconnect. |
 | Radium/ServerCore | Decide on a supported combination and add a documented config profile; do not claim both optimisations active. |
 | Evidence | Append the client results and the player-driven results to this file with the exact `latest.log` snippets and dates. |

@@ -174,97 +174,97 @@
       "note": "",
       "artifact": {
         "project": "complementary-reimagined",
-        "version": "r5.9.3",
-        "name": "r5.9.3",
+        "version": "r5.10",
+        "name": "r5.10",
         "game_versions": [
-          "1.10",
-          "1.10.1",
-          "1.10.2",
-          "1.11",
-          "1.11.1",
-          "1.11.2",
-          "1.12",
-          "1.12.1",
-          "1.12.2",
-          "1.13",
-          "1.13.1",
-          "1.13.2",
-          "1.14",
-          "1.14.1",
-          "1.14.2",
-          "1.14.3",
-          "1.14.4",
-          "1.15",
-          "1.15.1",
-          "1.15.2",
-          "1.16",
-          "1.16.1",
-          "1.16.2",
-          "1.16.3",
-          "1.16.4",
-          "1.16.5",
-          "1.17",
-          "1.17.1",
-          "1.18",
-          "1.18.1",
-          "1.18.2",
-          "1.19",
-          "1.19.1",
-          "1.19.2",
-          "1.19.3",
-          "1.19.4",
-          "1.20",
-          "1.20.1",
-          "1.20.2",
-          "1.20.3",
-          "1.20.4",
-          "1.20.5",
-          "1.20.6",
-          "1.21",
-          "1.21.1",
-          "1.21.10",
-          "1.21.11",
-          "1.21.2",
-          "1.21.3",
-          "1.21.4",
-          "1.21.5",
-          "1.21.6",
-          "1.21.7",
-          "1.21.8",
-          "1.21.9",
-          "1.7.10",
-          "1.8",
-          "1.8.1",
-          "1.8.2",
-          "1.8.3",
-          "1.8.4",
-          "1.8.5",
-          "1.8.6",
-          "1.8.7",
-          "1.8.8",
-          "1.8.9",
-          "1.9",
-          "1.9.1",
-          "1.9.2",
-          "1.9.3",
-          "1.9.4",
-          "26.1",
-          "26.1.1",
-          "26.1.2",
+          "26.3",
           "26.2",
-          "26.3"
+          "26.1.2",
+          "26.1.1",
+          "26.1",
+          "1.21.11",
+          "1.21.10",
+          "1.21.9",
+          "1.21.8",
+          "1.21.7",
+          "1.21.6",
+          "1.21.5",
+          "1.21.4",
+          "1.21.3",
+          "1.21.2",
+          "1.21.1",
+          "1.21",
+          "1.20.6",
+          "1.20.5",
+          "1.20.4",
+          "1.20.3",
+          "1.20.2",
+          "1.20.1",
+          "1.20",
+          "1.19.4",
+          "1.19.3",
+          "1.19.2",
+          "1.19.1",
+          "1.19",
+          "1.18.2",
+          "1.18.1",
+          "1.18",
+          "1.17.1",
+          "1.17",
+          "1.16.5",
+          "1.16.4",
+          "1.16.3",
+          "1.16.2",
+          "1.16.1",
+          "1.16",
+          "1.15.2",
+          "1.15.1",
+          "1.15",
+          "1.14.4",
+          "1.14.3",
+          "1.14.2",
+          "1.14.1",
+          "1.14",
+          "1.13.2",
+          "1.13.1",
+          "1.13",
+          "1.12.2",
+          "1.12.1",
+          "1.12",
+          "1.11.2",
+          "1.11.1",
+          "1.11",
+          "1.10.2",
+          "1.10.1",
+          "1.10",
+          "1.9.4",
+          "1.9.3",
+          "1.9.2",
+          "1.9.1",
+          "1.9",
+          "1.8.9",
+          "1.8.8",
+          "1.8.7",
+          "1.8.6",
+          "1.8.5",
+          "1.8.4",
+          "1.8.3",
+          "1.8.2",
+          "1.8.1",
+          "1.8",
+          "1.7.10"
         ],
         "loaders": [
           "iris",
           "optifine"
         ],
         "environment": "unknown",
-        "filename": "ComplementaryReimagined_r5.9.3.zip",
-        "url": "https://cdn.modrinth.com/data/HVnmMxH1/versions/Bqen1mJX/ComplementaryReimagined_r5.9.3.zip",
-        "size": 553397,
-        "sha512": "45304b1d7862afdb2177b7e6226fc9c6737911d17a4ad46cc9c519ca4deb935f05072cd337cd8b19a15bb8062b57b54eceec7bdee4cd572d94858e2946d37d85",
+        "filename": "ComplementaryReimagined_r5.10.zip",
+        "url": "https://cdn.modrinth.com/data/HVnmMxH1/versions/RKfUB9VC/ComplementaryReimagined_r5.10.zip",
+        "size": 567387,
+        "sha512": "edced01fb330af215ac73b8d9d31011565089f971f87145b87f413f40ee2128b48970aed26f8e5e879899647ec847b3eefca64bfc013aabbcf25275a207f663d",
         "dependencies": [],
-        "date_published": "2026-09-15T06:35:41.918796Z"
+        "date_published": "2026-11-18T17:18:09.316616Z"
       }
     },
     {
@@ -388,8 +388,8 @@
       "note": "",
       "artifact": {
         "project": "entityculling",
-        "version": "1.11.3",
-        "name": "1.11.3-1.20.1 - Forge",
+        "version": "1.12.1",
+        "name": "1.12.1-1.20.1 - Forge",
         "game_versions": [
           "1.20.1"
         ],
@@ -397,12 +397,12 @@
           "forge"
         ],
         "environment": "client_only",
-        "filename": "entityculling-forge-1.11.3-mc1.20.1.jar",
-        "url": "https://cdn.modrinth.com/data/NNAgCjsB/versions/HUUJcFnt/entityculling-forge-1.11.3-mc1.20.1.jar",
-        "size": 1515076,
-        "sha512": "be5be53897ae7403a202e4b0b094701bcc4ecdb94afcf2ea144cd07d9a4553a1fc6a88917732a72c477d01c33583162cffb9c4a19d259089deb018878eec1da8",
+        "filename": "entityculling-forge-1.12.1-mc1.20.1.jar",
+        "url": "https://cdn.modrinth.com/data/NNAgCjsB/versions/Udu5Sovd/entityculling-forge-1.12.1-mc1.20.1.jar",
+        "size": 1528604,
+        "sha512": "661be0316c0722a40066d3b61f15f4cf75289d96f6ab1ae3594bb8babb5622f55a645b2fd8f79154e68a6a67e3e61fa8361736c65dc8779c66390616ce2b806d",
         "dependencies": [],
-        "date_published": "2026-10-08T16:51:39.600503Z"
+        "date_published": "2026-11-13T16:11:30.365Z"
       }
     },
     {
@@ -446,8 +446,8 @@
       "note": "",
       "artifact": {
         "project": "kerria-opt",
-        "version": "1.3.2+1.20.1-forge",
-        "name": "Kerria 1.3.2+1.20.1-forge",
+        "version": "1.4.0+1.20.1-forge",
+        "name": "Kerria 1.4.0+1.20.1-forge",
         "game_versions": [
           "1.20.1"
         ],
@@ -455,12 +455,12 @@
           "forge"
         ],
         "environment": "client_only",
-        "filename": "Kerria-1.3.2+1.20.1-forge.jar",
-        "url": "https://cdn.modrinth.com/data/f0ruQTF7/versions/SaAPsP1U/Kerria-1.3.2%2B1.20.1-forge.jar",
-        "size": 811090,
-        "sha512": "08180ff049658b661290d8999a3a488b1fbd2179f0a13cc1be2464e29c662a01f15d26855abac299b66b95645c2e94fbbfcb4bb3687bebc6602201b2886b1420",
+        "filename": "Kerria-1.4.0+1.20.1-forge.jar",
+        "url": "https://cdn.modrinth.com/data/f0ruQTF7/versions/PG6ExIQT/Kerria-1.4.0%2B1.20.1-forge.jar",
+        "size": 812446,
+        "sha512": "8c03031f4ddd55f475667d936ff95bbe222ae89518dce5ee4f7696072eb0162281697ea3583f131eb5e0bee6d9fc473ce3e1493a891a8d3f8014b23fbbf05590",
         "dependencies": [],
-        "date_published": "2026-07-03T04:04:20.705339Z"
+        "date_published": "2026-11-16T06:08:01.416607Z"
       }
     },
     {
@@ -473,8 +473,8 @@
       "note": "",
       "artifact": {
         "project": "obe",
-        "version": "1.2.1-patch.3",
-        "name": "Optimized Block Entities 1.2.1-patch.3",
+        "version": "1.2.13",
+        "name": "Optimized Block Entities 1.2.13",
         "game_versions": [
           "1.20.1"
         ],
@@ -483,12 +483,12 @@
           "neoforge"
         ],
         "environment": "client_only",
-        "filename": "obe+1.20.1-forge-1.2.1-patch.3-srg.jar",
-        "url": "https://cdn.modrinth.com/data/AtOSAunf/versions/GaDC0iZn/obe%2B1.20.1-forge-1.2.1-patch.3-srg.jar",
-        "size": 880726,
-        "sha512": "38403a82b5a9865187803430614a3ef73c7228d963bfed46f7937c51985099aff159a7d76e10ffa98e109ab0761dc5171c20bb34039738438da3eec9e9c14d95",
+        "filename": "obe+1.20.1-forge-1.2.13-srg.jar",
+        "url": "https://cdn.modrinth.com/data/AtOSAunf/versions/pXxZE9DU/obe%2B1.20.1-forge-1.2.13-srg.jar",
+        "size": 920195,
+        "sha512": "593a3be210316907282b9e30c70c6a8beb9cd133ebc464792d5313320044c4f1faf25d0ebbb25b792c71cb43a5eac4fe992bb18bae4d09a3980bae73e31ee820",
         "dependencies": [],
-        "date_published": "2026-11-05T00:30:44.938116Z"
+        "date_published": "2026-11-20T11:16:52.188113Z"
       }
     },
     {
@@ -1103,7 +1103,10 @@
           "26.4-snapshot-4",
           "26.4-snapshot-5",
           "26.4-snapshot-6",
-          "26.4-snapshot-7"
+          "26.4-snapshot-7",
+          "26.4-snapshot-8",
+          "26.4-snapshot-9",
+          "26.4-snapshot-10"
         ],
         "loaders": [
           "fabric",
@@ -1250,8 +1253,8 @@
       "note": "",
       "artifact": {
         "project": "structure-layout-optimizer",
-        "version": "1.0.11+1.20.1-forge",
-        "name": "Structure Layout Optimizer v1.0.11 (forge 1.20.1)",
+        "version": "1.0.12+1.20.1-forge",
+        "name": "Structure Layout Optimizer v1.0.12 (forge 1.20.1)",
         "game_versions": [
           "1.20.1"
         ],
@@ -1259,10 +1262,10 @@
           "forge"
         ],
         "environment": "server_only",
-        "filename": "structure_layout_optimizer-forge-1.0.11.jar",
-        "url": "https://cdn.modrinth.com/data/ayPU0OHc/versions/EazfspJH/structure_layout_optimizer-forge-1.0.11.jar",
-        "size": 246413,
-        "sha512": "e90a40a8a3b4f9a369d9a80bfb7dced3e42a400701d4cb76ace0db8a3eb84757ade10eaa6f9ec9e3dc78dcd4edc87173bdc19f64a4fb8fc047d24ae57ca4466d",
+        "filename": "structure_layout_optimizer-forge-1.0.12.jar",
+        "url": "https://cdn.modrinth.com/data/ayPU0OHc/versions/h6AhmnSU/structure_layout_optimizer-forge-1.0.12.jar",
+        "size": 279618,
+        "sha512": "75c1ad58ca54792bd99762c8e5b09338a29efa0dc5685200e3980c7eae10489a94c93174860ea6ce689275b0f830b3ad101189e5cfa8a2c2a5e36e7fbc754941",
         "dependencies": [
           {
             "version_id": null,
@@ -1271,7 +1274,7 @@
             "dependency_type": "required"
           }
         ],
-        "date_published": "2025-10-22T22:53:09.993032Z"
+        "date_published": "2026-11-14T21:49:52.361793Z"
       }
     },
     {
@@ -1431,8 +1434,8 @@
   "dependencies": {
     "collective": {
       "project": "collective",
-      "version": "1.20.1-8.86-fabric+forge+neo",
-      "name": "[Fabric/Forge/Neo] 1.20.1-8.86",
+      "version": "1.20.1-8.87-fabric+forge+neo",
+      "name": "[Fabric/Forge/Neo] 1.20.1-8.87",
       "game_versions": [
         "1.20.1"
       ],
@@ -1443,12 +1446,12 @@
         "quilt"
       ],
       "environment": "client_or_server_prefers_both",
-      "filename": "collective-1.20.1-8.86.jar",
-      "url": "https://cdn.modrinth.com/data/e0M1UDsY/versions/MCVhyqdJ/collective-1.20.1-8.86.jar",
+      "filename": "collective-1.20.1-8.87.jar",
+      "url": "https://cdn.modrinth.com/data/e0M1UDsY/versions/uy9YFOyg/collective-1.20.1-8.87.jar",
       "size": 1131568,
-      "sha512": "3a22ad442684904483449a81ac87afc677f1622d063e76e96e97948b4c80a9f916c615df6742f005a21754121bdf3e8a692ec2dba790de0bee39cffca6b6d76a",
+      "sha512": "598310391e5d92099d91bfceadd2f2571cdf9d4d751a7c22995dae4b93f1152a9426b8bbea04818978a8fe04808b5da1f3cc576140185ebc43763c4bb5e57ab8",
       "dependencies": [],
-      "date_published": "2026-11-10T21:22:30.185282Z"
+      "date_published": "2026-11-15T12:18:48.372207Z"
     },
     "lithostitched": {
       "project": "lithostitched",
