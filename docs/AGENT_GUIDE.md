@@ -23,7 +23,8 @@ touching code, then read the architecture document of the subsystem you change.
 3. **Never touch world state off the server thread.** Use `MultiForgeServer.execute`. IO
    threads may block on futures; Netty threads may not touch levels.
 4. **No placeholders.** If something is not implemented, put it in TODO.md and do not expose a
-   config flag that pretends it works (see `debug.chunkBorders`, which still needs fixing).
+   config flag that pretends it works (`debug.chunkBorders`, `/multiforge map` and the other
+   former stubs were implemented in session 6; do not reintroduce a flag without behaviour).
 5. **Document every public class and method** (JavaDoc: what/why/callers/params/returns/side
    effects/networking/threading/assumptions). Existing code is a good template.
 6. **Append-only protocols.** Peer packet ids are positional; master message ids come from the
@@ -108,9 +109,11 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   hotbar, hunger, experience and effect sync (TODO 3) is implemented by
   `PlayerStateSyncManager` and verified 21/21 on a two-server cluster with a headless bot
   (`compat/evidence/player-state-20261115T054356Z.md`; harness:
-  `tools/compat/player_state_check.py` + `tools/compat/mcbot.js`). Then scoreboards/boss
-  bars, advancement/stat live deltas, entity boundary resync (`onRemoteEntityChunkChanged`
-  is still a log-only stub), and `debug.chunkBorders` (still a no-op).
+  `tools/compat/player_state_check.py` + `tools/compat/mcbot.js`). Later sessions added main
+  scoreboard sync (boss bars are per-player vanilla state and stay local), advancement/stat
+  live deltas, entity boundary resync (`EntitySyncManager.onChunkOwnershipGained` and
+  `onRemoteEntityChunkChanged`, no longer a log-only stub) and `debug.chunkBorders` through
+  `/multiforge borders` (TODO 9, 11 and 16).
 * This session added: cross-server container window forwarding
   (`ContainerSyncManager`, peer packets 27-29), master ownership epochs on
   block/block-entity packets, attacker attribution in `EntityHurtPacket`, live
@@ -140,20 +143,28 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   before the handshake handler, vanilla does not broadcast objective add/remove, and
   `ClientboundSetScorePacket` takes `(method, objectiveName, owner, score)`.
 * The config is `COMMON` at `config/multiforge-server.toml`; Forge 47.4.29 `/reload` does not
-  fire config reload events, so config changes still need a restart in practice.
-* It also finished the earlier non-GPU items: main-scoreboard sync (peer packet 30),
+  fire config reload events, so `/multiforge reload` re-reads the TOML itself and applies it.
+  Only `server.peerPort`, `server.name`, an existing peer connection's compression threshold
+  and the scheduler periods still need a restart (logged; see KNOWN_ISSUES 9).
+* The same session finished the earlier non-GPU items: main-scoreboard sync (peer packet 30),
   live statistic/advancement deltas (31-32), `/multiforge borders`, the master Prometheus
-  endpoint, entity ownership-boundary resyncs and protocol input hardening/fuzzing. All
-  compile and the protocol/master suites pass (`ProtocolFuzzTest`, `MetricsServerTest`,
-  36 protocol + 36 master tests). Forge-side features are compile-verified only; no live
-  two-server run happened here, so do not describe them as live-verified. Details in
-  TODO.md items 9, 11, 16, 17, 19 and KNOWN_ISSUES.md.
-* Highest-value next work: (1) live-verify the session 6 forge features on a master + two
-  servers, (2) extend the player-driven harness (`tools/compat/mcbot.js` +
-  `player_state_check.py`) with gameplay interactions, because most server rows are waiting
-  on interaction, not code. Remaining
-  design/code items are config hot reload, per-chunk sequence numbers/acks, master leader
-  election and the performance leftovers in PERFORMANCE.md.
+  endpoint, entity ownership-boundary resyncs and protocol input hardening/fuzzing. They were
+  verified on a master plus two live servers on 2026-11-21 (scoreboard objectives, scores,
+  teams and display slots, block/time sync, `/multiforge map`, `/multiforge borders`,
+  forwarded BungeeCord login, a `/metrics` scrape and leader takeover): see
+  `compat/evidence/server-features-20261121T065500Z.md` and the 18/18 deployment run in
+  `compat/evidence/cluster-20261121T072841Z.md`. Details in TODO.md items 9, 11, 16, 17, 19
+  and KNOWN_ISSUES.md.
+* Highest-value next work: (1) per-chunk sequence numbers and acknowledgements, the one known
+  correctness gap left (ownership epochs drop stale updates from another owner, but a delayed
+  packet from the current owner can still overwrite newer state; see PERFORMANCE.md section 4
+  and DISTRIBUTED_ARCHITECTURE_RESEARCH.md), (2) extend the player-driven harness
+  (`tools/compat/mcbot.js` + `player_state_check.py`) with gameplay interactions, because 10
+  server compatibility rows are waiting on interaction rather than code, (3) the two remaining
+  PERFORMANCE.md items (chunk gzip off the server thread, per-chunk key cache) and the
+  config-reload leftovers, (4) the 15-target client matrix, which needs a GPU machine. Larger
+  features still missing: mob-navigation/raid/dragon/projectile handover, the MultiPaper-style
+  proxy-side master plugin and a graphical `/multiforge map`.
 * Do not restart or rewrite working subsystems. Read `DEVELOPMENT_HANDOFF.md` for the
   session audit and `KNOWN_ISSUES.md` for the interaction findings (Timber 3.0, Radium ×
   ServerCore, Ksyxis × forceload, master region compression label).

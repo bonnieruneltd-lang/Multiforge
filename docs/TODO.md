@@ -151,10 +151,12 @@ coding.
     rejected before allocation. It found a remote OOM in `readString` and the array readers;
     `ExtendedByteBuf` now has bounds-checked `readByteArray`, `readStringArray` and
     `readChunkKeyArray`.
-20. A `multiforge-api` example mod and integration test - partially done (session 6):
-    `MultiForgeApiProviderTest` contains a complete example implementation plus contract
-    tests for registration, reset, the not-initialised error and the value objects. A
-    separate example mod project is still missing.
+20. A `multiforge-api` example mod and integration test - done. `MultiForgeApiProviderTest`
+    contains a complete example implementation plus contract tests for registration, reset,
+    the not-initialised error and the value objects. The separate `multiforge-example` module
+    (`ExampleApiConsumer` + `ExampleApiConsumerTest`) depends only on `:multiforge-api`, is
+    listed in `settings.gradle` and builds with the normal build, so an API change that breaks
+    a third-party consumer fails the build (commit `8feaf6b`).
 21. Port MultiPaper's `/mpmap` and `/mpdebug` visualisations - partially done (session 6):
     `/multiforge map [radius]` prints a text ownership grid around the player (`@` = this
     server, first letter = another server, `.` = unowned) and `/multiforge borders` covers
