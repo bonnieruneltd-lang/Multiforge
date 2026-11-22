@@ -25,8 +25,8 @@ actually exercised.
 | Category | Score | Evidence / gap |
 | --- | ---: | --- |
 | Core parity implementation | 97 % | Everything except the MultiPaper-style proxy-side master plugin. Raids and the dragon fight are implemented (`FightSyncManager`, mixins, peer ids 37-38). |
-| Automated verification | 100 % | 135 tests pass (protocol 72, master 56, api 4, example 3); full `:multiforge-forge:build` including reobf; a real Forge 47.4.29 dev server starts with all 35 mixins applied; `tools/ci/live_cluster.sh` passed **18/18 cluster + 3/3 forced-loss + 14/14 fight** end to end; the GPU client-matrix runner (`tools/compat/run_client_matrix.sh`, host probe verified here) is integrated. Missing: no unit test covers the Minecraft-facing managers, and the GitHub workflow itself has not run on GitHub. |
-| Live cluster evidence | 99 % | 32 transcripts in `compat/evidence/`, including 18/18, 3/3 forced-loss (tail loss repaired by heartbeat acks), 14/14 raid + dragon handovers with event-driven updates, and the mod-profile run. Missing: client rendering evidence (hardware GPU). |
+| Automated verification | 100 % | 138 tests pass (protocol 75, master 56, api 4, example 3), including `TailLossRecoveryTest` for the heartbeat path; full `:multiforge-forge:build` including reobf; a real Forge 47.4.29 dev server starts with all 35 mixins applied; `tools/ci/live_cluster.sh` passed **18/18 cluster + 3/3 forced-loss + 14/14 fight** end to end, including a 90 %/100-update loss stress; the GPU client-matrix runner is integrated. Missing: no unit test covers the Minecraft-facing managers, and the GitHub workflow itself has not run on GitHub. |
+| Live cluster evidence | 99 % | 35 transcripts in `compat/evidence/`, including 18/18, forced-loss at 50 % and 90 % (100 updates, 5 gaps, 100/100 blocks, tail repaired by heartbeat acks), 14/14 raid + dragon handovers with event-driven updates, and the mod-profile run. Missing: client rendering evidence (hardware GPU). |
 | Required-mod compatibility | 57 % | 9 FUNCTIONAL, 22 PARTIAL, 4 LOADING of 35. The stated rule (FUNCTIONAL 1, PARTIAL 1/2, LOADING 0) gives (9 + 11) / 35 = 57 %. |
 | Production hardening | 92 % | Backlog recovery, sequence/acks (live under 50 % loss, including a lost tail), fuzzing and bounded buffers are done; config reload leaves only name/port restart-only (with a `-Dmultiforge.serverName` override); Ksyxis/Radium/ServerCore/BetterAutoSave are documented profiles. Remaining: handover budget, lost-first-update baseline, in-memory offline backlog. |
 | **Weighted overall** | **91 %** | 0.40·97 + 0.20·100 + 0.15·99 + 0.15·57 + 0.10·92 = 91.2 |
@@ -84,3 +84,7 @@ because they answer different questions.
   (`RaidMixin`/`EndDragonFightMixin` plus the 1 s safety net); a once-per-second heartbeat ack
   repairs a lost tail update; `-Dmultiforge.serverName` overrides a rewritten config; the GPU
   client-matrix runner and its documentation are merged. Overall 90.9 -> 91.2 %.
+* **2026-11-22 (session 7, bug-test pass):** added `TailLossRecoveryTest` (heartbeat ack
+  returns the lost tail and converges), a 90 %/100-update live loss stress (5 gaps, 100/100
+  blocks, chest NBT), a drain guard for fight events and a port preflight in the CI script.
+  Overall stays 91.2 % with stronger evidence.

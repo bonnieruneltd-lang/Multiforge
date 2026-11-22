@@ -235,8 +235,9 @@ thing needed to repair it.
 The path is **verified live**. `/multiforge drop <percent>` discards that fraction of first
 block/block-entity transmissions on one server (retransmissions are never dropped), and
 `tools/compat/packet_loss_check.py` checks that the receiver sees `seq gaps` and that every
-block and the block-entity NBT converge. A 50 % run recorded 23 gaps, 40/40 blocks and the chest
-NBT (`compat/evidence/packet-loss-20261122T074452Z.md`). The injector defaults to 0 and the
+block and the block-entity NBT converge. A 90 % run with 100 updates recorded 5 gaps and
+delivered all 100 blocks; the 50 % runs recorded 12-23 gaps and delivered 40/40 blocks plus the
+chest NBT (`compat/evidence/packet-loss-20261122T075418Z.md`). The injector defaults to 0 and the
 active percentage is reported by `/multiforge status` as `drop=`.
 
 Both fields are appended, so a peer running an older build omits them and decoding yields 0

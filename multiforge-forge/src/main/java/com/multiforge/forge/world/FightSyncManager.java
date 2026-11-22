@@ -251,7 +251,8 @@ public final class FightSyncManager {
             return;
         }
         BlockPos center = raid.getCenter();
-        if (!server.chunks().isLocallyOwned(level, center.getX(), center.getZ())) {
+        if (!server.chunks().isLocallyOwned(level, center.getX(), center.getZ())
+                || server.chunks().isDraining(level, center.getX(), center.getZ())) {
             return;
         }
         try {
@@ -298,7 +299,8 @@ public final class FightSyncManager {
         if (level == null || fight == null || !server.config().worldSync() || server.isStopping()) {
             return;
         }
-        if (!server.chunks().isLocallyOwned(level, 0, 0)) {
+        if (!server.chunks().isLocallyOwned(level, 0, 0)
+                || server.chunks().isDraining(level, 0, 0)) {
             return;
         }
         try {
@@ -383,7 +385,8 @@ public final class FightSyncManager {
                 continue;
             }
             BlockPos center = raid.getCenter();
-            if (!server.chunks().isLocallyOwned(level, center.getX(), center.getZ())) {
+            if (!server.chunks().isLocallyOwned(level, center.getX(), center.getZ())
+                    || server.chunks().isDraining(level, center.getX(), center.getZ())) {
                 continue;
             }
             CompoundTag tag = raid.save(new CompoundTag());
@@ -406,7 +409,8 @@ public final class FightSyncManager {
 
     private void syncDragon(ServerLevel level) {
         EndDragonFight fight = level.getDragonFight();
-        if (fight == null || !server.chunks().isLocallyOwned(level, 0, 0)) {
+        if (fight == null || !server.chunks().isLocallyOwned(level, 0, 0)
+                || server.chunks().isDraining(level, 0, 0)) {
             return;
         }
         String world = server.chunks().worldName(level);

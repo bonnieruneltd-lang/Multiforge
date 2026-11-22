@@ -144,7 +144,7 @@ def main(argv=None) -> int:
     cluster.run("A", f"multiforge drop {args.percent}")
     for x, py, z in positions:
         cluster.run("A", f"setblock {x} {py} {z} minecraft:redstone_block")
-    chest = f"{base_x + 1} {y} {base_z + 8}"
+    chest = f"{base_x + 15} {y} {base_z + 15}"
     cluster.run("A", f"setblock {chest} minecraft:chest")
     cluster.run("A", f"item replace block {chest} container.0 with minecraft:diamond 5")
     time.sleep(args.wait_seconds)

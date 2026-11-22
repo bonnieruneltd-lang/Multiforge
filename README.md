@@ -37,7 +37,7 @@ integration tests and by running two real Forge servers against a master:
 | Chunk ownership and tick gating | implemented, verified live (previous session) |
 | Fenced chunk handover / player-follow ownership | implemented; 8 master integration tests and verified live on two dev servers with bots walking across the border ([evidence 1](compat/evidence/chunk-handover-20261122T035205Z.md), [evidence 2](compat/evidence/handover-mirroring-20261122T040431Z.md)) |
 | Chunk unload status respected when redirecting reads | implemented, integration tested |
-| Forced packet-loss recovery | verified live: 50 % of block/block-entity first transmissions dropped, gaps acknowledged and retransmitted, a once-per-second heartbeat ack repairs a lost tail; all 40 blocks and the chest NBT converged (`packet-loss-20261122T074452Z.md`); debug `/multiforge drop` |
+| Forced packet-loss recovery | verified live at 50-90 % loss: first transmissions dropped, gaps acknowledged and retransmitted, a once-per-second heartbeat ack repairs a lost tail; 100/100 blocks and the chest NBT converged at 90 % (`packet-loss-20261122T075418Z.md`); debug `/multiforge drop` |
 | Block and block entity broadcasts | implemented |
 | Peer-to-peer chunk transfer with compression | implemented, verified live (previous session) |
 | Server registry, heartbeats, TPS/player counts, global player list | implemented |

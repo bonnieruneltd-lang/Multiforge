@@ -769,6 +769,23 @@ public final class ChunkManager {
     }
 
     /**
+     * Tells whether a block position's chunk is frozen for a handover.
+     *
+     * <p>Fight updates must not be produced from a draining chunk: the chunk was
+     * already saved for the new owner and a late state broadcast would race with the
+     * fence. The owning chunk state is the same one the tick gate reads.</p>
+     *
+     * @param level server level the position belongs to
+     * @param x     block X
+     * @param z     block Z
+     * @return {@code true} while the chunk is draining
+     */
+    public boolean isDraining(ServerLevel level, int x, int z) {
+        ChunkState state = states.get(keyCache.get(level, worldName(level), x >> 4, z >> 4));
+        return state != null && state.draining();
+    }
+
+    /**
      * Returns the master ownership epoch this server knows for a chunk.
      *
      * <p>Fight snapshots carry the epoch of their centre chunk and receivers drop

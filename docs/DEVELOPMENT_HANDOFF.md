@@ -311,7 +311,7 @@ two processes.
   (`/multiforge startraid` plus a test village), verified the same raid id/wave and dragon
   UUID/phase on both servers with exactly one `local=true`, and handed each fight over and back
   (raid epochs 2→3→4, dragon 1→2→3) while preserving the state.
-  `tools/compat/packet_loss_check.py` passed **3/3** (`packet-loss-20261122T074452Z.md`): with
+  `tools/compat/packet_loss_check.py` passed **3/3** (`packet-loss-20261122T075418Z.md`): with
   50 % of first block transmissions dropped, the receiver observed 23 sequence gaps and all
   40 blocks plus the chest NBT converged through retransmits.
 * **Repeatable:** `tools/ci/live_cluster.sh` boots the master, both dev servers and the bots,
@@ -333,6 +333,6 @@ two processes.
 * **Not yet verified live:** client rendering on a hardware GPU (compatibility rows).
 * **Docs:** NETWORKING (ids 37-38), SYNCHRONIZATION, TODO, KNOWN_ISSUES, README, AGENT_GUIDE and
   the new `docs/COMPLETION.md` scorecard were updated in the same change. Test counts are now
-  protocol 72, master 56, api 4, example 3.
+  protocol 75, master 56, api 4, example 3.
 
 

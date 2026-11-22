@@ -74,7 +74,7 @@ touching code, then read the architecture document of the subsystem you change.
 
 ```bash
 ./gradlew build                        # compiles protocol, api, master, mod
-./gradlew :multiforge-protocol:test    # 72 tests
+./gradlew :multiforge-protocol:test    # 75 tests
 ./gradlew :multiforge-master:test      # 56 integration tests
 ./gradlew :multiforge-api:test :multiforge-example:test   # 4 + 3 tests
 tools/ci/live_cluster.sh               # master + two servers + bots + both harnesses
@@ -169,7 +169,7 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   handover, both fight types and forced packet loss are implemented and live-verified
   (`compat/evidence/chunk-handover-20261122T035205Z.md`,
   `compat/evidence/fight-sync-20261122T074549Z.md`,
-  `compat/evidence/packet-loss-20261122T074452Z.md`), and `tools/ci/live_cluster.sh` reproduces
+  `compat/evidence/packet-loss-20261122T075418Z.md`), and `tools/ci/live_cluster.sh` reproduces
   the 18/18 + forced-loss + fight run in one command. Radium/ServerCore and Ksyxis are closed as
   documented deployment profiles (`docs/COMPATIBILITY_PROFILES.md`). Larger features still
   missing: the MultiPaper-style proxy-side master plugin. A graphical map is optional: upstream

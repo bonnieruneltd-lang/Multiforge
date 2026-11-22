@@ -162,7 +162,9 @@ python3 tools/compat/packet_loss_check.py --a-port 25575 --b-port 25576 \
 
 The injector drops only the first transmission of block/block-entity updates; retransmissions
 are never dropped, so a run always converges. It is a debug tool: the default is 0 and
-`/multiforge status` reports the active percentage as `drop=`.
+`/multiforge status` reports the active percentage as `drop=`. The CI script accepts
+`LOSS_PERCENT` and `LOSS_COUNT`; a 90 % / 100-update run also passed (5 gaps, 100/100 blocks,
+chest NBT).
 
 ## Hardware client matrix
 

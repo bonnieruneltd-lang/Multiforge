@@ -119,6 +119,20 @@ wait_for_ready() {
   return 1
 }
 
+require_free_port() {
+  local port=$1 label=$2
+  if (echo > "/dev/tcp/127.0.0.1/$port") 2>/dev/null; then
+    log "$label port $port is already in use; stop the previous cluster first"
+    exit 1
+  fi
+}
+
+require_free_port "$MASTER_PORT" master
+require_free_port "$A_PORT" live1
+require_free_port "$B_PORT" live2
+require_free_port "$A_RCON" live1-rcon
+require_free_port "$B_RCON" live2-rcon
+
 log "building the master fat jar"
 ./gradlew --no-daemon :multiforge-master:fatJar > "$RUNTIME/master-build.log" 2>&1 || {
   log "master build failed"; exit 1;
@@ -177,7 +191,8 @@ for item in open(f"/proc/{pid}/environ", "rb").read().decode("utf-8", "ignore").
     if "=" in item:
         key, value = item.split("=", 1)
         env[key] = value
-env["JAVA_TOOL_OPTIONS"] = "-Dmultiforge.serverName=live2"
+env["JAVA_TOOL_OPTIONS"] = (env.get("JAVA_TOOL_OPTIONS", "")
+                            + " -Dmultiforge.serverName=live2").strip()
 out = open(logfile, "wb")
 proc = subprocess.Popen(args, cwd=cwd, env=env, stdout=out,
                         stderr=subprocess.STDOUT, start_new_session=True)
@@ -218,9 +233,10 @@ python3 tools/compat/cluster_check.py \
   --skip-mod-checks --out "$OUT" 2>&1 | tee "$RUNTIME/cluster_check.log"
 CLUSTER_STATUS=${PIPESTATUS[0]}
 
-log "running the forced-loss check (50% of block updates dropped, retransmit must converge)"
+log "running the forced-loss check (${LOSS_PERCENT:-50}% of block updates dropped, retransmit must converge)"
 python3 tools/compat/packet_loss_check.py \
   --a-port "$A_RCON" --b-port "$B_RCON" --password "$RCON_PASSWORD" \
+  --percent "${LOSS_PERCENT:-50}" --count "${LOSS_COUNT:-40}" \
   --out "$OUT" 2>&1 | tee "$RUNTIME/packet_loss.log"
 LOSS_STATUS=${PIPESTATUS[0]}
 

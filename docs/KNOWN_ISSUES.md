@@ -307,8 +307,9 @@ the real retransmit path, and a future subscription handshake that announces the
 current sequence would close the last window. A **lost final update** (tail) is repaired by the
 heartbeat acknowledgement: the receiver re-acks its highest contiguous sequence once per second
 for five seconds after the last update, and the sender's retransmit buffer fills the hole.
-Verified live at 50 % loss: 15-23 gaps observed and all 40 blocks plus the chest NBT converged
-(`compat/evidence/packet-loss-20261122T074452Z.md`).
+Verified live at 50 % and 90 % loss: 5-23 gaps observed, and all 40 blocks (50 %) / all
+100 blocks (90 %) plus the chest NBT converged
+(`compat/evidence/packet-loss-20261122T075418Z.md`).
 
 ### 25. Chunk handover limits
 
@@ -363,7 +364,7 @@ and trade-offs:
 
 * Live verification of a forced-loss run is now recorded: `/multiforge drop 50` on one server,
   the receiver reported 23 sequence gaps, and all 40 blocks plus the block-entity NBT converged
-  (`compat/evidence/packet-loss-20261122T074452Z.md`). The history is still bounded at 128
+  (`compat/evidence/packet-loss-20261122T075418Z.md`). The history is still bounded at 128
   updates per chunk and peer; a loss burst larger than that cannot be repaired from history and
   is resynchronised by the baseline rule above.
 
