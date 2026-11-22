@@ -263,16 +263,19 @@ was not applied. A changed `master.address` reconnects the control channel.
 ### 24. Chunk sequence history is bounded
 
 Every block and block-entity update carries a per-chunk sequence number, and the receiver
-acknowledges the highest contiguous value per chunk per tick. The sender remembers the last
-128 updates per chunk (`RetransmitBuffer`); a gap that is more than 128 updates old cannot be
-filled from memory, is logged once per gap and stays until the chunk is loaded again from the
-master/owner copy. The receiver remembers the last 1024 values it had to evict from its
-out-of-order window so a retransmission of an already applied value is still recognised as a
-duplicate instead of being applied twice (`SequenceTracker.EVICTED_HISTORY`). On a single TCP
-connection packets are ordered and complete, so a gap indicates a reconnect during which the
-owner kept sending, or a software defect; the counter is visible as `seq gaps=` in
-`/multiforge status`. Pending acknowledgements are dropped at shutdown, which is harmless
-because a restarting peer reloads chunks from the cluster.
+acknowledges the highest contiguous value per chunk and sender per tick. Ordering state is
+kept per sender (`SenderSequenceTable`) because more than one server can change a block in the
+same chunk while ownership settles; a shared counter would treat the other sender's numbers as
+duplicates and drop updates. The sender keeps the last 128 updates of each chunk **per peer**
+(`ChunkState.retransmitBuffer`), so one peer's acknowledgement cannot discard entries another
+peer still needs; a gap that is more than 128 updates old, or wider than the receiver window of
+256, cannot be filled from memory. Instead of stalling, the receiver adopts the newest value as
+the baseline (logged as a gap) and the next full chunk load repairs the state. The first packet
+of a sender the tracker has never seen is used as the baseline too, because earlier numbers were
+never sent to that peer. On a single TCP connection packets are ordered and complete, so a gap
+indicates a reconnect during which the owner kept sending, or a software defect; the counter is
+visible as `seq gaps=` in `/multiforge status`. Pending acknowledgements are dropped at
+shutdown, which is harmless because a restarting peer reloads chunks from the cluster.
 
 ## Fixed issues worth knowing about (regression tests cover them)
 
@@ -293,8 +296,24 @@ because a restarting peer reloads chunks from the cluster.
   contained an unanchored `world/` rule; the build failed on a clean checkout. The rules are
   anchored now and the package is restored (no regression test can catch a missing file, so
   check `git ls-files` after adding sources).
-* A read could be redirected to a peer that was already unloading the chunk; the master now
-  records chunk status and serves its own copy in that case
+* A `FilesToSyncMessage` decoder allocated `new FileToSync[readVarInt()]` before looking at
+  the frame, so a small hostile frame could announce two billion entries and kill the process
+  with an `OutOfMemoryError` (found by `ProtocolFuzzTest`, reproduced with
+  `fileToSyncCountLargerThanTheFrameIsRejectedBeforeAllocation`). The count is now bounded by
+  the remaining frame bytes.
+* The peer frame decoder trusted the announced uncompressed length and allocated it before
+  inflating. A tiny frame could therefore request a multi-gigabyte buffer on a Netty thread.
+  Both the frame length and the uncompressed length are capped by
+  `-Dmultiforge.peer.maxFrameBytes` (64 MiB default).
+* A fallback `ChunkStorage` created by `LocalChunkStorage` was registered by the constructor
+  mixin, so a local backup write (or a read fallback while the master was up) re-entered
+  `ChunkSyncIo` and would recurse until the stack overflowed. The instance is unregistered
+  right after construction (`ChunkStorageRegistry.unregister`), and the local write is no
+  longer duplicated when `keepLocalChunkBackup` is already on.
+* Sequence numbers were first tracked per chunk only. A second server can change a block in a
+  chunk while ownership settles, and its independent numbering then looked like duplicates
+  (updates dropped). Ordering state is per sender now (`SenderSequenceTable`), and
+  acknowledgements are tracked per chunk and peer.
   (`unloadingPeerIsNotChosenForChunkRead`).
 * Entity id blocks were persisted in the process working directory and could wrap negative;
   they now live in the master storage root with serialized, overflow-checked allocation
@@ -341,3 +360,5 @@ because a restarting peer reloads chunks from the cluster.
   the packet. Found by `tools/compat/player_state_check.py`, which showed the golden sword in
   both hotbar slots 0 and 8 on the mirror before the fix
   (`compat/evidence/player-state-20261115T054356Z.md`).
+* A read could be redirected to a peer that was already unloading the chunk; the master now
+  records chunk status and serves its own copy in that case.

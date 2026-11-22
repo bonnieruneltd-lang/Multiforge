@@ -120,7 +120,13 @@ public final class MasterConnection extends ServerBoundMessageHandler {
         if (pingTask != null) {
             pingTask.cancel(false);
         }
-        pingTask = scheduler.scheduleAtFixedRate(this::ping, interval, interval, TimeUnit.SECONDS);
+        try {
+            pingTask = scheduler.scheduleAtFixedRate(this::ping, interval, interval, TimeUnit.SECONDS);
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            // The scheduler was shut down between the reload and this call.
+            pingTask = null;
+            LOGGER.debug("Not rescheduling the keep-alive loop: the connection is stopping");
+        }
     }
 
     /**

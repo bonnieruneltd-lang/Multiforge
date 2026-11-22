@@ -271,11 +271,14 @@ and the segmented master region cache are done.
   extended `tools/compat/mcbot.js` commands (look/move/chat/use/attack). Limits: KNOWN_ISSUES
   5, 9 and 24. New unit tests: `SequenceTrackerTest`, `RetransmitBufferTest`,
   `BoundedTaskExecutorTest`.
-* **Bug hunt on the new protocol logic** found and fixed three defects: an evicted sequence
-  value could be applied twice when it was retransmitted (now remembered in a bounded evicted
-  history), the batched acknowledgement could drop one peer's value when ownership changed
-  within a tick (the previous peer is answered immediately), and the sequence window is now
-  tested by randomised property/recovery runs (`SequenceTrackerPropertyTest`,
-  `SequenceRecoveryRandomTest`) plus a concurrency stress run for the compression executor
-  (`BoundedTaskExecutorStressTest`). Optimisations from the same pass are listed in
-  PERFORMANCE.md section 4 item 4.
+* **Bug hunt on the new protocol logic** found and fixed defects: an evicted sequence value
+  could be applied twice (the window now resynchronises the baseline instead of keeping an
+  unbounded hole), the acknowledgement state was per chunk only although several servers can
+  send for one chunk (now per chunk and sender, and the retransmit history is per peer), a
+  peer that joined mid-stream could stall the ack loop (first packet is a baseline), a
+  fallback `ChunkStorage` recursed through the IO hook, and two remote OOMs
+  (`FilesToSyncMessage` array count, peer frame uncompressed length). Randomised
+  property/recovery runs (`SequenceTrackerPropertyTest`, `SequenceRecoveryRandomTest`),
+  `SenderSequenceTableTest` and the concurrency stress run (`BoundedTaskExecutorStressTest`)
+  cover the new logic. Optimisations from the same pass are listed in PERFORMANCE.md section 4
+  item 4.

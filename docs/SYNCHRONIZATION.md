@@ -60,12 +60,13 @@ See [CHUNK_MANAGEMENT.md](CHUNK_MANAGEMENT.md) for the full flow. Summary:
   `SetChunkOwnerMessage`/`ChunkSubscribersSyncMessage`; receivers drop a packet older than
   the newest epoch they know for that chunk. A delayed packet from the previous owner can
   therefore no longer overwrite the new owner's state.
-* **Per-chunk sequences.** Within one epoch every update also carries a monotonic sequence.
-  The receiver applies only numbers above its contiguous value, counts and logs gaps, and
-  acknowledges the highest contiguous number once per chunk per tick. The owner keeps the
-  last 128 updates of the chunk and retransmits the entries a peer reports as missing. Both
-  counters restart when the epoch changes. Details and limits: NETWORKING.md ("Chunk
-  sequences and acknowledgements") and KNOWN_ISSUES 24.
+* **Per-chunk sequences.** Within one epoch every sender stamps a monotonic sequence on its
+  own updates for a chunk. The receiver keeps a tracker per sender, applies only numbers above
+  that sender's contiguous value, counts and logs gaps, and acknowledges the highest contiguous
+  number once per chunk and peer per tick. Each owner keeps the last 128 updates of the chunk
+  and retransmits the entries a peer reports as missing. Both counters restart when the epoch
+  changes. Details and limits: NETWORKING.md ("Chunk sequences and acknowledgements") and
+  KNOWN_ISSUES 24.
 
 ## Block entities
 

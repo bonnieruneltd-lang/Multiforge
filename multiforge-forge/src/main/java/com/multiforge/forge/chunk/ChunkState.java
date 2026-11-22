@@ -1,5 +1,6 @@
 package com.multiforge.forge.chunk;
 
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -70,18 +71,31 @@ public final class ChunkState {
      *
      * <p>Ownership epochs reject updates from an older owner; the sequence
      * numbers reject duplicate or late updates from the current owner and let a
-     * receiver report a gap so the sender can retransmit it. Both counters reset
-     * when the ownership epoch changes.</p>
+     * receiver report a gap so the sender can retransmit it. Incoming numbers are
+     * tracked per sender because more than one server can change a block in the
+     * same chunk while ownership settles. Counters reset when the ownership epoch
+     * changes.</p>
      */
-    private final com.multiforge.protocol.util.SequenceTracker sequences =
+    private final com.multiforge.protocol.util.SequenceTracker outboundSequences =
             new com.multiforge.protocol.util.SequenceTracker(256);
+
+    /** Ordering state of every peer that sent updates for this chunk. */
+    private final com.multiforge.protocol.util.SenderSequenceTable inboundSequences =
+            new com.multiforge.protocol.util.SenderSequenceTable(256);
 
     /** Maximum number of sent updates kept per chunk for gap retransmission. */
     public static final int RETRANSMIT_HISTORY = 128;
 
-    /** Sent updates of this chunk that a peer may still ask for. */
-    private final com.multiforge.protocol.util.RetransmitBuffer<com.multiforge.forge.peer.PeerPacket> retransmit =
-            new com.multiforge.protocol.util.RetransmitBuffer<>(RETRANSMIT_HISTORY);
+    /**
+     * Sent updates of this chunk that one peer may still ask for, keyed by peer
+     * name.
+     *
+     * <p>The history is per peer: an acknowledgement from one server must not
+     * discard entries another server still needs to fill its gap, and the entry
+     * for a peer survives a reconnect with the same cluster name.</p>
+     */
+    private final Map<String, com.multiforge.protocol.util.RetransmitBuffer<com.multiforge.forge.peer.PeerPacket>> retransmit =
+            new ConcurrentHashMap<>();
 
     /** @return owning server name, or {@code null} */
     public String owner() {
@@ -206,37 +220,46 @@ public final class ChunkState {
      * @return sequence number to stamp into the packet
      */
     public long nextSequence(long epoch) {
-        return sequences.nextOutgoing(epoch);
+        return outboundSequences.nextOutgoing(epoch);
     }
 
     /**
-     * Classifies a received block or block entity update.
+     * Classifies a received block or block entity update from one sender.
      *
+     * @param sender   server that sent the update
      * @param epoch    ownership epoch stamped into the packet
      * @param sequence sequence number stamped into the packet; {@code 0} means
      *                 the sender had no sequence information
      * @return ordering decision, see {@link com.multiforge.protocol.util.SequenceTracker.Result}
      */
-    public com.multiforge.protocol.util.SequenceTracker.Result observeSequence(long epoch, long sequence) {
-        return sequences.observe(epoch, sequence);
-    }
-
-    /** @return highest contiguous sequence received for the current epoch */
-    public long contiguousSequence() {
-        return sequences.contiguous();
+    public com.multiforge.protocol.util.SequenceTracker.Result observeSequence(
+            String sender, long epoch, long sequence) {
+        return inboundSequences.observe(sender, epoch, sequence);
     }
 
     /**
-     * Bounded history of sent block/block-entity updates of this chunk.
+     * @param sender server that sent the updates
+     * @return highest contiguous sequence received from that sender for the
+     *         current epoch
+     */
+    public long contiguousSequence(String sender) {
+        return inboundSequences.contiguous(sender);
+    }
+
+    /**
+     * Bounded history of sent block/block-entity updates of this chunk for one
+     * peer.
      *
      * <p>Lives on the chunk state instead of a separate map so the broadcast path
-     * does not need another concurrent lookup. Entries are dropped as peers
-     * acknowledge them; the buffer is cleared when the state is dropped.</p>
+     * does not need another concurrent lookup. Entries are dropped when that peer
+     * acknowledges them; the buffer is cleared when the state is dropped.</p>
      *
-     * @return retransmit history for this chunk
+     * @param peer peer name
+     * @return retransmit history for this chunk and peer
      */
-    public com.multiforge.protocol.util.RetransmitBuffer<com.multiforge.forge.peer.PeerPacket> retransmitBuffer() {
-        return retransmit;
+    public com.multiforge.protocol.util.RetransmitBuffer<com.multiforge.forge.peer.PeerPacket> retransmitBuffer(String peer) {
+        return retransmit.computeIfAbsent(peer,
+                ignored -> new com.multiforge.protocol.util.RetransmitBuffer<>(RETRANSMIT_HISTORY));
     }
 
     /** @return live set of servers that have the chunk loaded */

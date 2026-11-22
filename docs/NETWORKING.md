@@ -187,23 +187,30 @@ applied).
 ### Chunk sequences and acknowledgements
 
 `BlockChangePacket` and `BlockEntityUpdatePacket` append a second `long sequence` after the
-epoch. The owner numbers the updates of every chunk monotonically, restarting at one when the
-epoch changes. The receiver orders them with `SequenceTracker`
-(`multiforge-protocol/.../util`):
+epoch. Every sender numbers its own updates per chunk monotonically, restarting at one when
+the epoch changes. The receiver keeps one `SequenceTracker` per sender
+(`SenderSequenceTable`), because more than one server can change a block in a chunk while
+ownership settles; sharing a counter would make independent streams look like duplicates.
+Each tracker orders its stream:
 
 * the next expected number is applied (`ACCEPTED`);
 * a number above the next expected one is applied but reported as a gap from that point on
-  (`GAP`);
+  (`GAP`). A gap wider than the receiver window (256) or the first packet of a sender the
+  tracker has never seen adopts the newest value as the baseline, so an unrepairable hole
+  cannot stall the acknowledgement stream forever;
 * an already applied or older number is dropped (`DUPLICATE`);
 * anything from an older epoch is dropped (`STALE_EPOCH`).
 
-The receiver batches one `ChunkSequenceAckPacket` per changed chunk per tick with its highest
-*contiguous* sequence. The sender keeps the last 128 updates of each chunk in a
-`RetransmitBuffer`; an acknowledgement below what it sent makes it resend the missing entries
-on that connection. Entries acknowledged by a newer epoch are discarded, because a new owner
-starts its own numbering. Acknowledgements are optional for correctness on a single TCP
-connection (TCP preserves order); they matter after a reconnect, when a peer was disconnected
-while the owner kept sending, and they turn a silent inconsistency into a detected gap.
+The receiver batches one `ChunkSequenceAckPacket` per changed chunk and sending peer per tick
+with that sender's highest *contiguous* sequence. The sender keeps the last 128 updates of
+each chunk **per peer** in a `RetransmitBuffer`; an acknowledgement below what it sent makes it
+resend the missing entries on that connection. The history is per peer because one server's
+acknowledgement must not discard entries another server still needs, and it survives a
+reconnect with the same cluster name. Entries acknowledged by a newer epoch are discarded,
+because a new owner starts its own numbering. Acknowledgements are optional for correctness on
+a single TCP connection (TCP preserves order); they matter after a reconnect, when a peer was
+disconnected while the owner kept sending, and they turn a silent inconsistency into a
+detected gap.
 
 Both fields are appended, so a peer running an older build omits them and decoding yields 0
 ("no sequencing information", applied as before). The new packet id (33) requires both sides

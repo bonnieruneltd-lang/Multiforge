@@ -158,7 +158,8 @@ disposable world and two Forge servers are required).
 1. ~~**Chunk serialization off the server thread**~~ - done. `ChunkManager.respondToChunkRequest`
    now only calls `ChunkSerializer.write` on the server thread; gzip
    (`NbtIo.writeCompressed`) and the reply run on a two-thread `BoundedTaskExecutor`
-   (queue of 64). When the pool is saturated the caller compresses inline, so a reply is
+   (queue of 16, deliberately small because each queued task holds one uncompressed chunk
+   snapshot). When the pool is saturated the caller compresses inline, so a reply is
    never dropped, and `ChunkManager.close` drains the queue at shutdown. The executor's
    saturation/drain contract is unit tested (`BoundedTaskExecutorTest`).
 2. ~~**Per-chunk key cache**~~ - done. `ChunkKeyCache` is a 512-slot direct-mapped cache keyed
@@ -168,12 +169,16 @@ disposable world and two Forge servers are required).
    owner are rejected by `SequenceTracker`, gaps are acknowledged with
    `ChunkSequenceAckPacket` and retransmitted from a 128-entry `RetransmitBuffer` per chunk.
    Limits: KNOWN_ISSUES 24. This was a correctness feature, not a speed one.
-4. **Follow-up hot-path tweaks** - `worldName(level)` keeps a single volatile level/name pair,
-   so the per-entity tick no longer performs a `ConcurrentHashMap` lookup (entities of one
-   level tick consecutively). The retransmit history moved from a `Map<ChunkKey, ...>` onto
-   `ChunkState`, removing one lookup per broadcast, and the batched acknowledgement reuses one
-   mutable `PendingAck` per chunk instead of allocating per update. `SequenceTracker` skips the
-   `contains` calls while both receive sets are empty, which is the normal case.
+4. **Follow-up hot-path tweaks** - `worldName(level)` keeps one immutable level/name pair in a
+   volatile field, so the per-entity tick no longer performs a `ConcurrentHashMap` lookup and
+   cannot mix two levels. The retransmit history moved from a `Map<ChunkKey, ...>` onto
+   `ChunkState` and is kept per peer, removing one lookup per broadcast without letting one
+   peer's acknowledgement starve another. Chunk keys and name pairs are published as immutable
+   objects (`AtomicReferenceArray`, single volatile pair) so an off-thread read cannot pair a
+   key with the wrong level. The batched acknowledgement keeps one dirty flag per chunk and
+   peer and a dirty-chunk set, so a tick only touches chunks that actually changed.
+   `SequenceTracker` skips the `TreeSet.contains` call while the receive set is empty and
+   bounds its memory by resynchronising instead of keeping evicted values.
 4. ~~Inline `Inflater` per peer connection~~ - done. `PeerFrameCodec.Decoder` and
    `Encoder` keep one resettable `Inflater`/`Deflater` per connection and end them
    when the handler is removed, instead of allocating native compressor state per

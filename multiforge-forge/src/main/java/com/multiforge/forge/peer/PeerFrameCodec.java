@@ -36,6 +36,17 @@ import java.util.zip.Inflater;
  */
 public final class PeerFrameCodec {
 
+    /**
+     * Upper bound for a peer frame and for its announced uncompressed size.
+     *
+     * <p>Without it a ten byte frame could announce a two gigabyte payload and
+     * make the decoder allocate it on a Netty thread before any data arrived.
+     * Override with {@code -Dmultiforge.peer.maxFrameBytes} when a deployment
+     * really needs larger chunk frames.</p>
+     */
+    static final int MAX_FRAME_BYTES =
+            Integer.getInteger("multiforge.peer.maxFrameBytes", 64 * 1024 * 1024);
+
     private PeerFrameCodec() {
     }
 
@@ -112,12 +123,20 @@ public final class PeerFrameCodec {
             if (frameLength < 1) {
                 throw new IllegalStateException("Peer frame too small: " + frameLength);
             }
+            if (frameLength > MAX_FRAME_BYTES) {
+                throw new IllegalStateException("Peer frame length " + frameLength
+                        + " exceeds " + MAX_FRAME_BYTES);
+            }
             if (in.readableBytes() < frameLength) {
                 in.resetReaderIndex();
                 return;
             }
             int frameEnd = in.readerIndex() + frameLength;
             int uncompressedLength = readVarInt(in);
+            if (uncompressedLength > MAX_FRAME_BYTES) {
+                throw new IllegalStateException("Peer frame announces " + uncompressedLength
+                        + " uncompressed bytes, exceeding " + MAX_FRAME_BYTES);
+            }
             ByteBuf payload;
             if (uncompressedLength > 0) {
                 int compressedLength = frameEnd - in.readerIndex();

@@ -25,6 +25,13 @@ import java.util.TreeSet;
  * receives. Both live in the same tracker because they always belong to the same
  * chunk state and change together on ownership handover.</p>
  *
+ * <p>Two bounded-resynchronisation rules keep the state finite and stop an
+ * acknowledgement loop that can never be satisfied: a gap wider than
+ * {@code window} adopts the newest value as the baseline, and the first packet
+ * from a tracker that has never seen one is used as the baseline (a peer that
+ * connected mid-stream). Both are reported as {@link Result#GAP} so the caller can
+ * log the repair.</p>
+ *
  * <p>Threading: all methods are synchronized. State is tiny and only touched on
  * the server thread, but keeping the class itself safe makes it testable and
  * usable from the chunk state without extra discipline.</p>
@@ -46,17 +53,6 @@ public final class SequenceTracker {
     /** Maximum number of out-of-order sequence numbers kept per chunk. */
     private final int window;
 
-    /**
-     * Number of values that were evicted from the receive window but are still
-     * remembered for duplicate detection.
-     *
-     * <p>Evicted values have been applied once. Without remembering them, a
-     * retransmission of an evicted value would look like a new gap and be applied
-     * twice. The history is small and bounded; a value older than this is treated
-     * as new, which only costs a redundant idempotent update.</p>
-     */
-    public static final int EVICTED_HISTORY = 1024;
-
     /** Current ownership epoch of this tracker. */
     private long epoch;
 
@@ -68,9 +64,6 @@ public final class SequenceTracker {
 
     /** Received values above {@link #contiguous}, bounded by {@link #window}. */
     private final TreeSet<Long> ahead = new TreeSet<>();
-
-    /** Applied values evicted from {@link #ahead}, still duplicate-checked. */
-    private final TreeSet<Long> evicted = new TreeSet<>();
 
     /** @param window maximum number of out-of-order values to remember */
     public SequenceTracker(int window) {
@@ -93,7 +86,6 @@ public final class SequenceTracker {
             nextOutgoing = 1L;
             contiguous = 0L;
             ahead.clear();
-            evicted.clear();
         }
         return nextOutgoing++;
     }
@@ -116,45 +108,37 @@ public final class SequenceTracker {
         if (packetEpoch < epoch) {
             return Result.STALE_EPOCH;
         }
+        boolean firstEpoch = epoch == 0L;
         if (packetEpoch > epoch) {
             epoch = packetEpoch;
             contiguous = 0L;
             ahead.clear();
-            evicted.clear();
         }
-        if (sequence <= contiguous
-                || (!ahead.isEmpty() && ahead.contains(sequence))
-                || (!evicted.isEmpty() && evicted.contains(sequence))) {
+        if (firstEpoch && contiguous == 0L && ahead.isEmpty() && sequence > 1L) {
+            // First packet this tracker ever sees: the peer connected while the
+            // chunk was already being updated, so earlier numbers were never sent
+            // to it. Adopt this value as the baseline instead of reporting a gap
+            // the sender's bounded history can no longer fill.
+            contiguous = sequence - 1L;
+        }
+        if (sequence <= contiguous || (!ahead.isEmpty() && ahead.contains(sequence))) {
             return Result.DUPLICATE;
+        }
+        if (sequence - contiguous > window) {
+            // The hole is larger than anything the sender's bounded history can
+            // retransmit (or a peer reconnected after a long absence). Adopt the
+            // newest value as the baseline instead of stalling forever: the
+            // caller logs the gap and the next full chunk load repairs the state.
+            contiguous = sequence;
+            ahead.clear();
+            return Result.GAP;
         }
         ahead.add(sequence);
         if (sequence == contiguous + 1L) {
             advance();
             return Result.ACCEPTED;
         }
-        if (ahead.size() > window) {
-            // Do not grow without bound when a sender never fills the hole; the
-            // sender retransmits from its buffer, so forgetting the furthest
-            // value only delays it until the next acknowledgement.
-            rememberEvicted(ahead.pollLast());
-        }
         return Result.GAP;
-    }
-
-    /**
-     * Remembers a value that leaves the receive window so it is still recognised
-     * as a duplicate when a retransmission arrives.
-     *
-     * @param sequence evicted sequence number
-     */
-    private void rememberEvicted(Long sequence) {
-        if (sequence == null) {
-            return;
-        }
-        evicted.add(sequence);
-        while (evicted.size() > EVICTED_HISTORY) {
-            evicted.pollFirst();
-        }
     }
 
     private void advance() {
@@ -171,7 +155,6 @@ public final class SequenceTracker {
         nextOutgoing = 1L;
         contiguous = 0L;
         ahead.clear();
-        evicted.clear();
     }
 
     /** @return current ownership epoch known to this tracker */

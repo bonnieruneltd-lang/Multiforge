@@ -28,10 +28,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * </ul>
  *
  * <p>Separate {@link ChunkStorage} instances are created per directory because the
- * vanilla instances are owned by the level and would recurse into our intercepting
- * mixin. Instances are created lazily on IO threads and cached; they are closed on
- * shutdown. All methods are blocking and must not be called from the server
- * thread except {@link #flush()} during shutdown.</p>
+ * vanilla instances are owned by the level. Every new instance is removed from
+ * {@link ChunkStorageRegistry} immediately, otherwise the constructor mixin routes
+ * the local fallback back into {@code ChunkSyncIo} and recurses. Instances are
+ * created lazily on IO threads and cached; they are closed on shutdown. All methods
+ * are blocking and must not be called from the server thread except
+ * {@link #flush()} during shutdown.</p>
  */
 public final class LocalChunkStorage implements AutoCloseable {
 
@@ -48,8 +50,14 @@ public final class LocalChunkStorage implements AutoCloseable {
     }
 
     private ChunkStorage storage(ChunkStore store) {
-        return storages.computeIfAbsent(store.directory(),
-                path -> new ChunkStorage(path, server.getFixerUpper(), false));
+        return storages.computeIfAbsent(store.directory(), path -> {
+            ChunkStorage created = new ChunkStorage(path, server.getFixerUpper(), false);
+            // The constructor mixin registers every ChunkStorage it sees. This one
+            // exists to write the local fallback, so it must not be routed back
+            // into ChunkSyncIo (that would recurse).
+            ChunkStorageRegistry.unregister(created);
+            return created;
+        });
     }
 
     /**

@@ -57,7 +57,6 @@ class SequenceTrackerPropertyTest {
     private static final class Model {
         private final int window;
         private final TreeSet<Long> ahead = new TreeSet<>();
-        private final TreeSet<Long> evicted = new TreeSet<>();
         private long epoch;
         private long contiguous;
 
@@ -72,14 +71,22 @@ class SequenceTrackerPropertyTest {
             if (packetEpoch < epoch) {
                 return SequenceTracker.Result.STALE_EPOCH;
             }
+            boolean epochWasZero = epoch == 0L;
             if (packetEpoch > epoch) {
                 epoch = packetEpoch;
                 contiguous = 0L;
                 ahead.clear();
-                evicted.clear();
             }
-            if (sequence <= contiguous || ahead.contains(sequence) || evicted.contains(sequence)) {
+            if (epochWasZero && contiguous == 0L && ahead.isEmpty() && sequence > 1L) {
+                contiguous = sequence - 1L;
+            }
+            if (sequence <= contiguous || ahead.contains(sequence)) {
                 return SequenceTracker.Result.DUPLICATE;
+            }
+            if (sequence - contiguous > window) {
+                contiguous = sequence;
+                ahead.clear();
+                return SequenceTracker.Result.GAP;
             }
             ahead.add(sequence);
             if (sequence == contiguous + 1L) {
@@ -87,15 +94,6 @@ class SequenceTrackerPropertyTest {
                     contiguous++;
                 }
                 return SequenceTracker.Result.ACCEPTED;
-            }
-            if (ahead.size() > window) {
-                Long removed = ahead.pollLast();
-                if (removed != null) {
-                    evicted.add(removed);
-                    while (evicted.size() > SequenceTracker.EVICTED_HISTORY) {
-                        evicted.pollFirst();
-                    }
-                }
             }
             return SequenceTracker.Result.GAP;
         }

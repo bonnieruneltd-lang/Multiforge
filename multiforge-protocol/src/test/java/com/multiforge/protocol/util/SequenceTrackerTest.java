@@ -72,21 +72,49 @@ class SequenceTrackerTest {
         for (long sequence = 3; sequence <= 10; sequence++) {
             tracker.observe(1L, sequence);
         }
-        assertEquals(1L, tracker.contiguous());
-        assertEquals(3, tracker.pending());
+        assertEquals(10L, tracker.contiguous(),
+                "the tracker resynchronises past a hole its window can never hold");
+        assertEquals(0, tracker.pending());
     }
 
     @Test
-    void anEvictedValueIsStillRecognisedAsDuplicateWhenItArrivesAgain() {
+    void aValueBeyondTheWindowResynchronisesInsteadOfGrowingState() {
         SequenceTracker tracker = new SequenceTracker(2);
         tracker.observe(1L, 1L);
         assertEquals(SequenceTracker.Result.GAP, tracker.observe(1L, 3L));
+        // 5 - 1 = 4 is farther than the two-value window: adopt 5 as the baseline
+        // instead of keeping an unrecoverable hole forever.
         assertEquals(SequenceTracker.Result.GAP, tracker.observe(1L, 5L));
-        // The window now holds two values; the next gap evicts the highest one.
+        assertEquals(5L, tracker.contiguous());
         assertEquals(SequenceTracker.Result.GAP, tracker.observe(1L, 7L));
-        assertEquals(2, tracker.pending());
         assertEquals(SequenceTracker.Result.DUPLICATE, tracker.observe(1L, 7L),
-                "a value that was applied once must never be applied twice, even after eviction");
+                "a value that was applied once is never applied twice");
+    }
+
+    @Test
+    void negativeSequenceIsTreatedAsNoSequenceInformation() {
+        SequenceTracker tracker = new SequenceTracker(8);
+        assertEquals(SequenceTracker.Result.ACCEPTED, tracker.observe(1L, -5L));
+        assertEquals(0L, tracker.contiguous());
+        assertEquals(0, tracker.pending());
+    }
+
+    @Test
+    void aFirstPacketMidStreamIsUsedAsTheBaseline() {
+        SequenceTracker tracker = new SequenceTracker(8);
+        assertEquals(SequenceTracker.Result.ACCEPTED, tracker.observe(1L, 150L),
+                "a peer that connected mid-stream must not report a gap it cannot fill");
+        assertEquals(150L, tracker.contiguous());
+        assertEquals(SequenceTracker.Result.ACCEPTED, tracker.observe(1L, 151L));
+    }
+
+    @Test
+    void aGapAfterTheBaselineIsStillDetected() {
+        SequenceTracker tracker = new SequenceTracker(8);
+        tracker.observe(1L, 40L);
+        assertEquals(SequenceTracker.Result.GAP, tracker.observe(1L, 42L));
+        assertEquals(SequenceTracker.Result.ACCEPTED, tracker.observe(1L, 41L));
+        assertEquals(42L, tracker.contiguous());
     }
 
     @Test

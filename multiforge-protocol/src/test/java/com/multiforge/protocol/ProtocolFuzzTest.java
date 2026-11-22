@@ -5,6 +5,7 @@ import com.multiforge.protocol.messages.masterbound.MasterBoundProtocol;
 import com.multiforge.protocol.messages.masterbound.RequestChunkOwnershipMessage;
 import com.multiforge.protocol.messages.masterbound.WriteChunkMessage;
 import com.multiforge.protocol.messages.serverbound.ChunkSubscribersSyncMessage;
+import com.multiforge.protocol.messages.serverbound.FilesToSyncMessage;
 import com.multiforge.protocol.messages.serverbound.ServerBoundProtocol;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -212,6 +213,14 @@ class ProtocolFuzzTest {
             buf.writeString("world");
             buf.writeVarInt(Integer.MAX_VALUE);
         });
+        assertFailsWith(failure, IllegalArgumentException.class);
+    }
+
+    @Test
+    void fileToSyncCountLargerThanTheFrameIsRejectedBeforeAllocation() {
+        ServerBoundProtocol protocol = new ServerBoundProtocol();
+        int id = protocol.getMessageId(new FilesToSyncMessage(new FilesToSyncMessage.FileToSync[0]));
+        Throwable failure = decode(protocol, id, buf -> buf.writeVarInt(Integer.MAX_VALUE));
         assertFailsWith(failure, IllegalArgumentException.class);
     }
 }

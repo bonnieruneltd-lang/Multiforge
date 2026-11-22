@@ -117,7 +117,9 @@ the next tick.
 ## 6. Peer responses
 
 `ChunkManager.respondToChunkRequest` serializes the *loaded* chunk on the server thread with
-`ChunkSerializer.write(level, chunk)` and compresses it. This is why peers can serve data
+`ChunkSerializer.write(level, chunk)`; gzip and the reply run on a small bounded pool
+(`MultiForge-ChunkCompress`, 2 threads, queue of 16) and fall back to the server thread when
+the queue is full, so a reply is never dropped. This is why peers can serve data
 newer than the master's copy: it is the in-memory state including unsaved changes.
 
 If the peer no longer has the chunk loaded it answers with an empty payload and the

@@ -11,7 +11,16 @@ public class FilesToSyncMessage extends ServerBoundMessage {
     }
 
     public FilesToSyncMessage(ExtendedByteBuf byteBuf) {
-        filesToSync = new FileToSync[byteBuf.readVarInt()];
+        int count = byteBuf.readVarInt();
+        // Every entry needs at least one byte for the string length and eight for
+        // the timestamp. A hostile frame could otherwise announce two billion
+        // entries in a 20 byte frame and take the process down with an
+        // OutOfMemoryError before reading a single entry.
+        if (count < 0 || count > byteBuf.readableBytes() / 9) {
+            throw new IllegalArgumentException("Files to sync count " + count
+                    + " does not fit in " + byteBuf.readableBytes() + " readable bytes");
+        }
+        filesToSync = new FileToSync[count];
         for (int i = 0; i < filesToSync.length; i ++) {
             filesToSync[i] = new FileToSync(
                     byteBuf.readString(),

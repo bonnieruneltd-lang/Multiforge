@@ -118,7 +118,7 @@ MinecraftServer.stopServer (Mixin RETURN) -> flush uploads, close sockets
 | `Util.backgroundExecutor` (vanilla IO) | `ChunkStorage.read/write` hooks, NBT (de)serialization |
 | `MultiForge-MasterConnection` | pings, reconnect scheduling |
 | `MultiForge-PeerKeepAlive` | peer heartbeat and dead connection reaping |
-| `MultiForge-ChunkCompress` | gzip of an already serialized chunk snapshot and the peer reply (2 threads, bounded queue; the server thread compresses inline when the queue is full) |
+| `MultiForge-ChunkCompress` | gzip of an already serialized chunk snapshot and the peer reply (2 threads, queue of 16; the server thread compresses inline when the queue is full) |
 | Master: `MultiPaper-Netty-*` -> `MultiForge-Netty-*` | message handling, ownership arbitration |
 | Master: `ForkJoinPool.commonPool` | region file IO, file sync |
 

@@ -55,6 +55,23 @@ public final class ChunkStorageRegistry {
     }
 
     /**
+     * Stops resolving a storage instance.
+     *
+     * <p>{@link LocalChunkStorage} creates its own vanilla {@code ChunkStorage}
+     * instances for the local region files. Without this call the constructor
+     * mixin would register them and the read/write hooks would route them back
+     * into {@link ChunkSyncIo}, recursing until the stack overflows (and the local
+     * backup would never be written).</p>
+     *
+     * @param storage storage instance to forget
+     */
+    public static void unregister(ChunkStorage storage) {
+        if (storage != null) {
+            BY_STORAGE.remove(storage);
+        }
+    }
+
+    /**
      * Registers the three storage directories of a level.
      *
      * <p>Called when a {@link ServerLevel} finished constructing, before any

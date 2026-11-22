@@ -70,6 +70,25 @@ class BoundedTaskExecutorStressTest {
     }
 
     @Test
+    void aFailingTaskDoesNotKillTheWorker() throws Exception {
+        BoundedTaskExecutor executor = new BoundedTaskExecutor(1, 4, "failing");
+        CountDownLatch ranAfterFailure = new CountDownLatch(1);
+        try {
+            assertTrue(executor.execute(() -> {
+                throw new IllegalStateException("expected test failure");
+            }));
+            // Give the worker a moment to absorb the exception, then prove it still
+            // accepts and runs work.
+            Thread.sleep(100L);
+            assertTrue(executor.execute(ranAfterFailure::countDown));
+            assertTrue(ranAfterFailure.await(5, TimeUnit.SECONDS),
+                    "the worker thread must survive a task that throws");
+        } finally {
+            executor.close(5_000L);
+        }
+    }
+
+    @Test
     void closeIsIdempotent() {
         BoundedTaskExecutor executor = new BoundedTaskExecutor(1, 4, "idempotent");
         executor.close(1_000L);

@@ -299,7 +299,9 @@ public final class ChunkSyncIo {
             local.write(store, pos, tag);
         }
         if (!shouldIntercept(store)) {
-            local.write(store, pos, tag);
+            if (!server.config().keepLocalChunkBackup()) {
+                local.write(store, pos, tag);
+            }
             // The master may have gone down between a reconnect and the backlog
             // replay; keep the chunk queued so it is retried on the next connect.
             recordOfflineWrite(store, pos);
@@ -341,8 +343,13 @@ public final class ChunkSyncIo {
                         failures.incrementAndGet();
                         LOGGER.error("Failed to upload chunk {}, writing local backup: {}", key, error.toString());
                         local.write(pending.store, pending.pos, pending.tag);
-                        backlog.putIfAbsent(backlogKey(pending.store, pending.pos),
-                                new BacklogEntry(pending.store, pending.pos));
+                        if (backlog.size() < MAX_BACKLOG) {
+                            backlog.putIfAbsent(backlogKey(pending.store, pending.pos),
+                                    new BacklogEntry(pending.store, pending.pos));
+                        } else if (backlogDropped.incrementAndGet() == 1) {
+                            LOGGER.warn("Local chunk backlog is full ({} chunks); failed uploads stay local only",
+                                    MAX_BACKLOG);
+                        }
                         pendingWrites.remove(key, pending);
                         return;
                     }
