@@ -147,12 +147,27 @@ The script teleports the bots to the raid first (when a raid is active) and then
 asserts that both servers report the same raid id/wave and dragon UUID/phase with exactly one
 `local=true`, then moves the owner's bot away and the other bot in to trigger two fenced
 handovers per fight, checking the epoch advances and the state is preserved. It exits non-zero
-on failure. Evidence: `compat/evidence/fight-sync-20261122T064859Z.md` (12/12).
+on failure. Evidence: `compat/evidence/fight-sync-20261122T072854Z.md` (14/14).
+
+## Forced packet-loss check
+
+`tools/compat/packet_loss_check.py` sets `/multiforge drop 50` on one server, places blocks and
+a chest in a chunk that server owns, then verifies on the peer that the receiver observed
+sequence gaps and that every block plus the chest NBT arrived through the retransmit path:
+
+```bash
+python3 tools/compat/packet_loss_check.py --a-port 25575 --b-port 25576 \
+    --password <rcon-password> --out compat/evidence
+```
+
+The injector drops only the first transmission of block/block-entity updates; retransmissions
+are never dropped, so a run always converges. It is a debug tool: the default is 0 and
+`/multiforge status` reports the active percentage as `drop=`.
 
 ## One-command live cluster
 
 `tools/ci/live_cluster.sh` boots the master, two Forge dev servers and the headless bots, runs
-the compatibility and fight-state harnesses, and shuts everything down:
+the compatibility, forced-loss and fight-state harnesses, and shuts everything down:
 
 ```bash
 FRESH=1 tools/ci/live_cluster.sh                 # clean world, ~3 minutes
@@ -161,7 +176,7 @@ HEAP=1200M RCON_PASSWORD=mfcompat tools/ci/live_cluster.sh
 ```
 
 It writes evidence to `compat/evidence/` and logs to `.runtime/live-cluster/`, and exits
-non-zero unless both harnesses pass. `tools/ci/live-cluster-workflow.yml` is the GitHub
+non-zero unless every harness passes. `tools/ci/live-cluster-workflow.yml` is the GitHub
 Actions template (copy to `.github/workflows/live-cluster.yml`). The script replaces the manual
 steps above for CI; use the manual procedure when debugging a single step.
 

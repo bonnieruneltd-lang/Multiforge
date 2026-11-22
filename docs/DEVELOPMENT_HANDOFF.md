@@ -305,21 +305,23 @@ two processes.
   server reached `Done (33.5s)` and `MultiForge ready (3 worlds)` with all 35 mixins applied,
   including the four new ones (`RaidMixin`, `RaidsAccessor`, `EndDragonFightMixin`,
   `RaidAccessor`), and no `FightSyncManager` exception during the run.
-* **Live verified on a master + two dev servers (session 7):** the fresh cluster harness passed
-  18/18 (`compat/evidence/cluster-20261122T065754Z.md`). The new
-  `tools/compat/fight_sync_check.py` passed 12/12 (`compat/evidence/fight-sync-20261122T064859Z.md`)
-  and 7/7 on a fresh world without a raid (`fight-sync-20261122T065818Z.md`): both servers
-  reported the same dragon UUID/portal/phase and the same raid id/wave with exactly one
-  `local=true`; moving the owner's bot away and the other bot in advanced the ownership epoch
-  twice for each fight (raid 7→8→9, dragon 5→6→7) while preserving the state.
+* **Live verified on a master + two dev servers (session 7):** the cluster harness passed
+  18/18 (`compat/evidence/cluster-20261122T072753Z.md`). `tools/compat/fight_sync_check.py`
+  passed **14/14** (`compat/evidence/fight-sync-20261122T072854Z.md`): it created a raid
+  (`/multiforge startraid` plus a test village), verified the same raid id/wave and dragon
+  UUID/phase on both servers with exactly one `local=true`, and handed each fight over and back
+  (raid epochs 2→3→4, dragon 1→2→3) while preserving the state.
+  `tools/compat/packet_loss_check.py` passed **3/3** (`packet-loss-20261122T072758Z.md`): with
+  50 % of first block transmissions dropped, the receiver observed 23 sequence gaps and all
+  40 blocks plus the chest NBT converged through retransmits.
 * **Repeatable:** `tools/ci/live_cluster.sh` boots the master, both dev servers and the bots,
-  runs both harnesses and shuts everything down (exit 0 only on success); the GitHub Actions
-  template is `tools/ci/live-cluster-workflow.yml`. A full run passed 18/18 + 7/7 in ~3 minutes.
+  runs the cluster, forced-loss and fight harnesses and shuts everything down (exit 0 only on
+  success); the GitHub Actions template is `tools/ci/live-cluster-workflow.yml`. A full run
+  passed 18/18 + 3/3 + 14/14.
 * **Mod profiles closed:** Ksyxis 1.4.6 did not reproduce the `/forceload` ticket loss on
   47.4.29; Radium/ServerCore and BetterAutoSave are documented deployment choices
   (`docs/COMPATIBILITY_PROFILES.md`, `compat/evidence/mod-profile-20261122T070103Z.md`).
-* **Not yet verified live:** peer-level forced packet loss. It is tracked in TODO.md; the
-  acknowledgement/retransmit logic is unit-tested under random loss.
+* **Not yet verified live:** client rendering on a hardware GPU (compatibility rows).
 * **Docs:** NETWORKING (ids 37-38), SYNCHRONIZATION, TODO, KNOWN_ISSUES, README, AGENT_GUIDE and
   the new `docs/COMPLETION.md` scorecard were updated in the same change. Test counts are now
   protocol 72, master 56, api 4, example 3.

@@ -188,7 +188,7 @@ change the support matrix and must not be hidden:
 | Server gameplay | End-to-end minecart transport, player-head drops, combat-log punishment and AntiXray packet obfuscation still need player-driven checks. Tree felling, leaf decay, TPA (same-server), chat formatting, anti-seed `/seed`, natural item merging and the minecart speed/forceload branch are covered by `compat/evidence/gameplay-mods-20261122T043800Z.md`. |
 | Cross-server gameplay | Chunk ownership transfer while a player walks, player mirroring (see `compat/evidence/player-mirroring-20261115T030505Z.md`), inventory sync (TODO 3), server switch and reconnect. |
 | Radium/ServerCore | Resolved as a documented deployment choice: `docs/COMPATIBILITY_PROFILES.md` (radium / servercore / both), because mixin priorities are static. |
-| Evidence | Client and player-driven results are recorded in `compat/evidence/client-matrix-20261122T052900Z.md` and `compat/evidence/gameplay-mods-20261122T043800Z.md`; append a hardware-GPU visual run when available. `tools/ci/live_cluster.sh` reproduces the two-server cluster (18/18) and fight checks (7/7 or 12/12) from one command. |
+| Evidence | Client and player-driven results are recorded in `compat/evidence/client-matrix-20261122T052900Z.md` and `compat/evidence/gameplay-mods-20261122T043800Z.md`; append a hardware-GPU visual run when available. `tools/ci/live_cluster.sh` reproduces the two-server cluster (18/18), forced-loss (3/3) and fight (14/14) checks from one command. |
 
 **Do not mark a row FULLY COMPATIBLE until the listed evidence exists.** The current
 matrix deliberately keeps most rows below that bar.

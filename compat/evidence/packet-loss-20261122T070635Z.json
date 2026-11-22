@@ -1,0 +1,462 @@
+{
+  "timestamp": "20261122T070635Z",
+  "checks": [
+    {
+      "check": "loss-injected",
+      "passed": true,
+      "detail": "receiver observed 17 sequence gaps (duplicates dropped: 17)"
+    },
+    {
+      "check": "blocks-converged",
+      "passed": true,
+      "detail": "40/40 blocks present on B"
+    },
+    {
+      "check": "block-entity-converged",
+      "passed": true,
+      "detail": "-95, 64, -40 has the following block data: \"minecraft:diamond\""
+    }
+  ],
+  "transcript": [
+    {
+      "server": "A",
+      "command": "multiforge chunks",
+      "response": "Chunks owned by live1: 0\nLoaded chunks on this server:\n - world,-4,8 owner=unowned\n - world,2,-8 owner=live2\n - world,-8,-5 owner=unowned\n - world,-1,7 owner=live2\n - world,1,8 owner=live2\n - world,7,-8 owner=unowned\n - world,-8,5 owner=unowned\n - world,-5,-1 owner=live2\n - world,-3,-1 owner=live2\n - world,1,-7 owner=live2\n - world,7,3 owner=live2\n - world,-7,-4 owner=live2\n - world,3,2 owner=live2\n - world,5,6 owner=live2\n - world,0,4 owner=live2\n - world,-6,-3 owner=live2\n - world,-2,6 owner=live2\n - world,6,-1 owner=live2\n - world,-8,6 owner=unowned\n - world,-1,1 owner=live2\n - world,-1,-1 owner=live2\n - world,-2,-3 owner=live2\n - world,0,1 owner=live2\n - world,-1,6 owner=live2\n - world,-3,-3 owner=live2\n - world,-8,8 owner=unowned\n - world,8,-2 owner=unowned\n - world,-1,0 owner=live2\n - world,-5,-3 owner=live2\n - world,-2,-1 owner=live2\n - world,3,-5 owner=live2\n - world,5,7 owner=unowned\n - world,4,3 owner=live2\n - world,-1,3 owner=live2\n - world,-7,-3 owner=live2\n - world,7,6 owner=unowned\n - world,2,6 owner=live2\n - world,-6,3 owner=live2\n - world,8,5 owner=unowned\n - world,-5,1 owner=live2\n - world,4,-7 owner=live2\n - world,1,-2 owner=live2\n - world,6,1 owner=live2\n - world,6,3 owner=live2\n - world,0,3 owner=live2\n - world,7,-3 owner=live2\n - world,-7,-2 owner=live2\n - world,-6,5 owner=live2\n - world,2,-1 owner=live2\n - world,1,-4 owner=live2\n... (truncated)\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunks",
+      "response": "Chunks owned by live2: 217\n - world,-7,1\n - world,6,1\n - world,7,1\n - world,-5,-6\n - world,-5,1\n - world,8,1\n - world,1,8\n - world,2,7\n - world,1,7\n - world,-5,-7\n - world,-6,1\n - world,-6,-6\n - world,-6,2\n - world,-5,6\n - world,8,0\n - world,-1,7\n - world,-6,-5\n - world,-5,0\n - world,-6,3\n - world,-5,-4\n - world,6,5\n - world,-3,7\n - world,-5,-1\n - world,-6,-3\n - world,0,8\n - world,8,-1\n - world,-6,-2\n - world,-6,4\n - world,-5,-3\n - world,-6,-1\n - world,-5,3\n - world,-6,-4\n - world,-5,4\n - world,-5,-2\n - world,-4,7\n - world,-1,8\n - world,-5,2\n - world,3,7\n - world,-6,0\n - world,0,7\n - world,-5,-5\n - world,8,2\n - world,-7,0\n - world,7,-2\n - world,6,-4\n - world,7,-3\n - world,7,3\n - world,6,-1\n - world,-5,5\n - world,6,0\n... (truncated)\nLoaded chunks on this server:\n - world,8,7 owner=unowned\n - world,-10,9 owner=unowned\n - world,6,4 owner=live2\n - world,10,-3 owner=unowned\n - world,-11,-11 owner=unowned\n - world,0,9 owner=unowned\n - world,11,2 owner=unowned\n - world,9,11 owner=unowned\n - world,4,7 owner=unowned\n - world,-10,-1 owner=unowned\n - world,9,0 owner=unowned\n - world,-10,5 owner=unowned\n - world,10,-2 owner=unowned\n - world,9,-11 owner=unowned\n - world,-5,-7 owner=live2\n - world,2,-9 owner=unowned\n - world,6,-5 owner=live2\n - world,4,-4 owner=live2\n - world,-3,2 owner=live2\n - world,1,-3 owner=live2\n - world,7,8 owner=unowned\n - world,-11,11 owner=unowned\n - world,5,1 owner=live2\n - world,-4,-3 owner=live2\n - world,-6,6 owner=unowned\n - world,1,5 owner=live2\n - world,-10,-6 owner=unowned\n - world,-6,1 owner=live2\n - world,-4,-1 owner=live2\n - world,-4,11 owner=unowned\n - world,-7,5 owner=unowned\n - world,-11,-9 owner=unowned\n - world,0,6 owner=live2\n - world,9,-8 owner=unowned\n - world,6,-7 owner=unowned\n - world,-9,10 owner=unowned\n - world,7,0 owner=live2\n - world,7,5 owner=unowned\n - world,6,-8 owner=unowned\n - world,-8,-7 owner=unowned\n - world,4,11 owner=unowned\n - world,0,10 owner=unowned\n - world,11,-8 owner=unowned\n - world,-11,-6 owner=unowned\n - world,8,-3 owner=unowned\n - world,7,-5 owner=unowned\n - world,8,4 owner=unowned\n - world,10,7 owner=unowned\n - world,-11,0 owner=unowned\n - world,6,6 owner=unowned\n... (truncated)\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge drop 50",
+      "response": "Chunk update packet loss injection: 50% (block/block-entity first transmissions; retransmits unaffected)\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -95 64 -47 minecraft:redstone_block",
+      "response": "Changed the block at -95, 64, -47\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -94 64 -47 minecraft:redstone_block",
+      "response": "Changed the block at -94, 64, -47\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -93 64 -47 minecraft:redstone_block",
+      "response": "Changed the block at -93, 64, -47\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -92 64 -47 minecraft:redstone_block",
+      "response": "Changed the block at -92, 64, -47\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -91 64 -47 minecraft:redstone_block",
+      "response": "Changed the block at -91, 64, -47\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -90 64 -47 minecraft:redstone_block",
+      "response": "Changed the block at -90, 64, -47\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -89 64 -47 minecraft:redstone_block",
+      "response": "Changed the block at -89, 64, -47\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -88 64 -47 minecraft:redstone_block",
+      "response": "Changed the block at -88, 64, -47\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -87 64 -47 minecraft:redstone_block",
+      "response": "Changed the block at -87, 64, -47\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -86 64 -47 minecraft:redstone_block",
+      "response": "Changed the block at -86, 64, -47\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -85 64 -47 minecraft:redstone_block",
+      "response": "Changed the block at -85, 64, -47\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -84 64 -47 minecraft:redstone_block",
+      "response": "Changed the block at -84, 64, -47\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -83 64 -47 minecraft:redstone_block",
+      "response": "Changed the block at -83, 64, -47\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -82 64 -47 minecraft:redstone_block",
+      "response": "Changed the block at -82, 64, -47\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -95 64 -46 minecraft:redstone_block",
+      "response": "Changed the block at -95, 64, -46\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -94 64 -46 minecraft:redstone_block",
+      "response": "Changed the block at -94, 64, -46\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -93 64 -46 minecraft:redstone_block",
+      "response": "Changed the block at -93, 64, -46\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -92 64 -46 minecraft:redstone_block",
+      "response": "Changed the block at -92, 64, -46\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -91 64 -46 minecraft:redstone_block",
+      "response": "Changed the block at -91, 64, -46\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -90 64 -46 minecraft:redstone_block",
+      "response": "Changed the block at -90, 64, -46\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -89 64 -46 minecraft:redstone_block",
+      "response": "Changed the block at -89, 64, -46\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -88 64 -46 minecraft:redstone_block",
+      "response": "Changed the block at -88, 64, -46\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -87 64 -46 minecraft:redstone_block",
+      "response": "Changed the block at -87, 64, -46\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -86 64 -46 minecraft:redstone_block",
+      "response": "Changed the block at -86, 64, -46\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -85 64 -46 minecraft:redstone_block",
+      "response": "Changed the block at -85, 64, -46\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -84 64 -46 minecraft:redstone_block",
+      "response": "Changed the block at -84, 64, -46\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -83 64 -46 minecraft:redstone_block",
+      "response": "Changed the block at -83, 64, -46\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -82 64 -46 minecraft:redstone_block",
+      "response": "Changed the block at -82, 64, -46\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -95 64 -45 minecraft:redstone_block",
+      "response": "Changed the block at -95, 64, -45\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -94 64 -45 minecraft:redstone_block",
+      "response": "Changed the block at -94, 64, -45\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -93 64 -45 minecraft:redstone_block",
+      "response": "Changed the block at -93, 64, -45\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -92 64 -45 minecraft:redstone_block",
+      "response": "Changed the block at -92, 64, -45\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -91 64 -45 minecraft:redstone_block",
+      "response": "Changed the block at -91, 64, -45\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -90 64 -45 minecraft:redstone_block",
+      "response": "Changed the block at -90, 64, -45\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -89 64 -45 minecraft:redstone_block",
+      "response": "Changed the block at -89, 64, -45\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -88 64 -45 minecraft:redstone_block",
+      "response": "Changed the block at -88, 64, -45\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -87 64 -45 minecraft:redstone_block",
+      "response": "Changed the block at -87, 64, -45\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -86 64 -45 minecraft:redstone_block",
+      "response": "Changed the block at -86, 64, -45\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -85 64 -45 minecraft:redstone_block",
+      "response": "Changed the block at -85, 64, -45\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -84 64 -45 minecraft:redstone_block",
+      "response": "Changed the block at -84, 64, -45\n"
+    },
+    {
+      "server": "A",
+      "command": "setblock -95 64 -40 minecraft:chest",
+      "response": "Changed the block at -95, 64, -40\n"
+    },
+    {
+      "server": "A",
+      "command": "item replace block -95 64 -40 container.0 with minecraft:diamond 5",
+      "response": "Replaced a slot at -95, 64, -40 with [Diamond]\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge drop 0",
+      "response": "Chunk update packet loss injection: 0% (block/block-entity first transmissions; retransmits unaffected)\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge status",
+      "response": "live2 | master=connected | tps=20.0 | chunks owned=217 loaded=529 | peers=1 | mirrored=1 | io reads=2025 writes=579 failures=0 | seq gaps=17 dup=17 | local-backlog=0 | drop=0\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -95 64 -47 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -94 64 -47 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -93 64 -47 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -92 64 -47 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -91 64 -47 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -90 64 -47 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -89 64 -47 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -88 64 -47 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -87 64 -47 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -86 64 -47 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -85 64 -47 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -84 64 -47 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -83 64 -47 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -82 64 -47 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -95 64 -46 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -94 64 -46 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -93 64 -46 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -92 64 -46 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -91 64 -46 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -90 64 -46 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -89 64 -46 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -88 64 -46 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -87 64 -46 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -86 64 -46 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -85 64 -46 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -84 64 -46 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -83 64 -46 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -82 64 -46 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -95 64 -45 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -94 64 -45 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -93 64 -45 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -92 64 -45 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -91 64 -45 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -90 64 -45 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -89 64 -45 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -88 64 -45 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -87 64 -45 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -86 64 -45 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -85 64 -45 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "execute if block -84 64 -45 minecraft:redstone_block",
+      "response": "Test passed\n"
+    },
+    {
+      "server": "B",
+      "command": "data get block -95 64 -40 Items[0].id",
+      "response": "-95, 64, -40 has the following block data: \"minecraft:diamond\"\n"
+    }
+  ]
+}

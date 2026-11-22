@@ -129,6 +129,11 @@ if [[ "$FRESH" == "1" ]]; then
   rm -rf "$RUN1/world" "$RUN1/world_nether" "$RUN1/world_the_end" \
          "$RUN2/world" "$RUN2/world_nether" "$RUN2/world_the_end" \
          "$RUNTIME/master"/*
+  # A fresh cluster must not inherit jars from a previous mod-profile run. Set
+  # MODS_DIR to install a controlled set again after this cleanup.
+  if [[ -z "${MODS_DIR:-}" ]]; then
+    rm -f "$RUN1/mods"/*.jar "$RUN2/mods"/*.jar
+  fi
 fi
 write_server_files "$RUN1" live1 "$A_PORT" "$A_RCON" "MultiForge live1"
 write_server_files "$RUN2" live2 "$B_PORT" "$B_RCON" "MultiForge live2"
@@ -211,17 +216,23 @@ python3 tools/compat/cluster_check.py \
   --skip-mod-checks --out "$OUT" 2>&1 | tee "$RUNTIME/cluster_check.log"
 CLUSTER_STATUS=${PIPESTATUS[0]}
 
-log "running the fight-state checks (starts a dragon fight and hands it over)"
+log "running the forced-loss check (50% of block updates dropped, retransmit must converge)"
+python3 tools/compat/packet_loss_check.py \
+  --a-port "$A_RCON" --b-port "$B_RCON" --password "$RCON_PASSWORD" \
+  --out "$OUT" 2>&1 | tee "$RUNTIME/packet_loss.log"
+LOSS_STATUS=${PIPESTATUS[0]}
+
+log "running the fight-state checks (starts a dragon fight, builds a raid, hands both over)"
 python3 tools/compat/fight_sync_check.py \
   --a-port "$A_RCON" --b-port "$B_RCON" --password "$RCON_PASSWORD" \
   --out "$OUT" 2>&1 | tee "$RUNTIME/fight_check.log"
 FIGHT_STATUS=${PIPESTATUS[0]}
 
-if [[ "$CLUSTER_STATUS" -ne 0 || "$FIGHT_STATUS" -ne 0 ]]; then
+if [[ "$CLUSTER_STATUS" -ne 0 || "$LOSS_STATUS" -ne 0 || "$FIGHT_STATUS" -ne 0 ]]; then
   FAILED=1
-  log "FAILED (cluster=$CLUSTER_STATUS fight=$FIGHT_STATUS)"
+  log "FAILED (cluster=$CLUSTER_STATUS loss=$LOSS_STATUS fight=$FIGHT_STATUS)"
 else
-  log "PASS (cluster and fight checks)"
+  log "PASS (cluster, forced-loss and fight checks)"
 fi
 exit "$FAILED"
 

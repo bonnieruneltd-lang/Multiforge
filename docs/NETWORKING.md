@@ -226,6 +226,13 @@ a single TCP connection (TCP preserves order); they matter after a reconnect, wh
 disconnected while the owner kept sending, and they turn a silent inconsistency into a
 detected gap.
 
+The path is **verified live**. `/multiforge drop <percent>` discards that fraction of first
+block/block-entity transmissions on one server (retransmissions are never dropped), and
+`tools/compat/packet_loss_check.py` checks that the receiver sees `seq gaps` and that every
+block and the block-entity NBT converge. A 50 % run recorded 23 gaps, 40/40 blocks and the chest
+NBT (`compat/evidence/packet-loss-20261122T072758Z.md`). The injector defaults to 0 and the
+active percentage is reported by `/multiforge status` as `drop=`.
+
 Both fields are appended, so a peer running an older build omits them and decoding yields 0
 ("no sequencing information", applied as before). Updates without a positive epoch *or*
 sequence are never acknowledged, because an ack with contiguous 0 would make the sender

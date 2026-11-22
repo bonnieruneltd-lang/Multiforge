@@ -339,7 +339,7 @@ remaining limits are deliberate trade-offs:
   live packets are authoritative in memory; a server that starts with a stale file is
   corrected by the first broadcast from the owner.
 * Both fights are **live-verified** on a master + two dev servers
-  (`compat/evidence/fight-sync-20261122T064859Z.md`, 12/12 checks): the same raid id/wave and
+  (`compat/evidence/fight-sync-20261122T072854Z.md`, 14/14 checks): the same raid id/wave and
   dragon UUID/phase on both servers, exactly one `local=true`, and two fenced handovers each
   (raid epochs 7→8→9, dragon 5→6→7).
 * Testing note: vanilla `Raid.tick` calls `stop()` when the centre is not a valid village and
@@ -347,6 +347,12 @@ remaining limits are deliberate trade-offs:
   a composter and a villager worked after the first wave spawned) before a wave-0 raid is handed
   over, or vanilla ends it on the new owner for its own reasons. This is not a transfer bug;
   `tools/compat/fight_sync_check.py` therefore runs the raid round before the dragon rounds.
+
+* Live verification of a forced-loss run is now recorded: `/multiforge drop 50` on one server,
+  the receiver reported 23 sequence gaps, and all 40 blocks plus the block-entity NBT converged
+  (`compat/evidence/packet-loss-20261122T072758Z.md`). The history is still bounded at 128
+  updates per chunk and peer; a loss burst larger than that cannot be repaired from history and
+  is resynchronised by the baseline rule above.
 
 See TODO 5, `docs/SYNCHRONIZATION.md` and `docs/NETWORKING.md`.
 

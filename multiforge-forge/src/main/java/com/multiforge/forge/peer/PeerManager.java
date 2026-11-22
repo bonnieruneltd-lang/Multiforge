@@ -359,6 +359,11 @@ public final class PeerManager {
      */
     public void broadcast(PeerPacket packet) {
         for (PeerConnection connection : peers.values()) {
+            // Debug injection: the retransmit history is recorded before this call,
+            // so a dropped first transmission is repaired by the normal ack path.
+            if (PacketLossInjector.shouldDrop(packet)) {
+                continue;
+            }
             connection.send(packet);
         }
     }

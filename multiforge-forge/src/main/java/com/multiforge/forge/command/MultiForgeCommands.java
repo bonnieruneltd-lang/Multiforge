@@ -3,6 +3,7 @@ package com.multiforge.forge.command;
 import com.multiforge.api.ChunkLocation;
 import com.multiforge.api.ServerInfo;
 import com.multiforge.forge.MultiForgeServer;
+import com.multiforge.forge.peer.PacketLossInjector;
 import com.multiforge.forge.player.PlayerSyncManager;
 import com.multiforge.protocol.ChunkKey;
 import com.mojang.brigadier.CommandDispatcher;
@@ -13,6 +14,9 @@ import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.raid.Raid;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -61,6 +65,15 @@ public final class MultiForgeCommands {
                                         com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "radius")))))
                 .then(Commands.literal("borders").executes(context -> borders(context.getSource())))
                 .then(Commands.literal("fights").executes(context -> fights(context.getSource())))
+                .then(Commands.literal("drop")
+                        .executes(context -> drop(context.getSource(), -1))
+                        .then(Commands.argument("percent", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0, 100))
+                                .executes(context -> drop(context.getSource(),
+                                        com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(context, "percent")))))
+                .then(Commands.literal("startraid")
+                        .then(Commands.argument("player", net.minecraft.commands.arguments.EntityArgument.player())
+                                .executes(context -> startRaid(context.getSource(),
+                                        net.minecraft.commands.arguments.EntityArgument.getPlayer(context, "player")))))
                 .then(Commands.literal("reload").executes(context -> reload(context.getSource())))
                 .then(Commands.literal("compat").executes(context -> compat(context.getSource())))
                 .then(Commands.literal("download")
@@ -231,6 +244,62 @@ public final class MultiForgeCommands {
         return lines.size();
     }
 
+    /**
+     * Starts a raid at a player's position, bypassing the village POI search.
+     *
+     * <p>Vanilla starts raids when a player with Bad Omen enters a village, which
+     * makes a live raid test depend on world generation. This op-only command applies
+     * Bad Omen and calls the same {@code Raids.createOrExtendRaid} the vanilla effect
+     * uses, so a test (or an operator reproducing a report) can start a raid
+     * anywhere. It is the only way {@code tools/compat/fight_sync_check.py} can
+     * exercise the raid path on the flat CI world.</p>
+     *
+     * @param source command source
+     * @param player player the raid is centred on
+     * @return 1 when a raid exists afterwards
+     */
+    private static int startRaid(CommandSourceStack source, ServerPlayer player) {
+        if (!(player.level() instanceof ServerLevel level)) {
+            return 0;
+        }
+        player.addEffect(new MobEffectInstance(MobEffects.BAD_OMEN, 1200, 1));
+        Raid raid = level.getRaids().createOrExtendRaid(player);
+        if (raid == null) {
+            source.sendFailure(Component.literal("Could not start a raid for " + player.getName().getString()));
+            return 0;
+        }
+        source.sendSuccess(() -> Component.literal("Started raid " + raid.getId()
+                + " at " + raid.getCenter() + " for " + player.getName().getString()), false);
+        return 1;
+    }
+
+    /**
+     * Prints or changes the debug packet-loss percentage.
+     *
+     * <p>Only the first transmission of block and block-entity updates is dropped;
+     * retransmissions are not, so the sequence/ack path repairs the stream. Used by
+     * {@code tools/compat/packet_loss_check.py} to verify convergence under forced
+     * loss on a live cluster. Default 0.</p>
+     *
+     * @param source  command source
+     * @param percent new percentage, or a negative value to only print
+     * @return current percentage
+     */
+    private static int drop(CommandSourceStack source, int percent) {
+        MultiForgeServer runtime = runtime(source);
+        if (runtime == null) {
+            return 0;
+        }
+        if (percent >= 0) {
+            PacketLossInjector.setPercent(percent);
+        }
+        int current = PacketLossInjector.percent();
+        source.sendSuccess(() -> Component.literal(
+                "Chunk update packet loss injection: " + current
+                        + "% (block/block-entity first transmissions; retransmits unaffected)"), false);
+        return current;
+    }
+
     private static int status(CommandSourceStack source) {
         MultiForgeServer runtime = runtime(source);
         if (runtime == null) {
@@ -238,14 +307,14 @@ public final class MultiForgeCommands {
         }
         String line = String.format(
                 "%s | master=%s | tps=%.1f | chunks owned=%d loaded=%d | peers=%d | mirrored=%d "
-                        + "| io reads=%d writes=%d failures=%d | seq gaps=%d dup=%d | local-backlog=%d",
+                        + "| io reads=%d writes=%d failures=%d | seq gaps=%d dup=%d | local-backlog=%d | drop=%d",
                 runtime.serverName(),
                 runtime.master().isConnected() ? "connected" : "disconnected",
                 runtime.tps(), runtime.chunks().ownedChunkCount(), runtime.chunks().loadedChunkCount(),
                 runtime.peers().connections().size(), runtime.entities().mirroredEntityCount(),
                 runtime.chunkIo().readCount(), runtime.chunkIo().writeCount(), runtime.chunkIo().failureCount(),
                 runtime.chunks().sequenceGapCount(), runtime.chunks().sequenceDuplicateCount(),
-                runtime.chunkIo().backlogCount());
+                runtime.chunkIo().backlogCount(), PacketLossInjector.percent());
         source.sendSuccess(() -> Component.literal(line), false);
         Map<String, com.multiforge.forge.world.FileSyncer.DownloadState> downloads =
                 runtime.files().activeDownloads();

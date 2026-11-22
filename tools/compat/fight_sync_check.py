@@ -116,14 +116,74 @@ def teleport(cluster: Cluster, side: str, bot: str, dimension: str, coords: str)
     return cluster.run(side, f"execute in {dimension} run tp {bot} {coords}")
 
 
+def create_raid(cluster: Cluster, args) -> bool:
+    """Build a minimal village at the overworld spawn and give bot A Bad Omen.
+
+    The flat test world has no village, so the harness lays down the POIs a raid
+    needs (bell, composter, bed, villager) at the bot's position, gives it Bad
+    Omen and moves it inside. Vanilla only starts a raid inside a village, and a
+    wave-0 raid whose centre is not a village is stopped on its first tick, so the
+    helper also waits for the first wave before returning.
+    """
+    # The flat CI world has its surface at y=-61, so build at a known absolute
+    # position. A protocol bot does not simulate gravity, and relative placement
+    # after a teleport proved unreliable in this environment.
+    rx, ry, rz = (int(value) for value in args.raid_center.split())
+    teleport(cluster, "A", args.bot_a, "minecraft:overworld", f"{rx} {ry} {rz}")
+    time.sleep(2)
+
+    def find_raid():
+        return next((entry for entry in cluster.fights("A") if entry["kind"] == "raid"), None)
+
+    # Build the village first: vanilla stops a wave-0 raid whose centre is not a
+    # village on its first tick. The POI scan needs a moment before startraid.
+    commands = [
+        f"setblock {rx + 1} {ry} {rz} minecraft:bell",
+        f"setblock {rx + 3} {ry} {rz} minecraft:composter",
+        f"setblock {rx + 5} {ry} {rz} minecraft:white_bed[part=foot,facing=south]",
+        f"setblock {rx + 5} {ry} {rz + 1} minecraft:white_bed[part=head,facing=south]",
+        f"summon minecraft:villager {rx + 1} {ry} {rz + 3}",
+        f"tp {args.bot_a} {rx + 2}.5 {ry} {rz + 2}.5",
+    ]
+    for text in commands:
+        cluster.run("A", text)
+    time.sleep(4)
+
+    cluster.run("A", f"multiforge startraid {args.bot_a}")
+    raid = wait_for(find_raid, min(args.timeout_seconds, 15.0))
+    if not raid:
+        cluster.run("A", f"execute as {args.bot_a} at {args.bot_a} run raid start 1")
+        raid = wait_for(find_raid, min(args.timeout_seconds, 10.0))
+    if not raid:
+        # Last resort: the vanilla Bad Omen path on the village built above.
+        cluster.run("A", f"effect give {args.bot_a} minecraft:bad_omen 120 1")
+        raid = wait_for(find_raid, min(args.timeout_seconds, 20.0))
+    if not raid:
+        return False
+    # Wait for the first wave so the raid is past the wave-0 village check.
+    wait_for(lambda: (find_raid() or {}).get("wave", "0") != "0",
+             min(args.timeout_seconds, 30.0))
+    return find_raid() is not None
+
+
 def raid_rounds(cluster: Cluster, results: list[dict], args) -> None:
     """Hand an active raid's centre chunk to the other server and back.
 
     Uses the raid's own centre coordinates and the overworld. Runs after the dragon
     rounds so the dragon assertions are unaffected; the bots are already connected.
+    If the world has no village (the flat CI world), a minimal one is created first.
     """
     raids_a = [entry for entry in cluster.fights("A")
                if entry["kind"] == "raid" and entry["stopped"] == "false"]
+    if not raids_a and args.create_raid:
+        created = create_raid(cluster, args)
+        check(results, "raid-created", created,
+              "built a test village and applied Bad Omen" if created
+              else "could not start a raid in this world")
+        if not created:
+            return
+        raids_a = [entry for entry in cluster.fights("A")
+                   if entry["kind"] == "raid" and entry["stopped"] == "false"]
     if not raids_a:
         print("[SKIP] raid checks: no active raid in the loaded levels")
         return
@@ -140,11 +200,32 @@ def raid_rounds(cluster: Cluster, results: list[dict], args) -> None:
     local = [side for side, state in (("A", state_a), ("B", state_b))
              if state and state["local"]]
     if len(local) != 1:
+        # The raid has just been created; its centre chunk may not have been
+        # claimed yet. Put the bot on the centre so the normal ownership path
+        # claims it, then wait for a single ticker.
+        center = f"{cx + 0.5} {cy} {cz + 0.5}"
+        teleport(cluster, "A", args.bot_a, "minecraft:overworld", center)
+        wait_for(lambda: (on("A") or {}).get("local"), 25.0)
+        state_a, state_b = on("A"), on("B")
+        local = [side for side, state in (("A", state_a), ("B", state_b))
+                 if state and state["local"]]
+    if len(local) != 1:
         check(results, "raid-single-ticking-owner", False,
               f"before handover: A={bool(state_a and state_a['local'])} "
               f"B={bool(state_b and state_b['local'])}")
         return
     owner_side = local[0]
+
+    def replicated_raid():
+        fresh_a, fresh_b = on("A"), on("B")
+        if fresh_a and fresh_b and fresh_a["id"] == fresh_b["id"] \
+                and fresh_a["wave"] == fresh_b["wave"]:
+            return fresh_a, fresh_b
+        return None
+
+    replicated = wait_for(replicated_raid, min(args.timeout_seconds, 15.0))
+    if replicated:
+        state_a, state_b = replicated
     check(results, "raid-state-replicated",
           bool(state_a) and bool(state_b) and state_a["id"] == state_b["id"]
           and state_a["wave"] == state_b["wave"],
@@ -233,6 +314,11 @@ def main(argv=None) -> int:
                         help="settle time after a teleport/handover")
     parser.add_argument("--timeout-seconds", type=float, default=60.0,
                         help="maximum wait for a handover result")
+    parser.add_argument("--no-create-raid", action="store_false", dest="create_raid",
+                        help="do not build a test village when the world has no raid")
+    parser.add_argument("--raid-center", default="0 -60 0",
+                        help="x y z where the test village is built (flat world surface)")
+    parser.set_defaults(create_raid=True)
     args = parser.parse_args(argv)
 
     cluster = Cluster(args.a_port, args.b_port, args.password, args.host)

@@ -220,9 +220,9 @@ authoritative and ignores remote state. On an ownership change the losing server
 own `ServerBossEvent` so the player never sees two bars (the replacement fight object has a
 new bar UUID). See [NETWORKING.md](NETWORKING.md) ids 37-38 and [KNOWN_ISSUES.md](KNOWN_ISSUES.md) 26
 for the remaining limits. The dragon path is live-verified on a master + two dev servers,
-including two fenced handovers (`compat/evidence/fight-sync-20261122T064859Z.md`); the raid
+including two fenced handovers (`compat/evidence/fight-sync-20261122T072854Z.md`); the raid
 path shares the same manager, packets and mixins and was verified live in the same run
-(12/12 checks, raid epochs 7→8→9 and dragon epochs 5→6→7).
+(14/14 checks, raid epochs 2→3→4 and dragon epochs 1→2→3).
 
 ## Players
 
