@@ -162,14 +162,16 @@ varint frameLength, varint uncompressedLength, varint packetId, payload
 | 30 | `ScoreboardUpdatePacket(criteria, packetBytes)` | one clientbound scoreboard packet (`SetObjective`, `SetScore`, `SetDisplayObjective`, `SetPlayerTeam`) |
 | 31 | `PlayerStatsIncreasePacket(uuid, entries[])` | batched statistic deltas (type id, value id, delta) |
 | 32 | `AdvancementProgressPacket(uuid, advancement, criterion)` | one advancement criterion was granted |
+| 33 | `ChunkSequenceAckPacket(world, x, z, epoch, contiguous)` | highest contiguous block/block-entity sequence a peer applied |
 
 The entity family (15-19) is the M1 mirroring protocol. Ids 20-21 extend it to players and
 ids 22-26 carry live player state; they are described in
 [SYNCHRONIZATION.md](SYNCHRONIZATION.md#players). Ids 27-29 forward container windows
 ([SYNCHRONIZATION.md](SYNCHRONIZATION.md#containers)), id 30 synchronizes the main scoreboard,
 and ids 31-32 carry live statistics/advancement progress
-([SYNCHRONIZATION.md](SYNCHRONIZATION.md#scoreboards-statistics-and-advancements)). Ids were
-appended, so older peers keep their ids.
+([SYNCHRONIZATION.md](SYNCHRONIZATION.md#scoreboards-statistics-and-advancements)). Id 33 is
+the sequencing acknowledgement described below. Ids were appended, so older peers keep their
+ids.
 
 ### Ownership epochs
 
@@ -181,6 +183,31 @@ that chunk (from the master or from an earlier peer packet). This is a fence aga
 delayed update produced by the previous owner. Because the field is appended, a peer
 running an older build omits it and decoding yields epoch 0 ("no information", always
 applied).
+
+### Chunk sequences and acknowledgements
+
+`BlockChangePacket` and `BlockEntityUpdatePacket` append a second `long sequence` after the
+epoch. The owner numbers the updates of every chunk monotonically, restarting at one when the
+epoch changes. The receiver orders them with `SequenceTracker`
+(`multiforge-protocol/.../util`):
+
+* the next expected number is applied (`ACCEPTED`);
+* a number above the next expected one is applied but reported as a gap from that point on
+  (`GAP`);
+* an already applied or older number is dropped (`DUPLICATE`);
+* anything from an older epoch is dropped (`STALE_EPOCH`).
+
+The receiver batches one `ChunkSequenceAckPacket` per changed chunk per tick with its highest
+*contiguous* sequence. The sender keeps the last 128 updates of each chunk in a
+`RetransmitBuffer`; an acknowledgement below what it sent makes it resend the missing entries
+on that connection. Entries acknowledged by a newer epoch are discarded, because a new owner
+starts its own numbering. Acknowledgements are optional for correctness on a single TCP
+connection (TCP preserves order); they matter after a reconnect, when a peer was disconnected
+while the owner kept sending, and they turn a silent inconsistency into a detected gap.
+
+Both fields are appended, so a peer running an older build omits them and decoding yields 0
+("no sequencing information", applied as before). The new packet id (33) requires both sides
+to run a build that knows it; peer protocols are upgraded together with the cluster.
 
 `EntityHurtPacket` also appends optional fields: the causing entity UUID, the direct entity
 UUID and the source position. The owner resolves them and builds a real `DamageSource`, so

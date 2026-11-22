@@ -62,6 +62,18 @@ public final class ChunkSyncIo {
     private final LocalChunkStorage local;
     private final Map<ChunkKey, CompletableFuture<Optional<CompoundTag>>> inFlightReads = new ConcurrentHashMap<>();
     private final Map<ChunkKey, PendingWrite> pendingWrites = new ConcurrentHashMap<>();
+    /**
+     * Chunks written to the local region files while the master was unreachable.
+     *
+     * <p>They are uploaded when the connection comes back, so a master outage no
+     * longer requires restarting the servers to get those changes into the
+     * cluster. The set is bounded; past the limit the local region files remain
+     * the (documented) backup of last resort.</p>
+     */
+    private final Map<String, BacklogEntry> backlog = new ConcurrentHashMap<>();
+    private static final int MAX_BACKLOG = 65_536;
+    private final java.util.concurrent.atomic.AtomicInteger backlogDropped =
+            new java.util.concurrent.atomic.AtomicInteger();
     private final AtomicLong reads = new AtomicLong();
     private final AtomicLong writes = new AtomicLong();
     private final AtomicLong failures = new AtomicLong();
@@ -85,10 +97,91 @@ public final class ChunkSyncIo {
         if (!server.master().isConnected()) {
             return false;
         }
+        return syncEnabled(store);
+    }
+
+    /**
+     * @param store storage being accessed
+     * @return whether this storage type is synchronized at all, ignoring the
+     *         current master connection
+     */
+    private boolean syncEnabled(ChunkStore store) {
         if (store.isEntities()) {
             return server.config().entitySync();
         }
         return server.config().chunkSync();
+    }
+
+    /**
+     * Records a chunk that vanilla wrote to the local region file because the
+     * master was unreachable, so it can be uploaded after a reconnect.
+     *
+     * <p>Called from {@code ChunkStorageMixin} on the server or IO thread; the
+     * map is concurrent.</p>
+     *
+     * @param store storage descriptor
+     * @param pos   chunk position
+     */
+    public void recordOfflineWrite(ChunkStore store, ChunkPos pos) {
+        if (server.isIoClosed() || server.master().isConnected() || !syncEnabled(store)) {
+            return;
+        }
+        String backlogKey = backlogKey(store, pos);
+        if (backlog.containsKey(backlogKey)) {
+            return;
+        }
+        if (backlog.size() >= MAX_BACKLOG) {
+            if (backlogDropped.incrementAndGet() == 1) {
+                LOGGER.warn("Local chunk backlog is full ({} chunks); further offline writes stay local only",
+                        MAX_BACKLOG);
+            }
+            return;
+        }
+        backlog.put(backlogKey, new BacklogEntry(store, pos));
+    }
+
+    /**
+     * @param store storage descriptor
+     * @param pos   chunk position
+     * @return key that also distinguishes the region, entities and poi storage
+     */
+    private static String backlogKey(ChunkStore store, ChunkPos pos) {
+        return store.type() + ':' + store.world() + ':' + pos.x + ':' + pos.z;
+    }
+
+    /** @return number of chunks waiting to be uploaded after a master outage */
+    public int backlogCount() {
+        return backlog.size();
+    }
+
+    /**
+     * Re-uploads the chunks that changed while the master was unreachable.
+     *
+     * <p>Called on the Netty thread after the connection is re-established. The
+     * local reads are asynchronous, so this neither blocks nor touches world
+     * state off the server thread.</p>
+     */
+    public void flushBacklog() {
+        if (backlog.isEmpty()) {
+            return;
+        }
+        LOGGER.info("Uploading {} chunk(s) written while the master was unreachable", backlog.size());
+        for (Map.Entry<String, BacklogEntry> entry : backlog.entrySet()) {
+            BacklogEntry pending = entry.getValue();
+            local.read(pending.store, pending.pos).whenComplete((tag, error) -> {
+                backlog.remove(entry.getKey());
+                if (error != null) {
+                    LOGGER.warn("Could not read the offline copy of {} {},{} ({}), it stays local: {}",
+                            pending.store.type(), pending.pos.x, pending.pos.z,
+                            pending.store.world(), error.toString());
+                    return;
+                }
+                if (tag == null || tag.isEmpty()) {
+                    return;
+                }
+                write(pending.store, pending.pos, tag.get());
+            });
+        }
     }
 
     /**
@@ -245,6 +338,8 @@ public final class ChunkSyncIo {
                         failures.incrementAndGet();
                         LOGGER.error("Failed to upload chunk {}, writing local backup: {}", key, error.toString());
                         local.write(pending.store, pending.pos, pending.tag);
+                        backlog.putIfAbsent(backlogKey(pending.store, pending.pos),
+                                new BacklogEntry(pending.store, pending.pos));
                         pendingWrites.remove(key, pending);
                         return;
                     }
@@ -329,6 +424,17 @@ public final class ChunkSyncIo {
     /** Releases the fallback storages. Called during shutdown. */
     public void close() {
         local.close();
+    }
+
+    /** One chunk that has to be read back from the local region file after an outage. */
+    private static final class BacklogEntry {
+        private final ChunkStore store;
+        private final ChunkPos pos;
+
+        private BacklogEntry(ChunkStore store, ChunkPos pos) {
+            this.store = store;
+            this.pos = pos;
+        }
     }
 
     /** One in-flight upload with write coalescing support. */

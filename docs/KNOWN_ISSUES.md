@@ -91,12 +91,12 @@ fresh-world startup is still cheapest when one server warms the spawn area first
 ### 5. Master outage while running
 
 If the master disappears while servers run, chunk IO falls back to local region files and
-ownership keeps working locally. When the master returns, servers reconnect and re-subscribe,
-but chunks written locally while disconnected are not automatically re-uploaded unless they
-are saved again (the local files are the backup, not a queue).
-
-**Mitigation:** monitor the master; restart servers after a long master outage if you need
-those local changes uploaded.
+ownership keeps working locally. Chunks vanilla writes while the connection is down are now
+remembered (`ChunkSyncIo.recordOfflineWrite`) and uploaded after the reconnect
+(`flushBacklog`); the same happens for an upload that failed. The backlog is bounded at
+65,536 chunks per server (further offline writes stay local and log once) and lives in
+memory, so a server that stops while the master is down still requires a restart before its
+changes reach the master. `/multiforge status` shows `local-backlog=<n>`.
 
 ### 6. World state conflicts
 
@@ -130,10 +130,12 @@ On Forge 47.4.29 `/reload` does not fire `ModConfigEvent.Reloading` for mod conf
 `/multiforge reload` re-reads the TOML file directly and applies it. If the event ever fires,
 `MultiForgeServer.onConfigReloaded` also swaps the snapshot, so tick,
 file, world and player paths use the new values immediately; a changed `master.address`
-reconnects the control channel. Values that are bound or negotiated once still need a
-restart: `server.peerPort`, `server.name`, the peer compression threshold of an existing peer
-connection, and the ping/reconnect schedulers (their period is fixed when they are created).
-The server logs which value was not applied.
+reconnects the control channel. A changed `master.pingIntervalSeconds` reschedules the
+keep-alive loop, and a changed peer compression threshold is read by existing connections on
+their next frame. Only `server.peerPort` and `server.name` are bound/announced once and still
+need a restart (logged). Switching peer compression on or off (threshold 0 &lt;-&gt; positive) is
+negotiated in the hello and therefore applies to new connections; the server says so in the
+log.
 
 ## Operational notes
 
@@ -256,6 +258,17 @@ Earlier builds registered it as `SERVER`, which Forge stores in
 live). Values bound or negotiated once still need a restart: `server.peerPort`,
 `server.name`, existing peer compression and scheduler periods; the server logs which value
 was not applied. A changed `master.address` reconnects the control channel.
+
+### 24. Chunk sequence history is bounded
+
+Every block and block-entity update carries a per-chunk sequence number, and the receiver
+acknowledges the highest contiguous value per chunk per tick. The sender remembers the last
+128 updates per chunk (`RetransmitBuffer`); a gap that is more than 128 updates old cannot be
+filled from memory, is logged once per gap and stays until the chunk is loaded again from the
+master/owner copy. On a single TCP connection packets are ordered and complete, so a gap
+indicates a reconnect during which the owner kept sending, or a software defect; the counter
+is visible as `seq gaps=` in `/multiforge status`. Pending acknowledgements are dropped at
+shutdown, which is harmless because a restarting peer reloads chunks from the cluster.
 
 ## Fixed issues worth knowing about (regression tests cover them)
 

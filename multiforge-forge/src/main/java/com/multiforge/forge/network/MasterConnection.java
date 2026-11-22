@@ -43,6 +43,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -85,6 +86,7 @@ public final class MasterConnection extends ServerBoundMessageHandler {
     private volatile boolean stopping;
     private volatile long lastReply = System.currentTimeMillis();
     private volatile String secret = "";
+    private volatile ScheduledFuture<?> pingTask;
 
     /**
      * @param server owning MultiForge server
@@ -101,9 +103,38 @@ public final class MasterConnection extends ServerBoundMessageHandler {
      */
     public void start() {
         stopping = false;
-        scheduler.scheduleAtFixedRate(this::ping, server.config().pingIntervalSeconds(),
-                server.config().pingIntervalSeconds(), TimeUnit.SECONDS);
+        schedulePing();
         connect();
+    }
+
+    /**
+     * (Re)schedules the keep-alive loop with the configured interval.
+     *
+     * <p>The period is read from the live configuration, so a reload can change it
+     * without a restart. The previous task is cancelled first; calling this from
+     * the scheduler thread (a reload command) is safe because the new task only
+     * starts one interval later.</p>
+     */
+    private synchronized void schedulePing() {
+        int interval = Math.max(1, server.config().pingIntervalSeconds());
+        if (pingTask != null) {
+            pingTask.cancel(false);
+        }
+        pingTask = scheduler.scheduleAtFixedRate(this::ping, interval, interval, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Applies a configuration reload.
+     *
+     * <p>Only the ping period is bound here; the master address is handled by
+     * closing the channel in {@code MultiForgeServer.onConfigReloaded()} and the
+     * reconnect delay is read every time a reconnect is scheduled.</p>
+     */
+    public void onConfigReloaded() {
+        if (stopping) {
+            return;
+        }
+        schedulePing();
     }
 
     private void connect() {

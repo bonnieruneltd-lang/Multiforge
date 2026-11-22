@@ -65,6 +65,17 @@ public final class ChunkState {
     /** Server names that have the chunk's entities loaded. */
     private final Set<String> entitySubscribers = ConcurrentHashMap.newKeySet();
 
+    /**
+     * Per-chunk block/block-entity ordering and outgoing sequence counter.
+     *
+     * <p>Ownership epochs reject updates from an older owner; the sequence
+     * numbers reject duplicate or late updates from the current owner and let a
+     * receiver report a gap so the sender can retransmit it. Both counters reset
+     * when the ownership epoch changes.</p>
+     */
+    private final com.multiforge.protocol.util.SequenceTracker sequences =
+            new com.multiforge.protocol.util.SequenceTracker(256);
+
     /** @return owning server name, or {@code null} */
     public String owner() {
         return owner;
@@ -175,6 +186,37 @@ public final class ChunkState {
     /** @return highest epoch applied from a peer packet */
     public long lastAppliedEpoch() {
         return lastAppliedEpoch;
+    }
+
+    /**
+     * Returns the next sequence number for an update this server broadcasts.
+     *
+     * <p>The counter restarts at one when the ownership epoch changes, so a new
+     * owner is never mistaken for a late sender of the previous owner's
+     * numbering.</p>
+     *
+     * @param epoch ownership epoch the update is produced under
+     * @return sequence number to stamp into the packet
+     */
+    public long nextSequence(long epoch) {
+        return sequences.nextOutgoing(epoch);
+    }
+
+    /**
+     * Classifies a received block or block entity update.
+     *
+     * @param epoch    ownership epoch stamped into the packet
+     * @param sequence sequence number stamped into the packet; {@code 0} means
+     *                 the sender had no sequence information
+     * @return ordering decision, see {@link com.multiforge.protocol.util.SequenceTracker.Result}
+     */
+    public com.multiforge.protocol.util.SequenceTracker.Result observeSequence(long epoch, long sequence) {
+        return sequences.observe(epoch, sequence);
+    }
+
+    /** @return highest contiguous sequence received for the current epoch */
+    public long contiguousSequence() {
+        return sequences.contiguous();
     }
 
     /** @return live set of servers that have the chunk loaded */

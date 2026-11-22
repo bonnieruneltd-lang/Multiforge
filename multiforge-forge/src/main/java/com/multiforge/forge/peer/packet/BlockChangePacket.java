@@ -30,6 +30,8 @@ public class BlockChangePacket extends PeerPacket {
     public final int stateId;
     /** Ownership epoch of the chunk when the change happened. */
     public final long epoch;
+    /** Per-chunk sequence number; {@code 0} when the sender has none. */
+    public final long sequence;
 
     /**
      * @param world   logical world name
@@ -39,7 +41,7 @@ public class BlockChangePacket extends PeerPacket {
      * @param stateId global block state id
      */
     public BlockChangePacket(String world, int x, int y, int z, int stateId) {
-        this(world, x, y, z, stateId, 0L);
+        this(world, x, y, z, stateId, 0L, 0L);
     }
 
     /**
@@ -51,12 +53,26 @@ public class BlockChangePacket extends PeerPacket {
      * @param epoch   ownership epoch the change was produced under
      */
     public BlockChangePacket(String world, int x, int y, int z, int stateId, long epoch) {
+        this(world, x, y, z, stateId, epoch, 0L);
+    }
+
+    /**
+     * @param world    logical world name
+     * @param x        block X
+     * @param y        block Y
+     * @param z        block Z
+     * @param stateId  global block state id
+     * @param epoch    ownership epoch the change was produced under
+     * @param sequence per-chunk sequence number
+     */
+    public BlockChangePacket(String world, int x, int y, int z, int stateId, long epoch, long sequence) {
         this.world = world;
         this.x = x;
         this.y = y;
         this.z = z;
         this.stateId = stateId;
         this.epoch = epoch;
+        this.sequence = sequence;
     }
 
     /**
@@ -68,8 +84,9 @@ public class BlockChangePacket extends PeerPacket {
         this.y = buf.readInt();
         this.z = buf.readInt();
         this.stateId = buf.readVarInt();
-        // Appended field: a peer running an older build omits it.
+        // Appended fields: a peer running an older build omits them.
         this.epoch = buf.readableBytes() >= Long.BYTES ? buf.readLong() : 0L;
+        this.sequence = buf.readableBytes() >= Long.BYTES ? buf.readLong() : 0L;
     }
 
     @Override
@@ -80,10 +97,11 @@ public class BlockChangePacket extends PeerPacket {
         buf.writeInt(z);
         buf.writeVarInt(stateId);
         buf.writeLong(epoch);
+        buf.writeLong(sequence);
     }
 
     @Override
     public void handle(PeerConnection connection) {
-        connection.server().chunks().applyRemoteBlockChange(this);
+        connection.server().chunks().applyRemoteBlockChange(this, connection);
     }
 }

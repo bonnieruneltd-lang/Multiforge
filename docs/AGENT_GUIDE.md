@@ -155,14 +155,13 @@ a `/damage` on the mirror reduces the owner's health, and logout removes the cop
   `compat/evidence/server-features-20261121T065500Z.md` and the 18/18 deployment run in
   `compat/evidence/cluster-20261121T072841Z.md`. Details in TODO.md items 9, 11, 16, 17, 19
   and KNOWN_ISSUES.md.
-* Highest-value next work: (1) per-chunk sequence numbers and acknowledgements, the one known
-  correctness gap left (ownership epochs drop stale updates from another owner, but a delayed
-  packet from the current owner can still overwrite newer state; see PERFORMANCE.md section 4
-  and DISTRIBUTED_ARCHITECTURE_RESEARCH.md), (2) extend the player-driven harness
-  (`tools/compat/mcbot.js` + `player_state_check.py`) with gameplay interactions, because 10
-  server compatibility rows are waiting on interaction rather than code, (3) the two remaining
-  PERFORMANCE.md items (chunk gzip off the server thread, per-chunk key cache) and the
-  config-reload leftovers, (4) the 15-target client matrix, which needs a GPU machine. Larger
+* Highest-value next work: (1) verify the new chunk sequencing/acknowledgements and the
+  offline-write re-upload on a master plus two servers (disconnect a peer during a block
+  storm, watch `seq gaps=`; kill the master, edit blocks, restart it, watch `local-backlog=`
+  drain), (2) extend the player-driven harness (`tools/compat/mcbot.js` now sends look/move/
+  chat/use/attack in addition to the hotbar slot) into gameplay checks for the 10 LOADING
+  server rows, (3) the 15-target client matrix, which needs a GPU machine, (4) the
+  Radium/ServerCore profile decision and the Ksyxis `/forceload` reproduction. Larger
   features still missing: mob-navigation/raid/dragon/projectile handover, the MultiPaper-style
   proxy-side master plugin and a graphical `/multiforge map`.
 * Do not restart or rewrite working subsystems. Read `DEVELOPMENT_HANDOFF.md` for the

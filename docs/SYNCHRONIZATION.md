@@ -38,6 +38,9 @@ See [CHUNK_MANAGEMENT.md](CHUNK_MANAGEMENT.md) for the full flow. Summary:
   from memory (`SendChunkPacket`), falling back to the master copy.
 * Writes are coalesced per chunk (only the newest payload is uploaded while a write is in
   flight) and acknowledged (`BooleanMessageReply`); failures write a local backup.
+* Writes that happen while the master is unreachable are recorded and uploaded after the
+  reconnect (`ChunkSyncIo.flushBacklog`), so an outage no longer strands local changes.
+  The pending set is bounded and in memory (KNOWN_ISSUES 5).
 * `WillSaveChunkLaterMessage` tells the master to hold reads until the write lands, so
   another server cannot read a half-updated chunk.
 
@@ -57,6 +60,12 @@ See [CHUNK_MANAGEMENT.md](CHUNK_MANAGEMENT.md) for the full flow. Summary:
   `SetChunkOwnerMessage`/`ChunkSubscribersSyncMessage`; receivers drop a packet older than
   the newest epoch they know for that chunk. A delayed packet from the previous owner can
   therefore no longer overwrite the new owner's state.
+* **Per-chunk sequences.** Within one epoch every update also carries a monotonic sequence.
+  The receiver applies only numbers above its contiguous value, counts and logs gaps, and
+  acknowledges the highest contiguous number once per chunk per tick. The owner keeps the
+  last 128 updates of the chunk and retransmits the entries a peer reports as missing. Both
+  counters restart when the epoch changes. Details and limits: NETWORKING.md ("Chunk
+  sequences and acknowledgements") and KNOWN_ISSUES 24.
 
 ## Block entities
 

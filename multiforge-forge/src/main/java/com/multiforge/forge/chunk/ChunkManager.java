@@ -3,11 +3,16 @@ package com.multiforge.forge.chunk;
 import com.multiforge.forge.MultiForgeServer;
 import com.multiforge.forge.common.WorldDirectories;
 import com.multiforge.forge.peer.PeerConnection;
+import com.multiforge.forge.peer.PeerPacket;
 import com.multiforge.forge.peer.packet.BlockChangePacket;
 import com.multiforge.forge.peer.packet.BlockEntityUpdatePacket;
+import com.multiforge.forge.peer.packet.ChunkSequenceAckPacket;
 import com.multiforge.forge.peer.packet.EntityChunkChangedPacket;
 import com.multiforge.forge.peer.packet.SendChunkPacket;
 import com.multiforge.protocol.ChunkKey;
+import com.multiforge.protocol.util.BoundedTaskExecutor;
+import com.multiforge.protocol.util.RetransmitBuffer;
+import com.multiforge.protocol.util.SequenceTracker;
 import com.multiforge.protocol.messages.masterbound.ChunkChangedStatusMessage;
 import com.multiforge.protocol.messages.masterbound.LockChunkMessage;
 import com.multiforge.protocol.messages.masterbound.RequestChunkOwnershipMessage;
@@ -97,6 +102,47 @@ public final class ChunkManager {
     private final java.util.concurrent.atomic.AtomicInteger chunksWithEntitySubscribers =
             new java.util.concurrent.atomic.AtomicInteger();
 
+    /** Maximum number of sent updates kept per chunk for gap retransmission. */
+    private static final int OUTBOX_CAPACITY = 128;
+
+    /** Gap detections on the received block/block-entity stream, for `/multiforge status`. */
+    private final java.util.concurrent.atomic.AtomicLong sequenceGaps =
+            new java.util.concurrent.atomic.AtomicLong();
+
+    /** Duplicate or late peer updates dropped because of their sequence number. */
+    private final java.util.concurrent.atomic.AtomicLong sequenceDuplicates =
+            new java.util.concurrent.atomic.AtomicLong();
+
+    /**
+     * Received updates waiting to be acknowledged, at most one per chunk.
+     *
+     * <p>Acknowledging once per chunk per tick keeps the cost proportional to the
+     * number of changed chunks instead of the number of changed blocks.</p>
+     */
+    private final Map<ChunkKey, PendingAck> pendingAcks = new ConcurrentHashMap<>();
+
+    /**
+     * Bounded history of sent block/block-entity updates per chunk.
+     *
+     * <p>Only entries above the peer's highest contiguous acknowledgement are
+     * retransmitted, so a healthy connection normally keeps nothing.</p>
+     */
+    private final Map<ChunkKey, RetransmitBuffer<PeerPacket>> outbox = new ConcurrentHashMap<>();
+
+    /**
+     * Compression pool for peer chunk replies.
+     *
+     * <p>Serializing the chunk must run on the server thread, but gzip only needs
+     * the immutable snapshot. When the pool is saturated the caller compresses
+     * inline, so a reply is never dropped (see
+     * {@link BoundedTaskExecutor#execute(Runnable)}).</p>
+     */
+    private final BoundedTaskExecutor compression =
+            new BoundedTaskExecutor(2, 64, "MultiForge-ChunkCompress");
+
+    /** Direct-mapped cache for the per-entity-tick chunk key (server thread only). */
+    private final ChunkKeyCache keyCache = new ChunkKeyCache(512);
+
     /**
      * @param server owning server
      */
@@ -184,6 +230,8 @@ public final class ChunkManager {
         }
         if (state.isIdle()) {
             states.remove(key, state);
+            outbox.remove(key);
+            pendingAcks.remove(key);
         }
     }
 
@@ -192,6 +240,7 @@ public final class ChunkManager {
      * chunk states.
      */
     public void tick() {
+        flushAcks();
         drainBlockEntityUpdates();
         if (unsubscribeAtTick.isEmpty()) {
             return;
@@ -279,7 +328,7 @@ public final class ChunkManager {
      * @return {@code true} when this server owns the chunk
      */
     private boolean shouldTick(ServerLevel level, int chunkX, int chunkZ) {
-        ChunkKey key = new ChunkKey(worldName(level), chunkX, chunkZ);
+        ChunkKey key = keyCache.get(level, worldName(level), chunkX, chunkZ);
         ChunkState state = states.get(key);
         if (state != null) {
             if (state.localOwner()) {
@@ -578,9 +627,14 @@ public final class ChunkManager {
         // Peer connections are independent of the master: a master outage must not
         // stop block propagation between servers that still have a peer link.
         String world = worldName(level);
-        long epoch = epochOf(world, pos.getX() >> 4, pos.getZ() >> 4);
-        server.peers().broadcast(new BlockChangePacket(
-                world, pos.getX(), pos.getY(), pos.getZ(), Block.getId(state), epoch));
+        ChunkKey key = keyCache.get(level, world, pos.getX() >> 4, pos.getZ() >> 4);
+        ChunkState chunkState = state(key);
+        long epoch = chunkState.ownershipEpoch();
+        long sequence = chunkState.nextSequence(epoch);
+        BlockChangePacket packet = new BlockChangePacket(
+                key.getName(), pos.getX(), pos.getY(), pos.getZ(), Block.getId(state), epoch, sequence);
+        recordForRetransmit(key, epoch, sequence, packet);
+        server.peers().broadcast(packet);
     }
 
     /**
@@ -644,11 +698,16 @@ public final class ChunkManager {
         }
         // As with block changes, peer traffic does not depend on the master link.
         BlockPos pos = blockEntity.getBlockPos();
-        String world = worldName((ServerLevel) blockEntity.getLevel());
-        long epoch = epochOf(world, pos.getX() >> 4, pos.getZ() >> 4);
-        server.peers().broadcast(new BlockEntityUpdatePacket(
-                world, pos.getX(), pos.getY(), pos.getZ(),
-                blockEntity.saveWithFullMetadata(), epoch));
+        ServerLevel level = (ServerLevel) blockEntity.getLevel();
+        ChunkKey key = keyCache.get(level, worldName(level), pos.getX() >> 4, pos.getZ() >> 4);
+        ChunkState chunkState = state(key);
+        long epoch = chunkState.ownershipEpoch();
+        long sequence = chunkState.nextSequence(epoch);
+        BlockEntityUpdatePacket packet = new BlockEntityUpdatePacket(
+                key.getName(), pos.getX(), pos.getY(), pos.getZ(),
+                blockEntity.saveWithFullMetadata(), epoch, sequence);
+        recordForRetransmit(key, epoch, sequence, packet);
+        server.peers().broadcast(packet);
     }
 
     /**
@@ -658,9 +717,10 @@ public final class ChunkManager {
      * loaded locally are ignored: they will be read from the cluster when they are
      * loaded.</p>
      *
-     * @param packet received change
+     * @param packet     received change
+     * @param connection peer that sent the change, used for the acknowledgement
      */
-    public void applyRemoteBlockChange(BlockChangePacket packet) {
+    public void applyRemoteBlockChange(BlockChangePacket packet, PeerConnection connection) {
         server.execute(() -> {
             ChunkKey key = new ChunkKey(packet.world, packet.x >> 4, packet.z >> 4);
             ChunkState chunkState = state(key);
@@ -670,11 +730,31 @@ public final class ChunkManager {
                         Math.max(chunkState.ownershipEpoch(), chunkState.lastAppliedEpoch()));
                 return;
             }
+            SequenceTracker.Result ordering = chunkState.observeSequence(packet.epoch, packet.sequence);
+            if (ordering == SequenceTracker.Result.STALE_EPOCH) {
+                LOGGER.debug("Dropped block change for {} from an older epoch ({})", key, packet.epoch);
+                return;
+            }
+            if (ordering == SequenceTracker.Result.DUPLICATE) {
+                sequenceDuplicates.incrementAndGet();
+                LOGGER.debug("Dropped duplicate block change for {} (epoch {}, sequence {})",
+                        key, packet.epoch, packet.sequence);
+                queueAck(key, connection, packet.epoch);
+                return;
+            }
+            if (ordering == SequenceTracker.Result.GAP) {
+                sequenceGaps.incrementAndGet();
+                LOGGER.warn("Missing block updates for {} before sequence {} (epoch {}); asking {} to retransmit",
+                        key, packet.sequence, packet.epoch, connection.remoteName());
+            }
             ServerLevel level = server.level(packet.world);
             if (level == null) {
                 return;
             }
             if (level.getChunkSource().getChunkNow(packet.x >> 4, packet.z >> 4) == null) {
+                // The chunk is not loaded here; it will be read from the cluster
+                // when it is, so the update does not have to be kept.
+                queueAck(key, connection, packet.epoch);
                 return;
             }
             BlockState state = Block.stateById(packet.stateId);
@@ -684,15 +764,17 @@ public final class ChunkManager {
             } finally {
                 applyingRemote.set(Boolean.FALSE);
             }
+            queueAck(key, connection, packet.epoch);
         });
     }
 
     /**
      * Applies a block entity update received from a peer.
      *
-     * @param packet received update
+     * @param packet     received update
+     * @param connection peer that sent the update, used for the acknowledgement
      */
-    public void applyRemoteBlockEntity(BlockEntityUpdatePacket packet) {
+    public void applyRemoteBlockEntity(BlockEntityUpdatePacket packet, PeerConnection connection) {
         server.execute(() -> {
             ChunkKey key = new ChunkKey(packet.world, packet.x >> 4, packet.z >> 4);
             ChunkState chunkState = state(key);
@@ -702,13 +784,32 @@ public final class ChunkManager {
                         Math.max(chunkState.ownershipEpoch(), chunkState.lastAppliedEpoch()));
                 return;
             }
+            SequenceTracker.Result ordering = chunkState.observeSequence(packet.epoch, packet.sequence);
+            if (ordering == SequenceTracker.Result.STALE_EPOCH) {
+                LOGGER.debug("Dropped block entity update for {} from an older epoch ({})", key, packet.epoch);
+                return;
+            }
+            if (ordering == SequenceTracker.Result.DUPLICATE) {
+                sequenceDuplicates.incrementAndGet();
+                LOGGER.debug("Dropped duplicate block entity update for {} (epoch {}, sequence {})",
+                        key, packet.epoch, packet.sequence);
+                queueAck(key, connection, packet.epoch);
+                return;
+            }
+            if (ordering == SequenceTracker.Result.GAP) {
+                sequenceGaps.incrementAndGet();
+                LOGGER.warn("Missing block entity updates for {} before sequence {} (epoch {}); asking {} to retransmit",
+                        key, packet.sequence, packet.epoch, connection.remoteName());
+            }
             ServerLevel level = server.level(packet.world);
             if (level == null || level.getChunkSource().getChunkNow(packet.x >> 4, packet.z >> 4) == null) {
+                queueAck(key, connection, packet.epoch);
                 return;
             }
             BlockPos pos = new BlockPos(packet.x, packet.y, packet.z);
             BlockEntity blockEntity = level.getBlockEntity(pos);
             if (blockEntity == null) {
+                queueAck(key, connection, packet.epoch);
                 return;
             }
             applyingRemote.set(Boolean.TRUE);
@@ -719,12 +820,115 @@ public final class ChunkManager {
             } finally {
                 applyingRemote.set(Boolean.FALSE);
             }
+            queueAck(key, connection, packet.epoch);
         });
+    }
+
+    /**
+     * Applies an acknowledgement of the block/block-entity stream of a chunk.
+     *
+     * <p>Runs on the Netty thread. When the peer reports a contiguous sequence
+     * below what this server sent, the missing updates are still in the bounded
+     * history and are retransmitted on the same connection.</p>
+     *
+     * @param packet     acknowledgement
+     * @param connection peer that acknowledged
+     */
+    public void onSequenceAck(ChunkSequenceAckPacket packet, PeerConnection connection) {
+        ChunkKey key = new ChunkKey(packet.world, packet.x, packet.z);
+        RetransmitBuffer<PeerPacket> buffer = outbox.get(key);
+        if (buffer == null) {
+            return;
+        }
+        List<PeerPacket> missing = buffer.acknowledge(packet.epoch, packet.contiguous);
+        if (missing.isEmpty()) {
+            return;
+        }
+        LOGGER.debug("Retransmitting {} block update(s) for {} to {}",
+                missing.size(), key, connection.remoteName());
+        for (PeerPacket update : missing) {
+            connection.send(update);
+        }
+    }
+
+    /**
+     * Queues the acknowledgement of a received update for the next tick.
+     *
+     * @param key        chunk
+     * @param connection sender
+     * @param epoch      ownership epoch the update was ordered under
+     */
+    private void queueAck(ChunkKey key, PeerConnection connection, long epoch) {
+        if (connection == null || !connection.isActive()) {
+            return;
+        }
+        ChunkState current = states.get(key);
+        if (current == null) {
+            return;
+        }
+        long contiguous = current.contiguousSequence();
+        pendingAcks.merge(key, new PendingAck(connection, epoch, contiguous), (old, candidate) -> {
+            if (candidate.epoch > old.epoch) {
+                return candidate;
+            }
+            if (candidate.epoch < old.epoch) {
+                return old;
+            }
+            return candidate.contiguous >= old.contiguous ? candidate : old;
+        });
+    }
+
+    /** Sends the batched acknowledgements. Called once per tick on the server thread. */
+    private void flushAcks() {
+        if (pendingAcks.isEmpty()) {
+            return;
+        }
+        for (Map.Entry<ChunkKey, PendingAck> entry : pendingAcks.entrySet()) {
+            PendingAck ack = pendingAcks.remove(entry.getKey());
+            if (ack == null || !ack.connection.isActive()) {
+                continue;
+            }
+            ChunkKey key = entry.getKey();
+            ack.connection.send(new ChunkSequenceAckPacket(
+                    key.getName(), key.getX(), key.getZ(), ack.epoch, ack.contiguous));
+        }
+    }
+
+    /**
+     * Remembers a sent update so a peer can ask for it again.
+     *
+     * @param key      chunk
+     * @param epoch    ownership epoch of the update
+     * @param sequence sequence number of the update
+     * @param packet   update to resend on request
+     */
+    private void recordForRetransmit(ChunkKey key, long epoch, long sequence, PeerPacket packet) {
+        RetransmitBuffer<PeerPacket> buffer = outbox.computeIfAbsent(
+                key, ignored -> new RetransmitBuffer<>(OUTBOX_CAPACITY));
+        if (buffer.record(epoch, sequence, packet) > 0) {
+            LOGGER.debug("Retransmit history for {} overflowed; the oldest update was dropped", key);
+        }
+    }
+
+    /** @return number of detected gaps in the block/block-entity stream */
+    public long sequenceGapCount() {
+        return sequenceGaps.get();
+    }
+
+    /** @return number of duplicate or late peer updates that were dropped */
+    public long sequenceDuplicateCount() {
+        return sequenceDuplicates.get();
     }
 
     /**
      * Responds to a peer's chunk request with the in-memory chunk, serialized on
      * the server thread so no chunk state is touched concurrently.
+     *
+     * <p>Only {@code ChunkSerializer.write} runs on the server thread; the gzip
+     * compression and the reply are handed to the bounded IO pool. Serializing
+     * one chunk is cheap compared to compressing it, and a large chunk response
+     * used to stall the tick that happened to receive the request. When the pool
+     * is saturated the caller compresses inline instead of dropping the reply.</p>
      *
      * @param connection requesting peer
      * @param packet     request
@@ -732,22 +936,58 @@ public final class ChunkManager {
     public void respondToChunkRequest(PeerConnection connection, com.multiforge.forge.peer.packet.RequestChunkPacket packet) {
         server.execute(() -> {
             ServerLevel level = server.level(packet.world);
-            byte[] data = new byte[0];
+            CompoundTag snapshot = null;
             if (level != null) {
                 LevelChunk chunk = level.getChunkSource().getChunkNow(packet.x, packet.z);
                 if (chunk != null) {
                     try {
-                        CompoundTag tag = ChunkSerializer.write(level, chunk);
-                        ByteArrayOutputStream out = new ByteArrayOutputStream(32 * 1024);
-                        NbtIo.writeCompressed(tag, out);
-                        data = out.toByteArray();
-                    } catch (IOException | RuntimeException e) {
+                        snapshot = ChunkSerializer.write(level, chunk);
+                    } catch (RuntimeException e) {
                         LOGGER.warn("Failed to serialize chunk for peer {}", connection.remoteName(), e);
                     }
                 }
             }
-            connection.send(new SendChunkPacket(packet.requestId, packet.world, packet.x, packet.z, data));
+            if (snapshot == null) {
+                connection.send(new SendChunkPacket(packet.requestId, packet.world, packet.x, packet.z, new byte[0]));
+                return;
+            }
+            CompoundTag immutableSnapshot = snapshot;
+            if (!compression.execute(() -> sendSerializedChunk(connection, packet, immutableSnapshot))) {
+                // Saturated or shutting down: the peer still gets its reply.
+                sendSerializedChunk(connection, packet, immutableSnapshot);
+            }
         });
+    }
+
+    /**
+     * Compresses a serialized chunk and sends it. Runs on the compression pool or
+     * on the calling thread when that pool is saturated.
+     *
+     * @param connection requesting peer
+     * @param packet     request
+     * @param tag        immutable chunk snapshot taken on the server thread
+     */
+    private void sendSerializedChunk(PeerConnection connection,
+                                     com.multiforge.forge.peer.packet.RequestChunkPacket packet,
+                                     CompoundTag tag) {
+        byte[] data = new byte[0];
+        try {
+            ByteArrayOutputStream out = new ByteArrayOutputStream(32 * 1024);
+            NbtIo.writeCompressed(tag, out);
+            data = out.toByteArray();
+        } catch (IOException | RuntimeException e) {
+            LOGGER.warn("Failed to compress chunk for peer {}", connection.remoteName(), e);
+        }
+        connection.send(new SendChunkPacket(packet.requestId, packet.world, packet.x, packet.z, data));
+    }
+
+    /**
+     * Stops the compression pool after draining the queued chunk replies.
+     *
+     * @param timeoutMillis maximum time to wait for the queue
+     */
+    public void close(long timeoutMillis) {
+        compression.close(timeoutMillis);
     }
 
     /**
@@ -854,6 +1094,28 @@ public final class ChunkManager {
         unsubscribeAtTick.clear();
         lastOwnershipRequest.clear();
         worldNames.clear();
+        pendingAcks.clear();
+        outbox.clear();
+        keyCache.clear();
         chunksWithEntitySubscribers.set(0);
+    }
+
+    /**
+     * Acknowledgement waiting for the next tick.
+     *
+     * <p>Only the newest epoch and the highest contiguous value per chunk are
+     * kept: acknowledging a value twice is harmless but wasteful.</p>
+     */
+    private static final class PendingAck {
+
+        private final PeerConnection connection;
+        private final long epoch;
+        private final long contiguous;
+
+        private PendingAck(PeerConnection connection, long epoch, long contiguous) {
+            this.connection = connection;
+            this.epoch = epoch;
+            this.contiguous = contiguous;
+        }
     }
 }

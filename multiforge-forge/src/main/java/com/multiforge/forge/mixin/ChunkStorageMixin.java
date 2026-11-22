@@ -84,7 +84,13 @@ public abstract class ChunkStorageMixin {
             return;
         }
         ChunkStore store = ChunkStorageRegistry.resolve((ChunkStorage) (Object) this);
-        if (store == null || !server.chunkIo().shouldIntercept(store)) {
+        if (store == null) {
+            return;
+        }
+        if (!server.chunkIo().shouldIntercept(store)) {
+            // Vanilla is about to write the local region file. When the only reason
+            // is a master outage, remember the chunk so it is uploaded on reconnect.
+            server.chunkIo().recordOfflineWrite(store, pos);
             return;
         }
         server.chunkIo().write(store, pos, tag);

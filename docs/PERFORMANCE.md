@@ -149,24 +149,25 @@ Verified with a master plus two Forge 47.4.29 servers (`runServer` and
 Both servers stayed at 20 TPS while the checks ran.
 
 
-## 4. Remaining opportunities (not implemented)
+## 4. Follow-up items and their status
 
-Ordered by expected value. None of these are required for correctness.
+The remaining items from the earlier analysis were implemented. What is left is live
+verification on a master plus two servers, which this headless environment cannot run (a
+disposable world and two Forge servers are required).
 
-1. **Chunk serialization off the server thread.** `ChunkManager.respondToChunkRequest`
-   runs `ChunkSerializer.write` *and* gzip compression (`NbtIo.writeCompressed`) on
-   the server thread. Only the NBT snapshot must be taken there; compression can
-   move to an IO thread, which shortens the worst-case tick stall when a peer
-   fetches a large chunk. Deferred because it needs a bounded executor and a test
-   that a chunk reply is never dropped at shutdown.
-2. **Per-chunk key cache.** `shouldTick` still allocates one `ChunkKey` per entity
-   per tick. A small direct-mapped cache (or a `ChunkState` field on
-   `LevelChunk` through a mixin) would remove it. Deferred: the allocation is
-   ~32 bytes and the `ChunkKey` fields are final, so safety is easy but the gain
-   is small compared to the changes above.
-3. **Ownership epochs + packet sequence numbers** (already in TODO.md): delayed
-   packets from a previous owner can still overwrite newer state. This is a
-   correctness feature, not a speed one.
+1. ~~**Chunk serialization off the server thread**~~ - done. `ChunkManager.respondToChunkRequest`
+   now only calls `ChunkSerializer.write` on the server thread; gzip
+   (`NbtIo.writeCompressed`) and the reply run on a two-thread `BoundedTaskExecutor`
+   (queue of 64). When the pool is saturated the caller compresses inline, so a reply is
+   never dropped, and `ChunkManager.close` drains the queue at shutdown. The executor's
+   saturation/drain contract is unit tested (`BoundedTaskExecutorTest`).
+2. ~~**Per-chunk key cache**~~ - done. `ChunkKeyCache` is a 512-slot direct-mapped cache keyed
+   by level identity plus chunk coordinates; `shouldTick(level, entity)` no longer allocates a
+   `ChunkKey`. Cleared with the rest of the chunk state on shutdown.
+3. ~~**Ownership epochs + packet sequence numbers**~~ - done. Delayed packets from the same
+   owner are rejected by `SequenceTracker`, gaps are acknowledged with
+   `ChunkSequenceAckPacket` and retransmitted from a 128-entry `RetransmitBuffer` per chunk.
+   Limits: KNOWN_ISSUES 24. This was a correctness feature, not a speed one.
 4. ~~Inline `Inflater` per peer connection~~ - done. `PeerFrameCodec.Decoder` and
    `Encoder` keep one resettable `Inflater`/`Deflater` per connection and end them
    when the handler is removed, instead of allocating native compressor state per

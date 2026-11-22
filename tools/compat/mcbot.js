@@ -13,8 +13,18 @@
 //   node mcbot.js 127.0.0.1 25565 MirrorBot 25599
 //
 // Control socket commands (one per line on 127.0.0.1:<controlPort>):
-//   slot <0-8>   send a held_item_slot packet
-//   quit         disconnect
+//   slot <0-8>            send a held_item_slot packet
+//   look <yaw> <pitch>    send a look packet
+//   move <x> <y> <z>      send a position packet (player movement is client authoritative)
+//   chat <text>           send a chat message
+//   use                   send a use_item packet (right click / place / eat)
+//   attack <entityId>     send a use_entity attack packet
+//   quit                  disconnect
+//
+// The movement/interaction commands are the extension points for the gameplay
+// compatibility rows (minecarts, tree felling, item merging, TPA, chat): the
+// harness drives them and verifies the result on the other server. They are
+// compile-checked only until a live cluster run records evidence.
 const mc = require('minecraft-protocol');
 const net = require('net');
 
@@ -59,6 +69,25 @@ net.createServer((socket) => {
         const slot = parseInt(argument, 10);
         client.write('held_item_slot', { slotId: slot });
         console.log(`[bot] SLOT ${slot}`);
+      } else if (command === 'look') {
+        const [yaw, pitch] = line.split(/\s+/).slice(1).map(Number);
+        client.write('look', { yaw, pitch, onGround: true });
+        console.log(`[bot] LOOK ${yaw} ${pitch}`);
+      } else if (command === 'move') {
+        const [x, y, z] = line.split(/\s+/).slice(1).map(Number);
+        client.write('position', { x, y, z, onGround: true });
+        console.log(`[bot] MOVE ${x} ${y} ${z}`);
+      } else if (command === 'chat') {
+        const message = line.slice('chat '.length);
+        client.write('chat', { message });
+        console.log(`[bot] CHAT ${message}`);
+      } else if (command === 'use') {
+        client.write('use_item', { hand: 0 });
+        console.log('[bot] USE');
+      } else if (command === 'attack') {
+        const target = parseInt(argument, 10);
+        client.write('use_entity', { target, mouse: 1 });
+        console.log(`[bot] ATTACK ${target}`);
       } else if (command === 'quit') {
         console.log('[bot] QUIT');
         client.end();

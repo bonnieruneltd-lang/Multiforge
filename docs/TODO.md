@@ -53,13 +53,17 @@ coding.
   `generatorDisconnectReleasesWaitingReader`. Remaining: the lease is still demand driven
   (the server whose player needs the chunk generates it); choosing an idle server to
   generate on behalf of a busy one is a separate feature.
-* **Ownership epochs + packet sequence numbers** - epochs done. The master keeps a
+* **Ownership epochs + packet sequence numbers** - done. The master keeps a
   per-chunk epoch (`ChunkSubscriptionManager`) and appends it to
   `SetChunkOwnerMessage`/`ChunkSubscribersSyncMessage`; `BlockChangePacket` and
   `BlockEntityUpdatePacket` are stamped and receivers drop older epochs
-  (`ChunkState.observeEpoch`). Per-chunk sequence numbers and acknowledgements are still
-  missing; they are only needed for gap detection and safe dynamic ownership migration
-  (see `DISTRIBUTED_ARCHITECTURE_RESEARCH.md`).
+  (`ChunkState.observeEpoch`). Per-chunk sequence numbers and acknowledgements are appended
+  after the epoch (`SequenceTracker`): duplicates and late updates are dropped, gaps are
+  logged and counted, and `ChunkSequenceAckPacket` (peer id 33) makes the sender resend the
+  missing entries from a bounded per-chunk history (`RetransmitBuffer`). The limits are in
+  KNOWN_ISSUES 24. Forge-side compile-verified; the pure ordering/ack logic is unit tested
+  (`SequenceTrackerTest`, `RetransmitBufferTest`) and exposed in `/multiforge status` as
+  `seq gaps=`/`dup=`.
 * **Master region format compatibility** - done. `ChunkSyncIo.encode` now writes true zlib
   (deflate with a zlib header) and `RegionFile` detects legacy gzip bytes mislabelled as
   version 2 and transcodes them on read. `RegionFileTest` proves a standard JDK inflater
@@ -72,9 +76,10 @@ coding.
   claiming both are active.
 * **Player-driven compatibility tests** (highest for the 35 targets): a client or fake-player
   harness is required for minecarts, tree felling, leaf decay, head drops, item merging,
-  combat log, TPA, chat, xray and the anti-seed data pack. A minimal headless bot now exists
-  (`tools/compat/mcbot.js`, used by `player_state_check.py`) and can be extended for those
-  interactions; until then those rows stay LOADING in `REQUIRED_MOD_COMPATIBILITY.md`.
+  combat log, TPA, chat, xray and the anti-seed data pack. The headless bot
+  (`tools/compat/mcbot.js`) now also sends look, position, chat, use-item and attack packets
+  (compile-checked only, no live run yet); the checks themselves still have to be written and
+  recorded before those rows leave LOADING.
 * **Client matrix** (highest for the 15 client targets): run the pinned client set on a GPU
   machine, one shader pack at a time, and append the results to the matrix.
 
@@ -248,9 +253,21 @@ Done and verified:
 * **Shutdown noise**: late master/peer messages no longer log a `RejectedExecutionException`
   stack trace when the server is already stopping.
 
-Still open (moved from the analysis, in value order): chunk NBT compression off the server
-thread (`respondToChunkRequest`) and a `ChunkKey` cache for the entity tick path. Gamerule
-diffing without `createTag`, single-encode entity snapshots, the per-connection
-`Inflater`/`Deflater` reuse and the segmented master region cache are done (session 6).
+Still open: the 15-target client matrix (needs a GPU), the live gameplay rows driven through
+`tools/compat/mcbot.js`, the Radium/ServerCore profile decision, and the larger protocols
+(mob navigation, raids, dragon fight, projectile handover). Chunk NBT compression off the
+server thread (`respondToChunkRequest`, bounded pool with inline fallback), the `ChunkKey`
+cache for the entity tick path, per-chunk sequence numbers/acks, gamerule diffing without
+`createTag`, single-encode entity snapshots, the per-connection `Inflater`/`Deflater` reuse
+and the segmented master region cache are done.
 
 * Forge 47.4.29 build/run verification and the full 20-target server startup.
+
+* **Follow-up pass** (compile-verified, unit tested where the code is Minecraft-free; no live
+  two-server run happened in this session): per-chunk sequence numbers and acknowledgements,
+  chunk gzip off the server thread with an inline fallback and a draining shutdown, the
+  `ChunkKey` cache for the entity tick path, re-upload of chunks written during a master
+  outage, the config-reload leftovers (master ping loop, compression threshold wording) and
+  extended `tools/compat/mcbot.js` commands (look/move/chat/use/attack). Limits: KNOWN_ISSUES
+  5, 9 and 24. New unit tests: `SequenceTrackerTest`, `RetransmitBufferTest`,
+  `BoundedTaskExecutorTest`.

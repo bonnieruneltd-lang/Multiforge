@@ -208,12 +208,14 @@ public final class MultiForgeCommands {
         }
         String line = String.format(
                 "%s | master=%s | tps=%.1f | chunks owned=%d loaded=%d | peers=%d | mirrored=%d "
-                        + "| io reads=%d writes=%d failures=%d",
+                        + "| io reads=%d writes=%d failures=%d | seq gaps=%d dup=%d | local-backlog=%d",
                 runtime.serverName(),
                 runtime.master().isConnected() ? "connected" : "disconnected",
                 runtime.tps(), runtime.chunks().ownedChunkCount(), runtime.chunks().loadedChunkCount(),
                 runtime.peers().connections().size(), runtime.entities().mirroredEntityCount(),
-                runtime.chunkIo().readCount(), runtime.chunkIo().writeCount(), runtime.chunkIo().failureCount());
+                runtime.chunkIo().readCount(), runtime.chunkIo().writeCount(), runtime.chunkIo().failureCount(),
+                runtime.chunks().sequenceGapCount(), runtime.chunks().sequenceDuplicateCount(),
+                runtime.chunkIo().backlogCount());
         source.sendSuccess(() -> Component.literal(line), false);
         Map<String, com.multiforge.forge.world.FileSyncer.DownloadState> downloads =
                 runtime.files().activeDownloads();

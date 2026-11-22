@@ -4,6 +4,7 @@ import com.multiforge.forge.peer.packet.AdvancementProgressPacket;
 import com.multiforge.forge.peer.packet.BlockChangePacket;
 import com.multiforge.forge.peer.packet.BlockEntityUpdatePacket;
 import com.multiforge.forge.peer.packet.ChatMessagePacket;
+import com.multiforge.forge.peer.packet.ChunkSequenceAckPacket;
 import com.multiforge.forge.peer.packet.ContainerClickPacket;
 import com.multiforge.forge.peer.packet.ContainerClosePacket;
 import com.multiforge.forge.peer.packet.EntityChunkChangedPacket;
@@ -104,6 +105,9 @@ public final class PeerProtocol {
         add(ScoreboardUpdatePacket.class, ScoreboardUpdatePacket::new);
         add(PlayerStatsIncreasePacket.class, PlayerStatsIncreasePacket::new);
         add(AdvancementProgressPacket.class, AdvancementProgressPacket::new);
+        // Per-chunk block/block-entity acknowledgements. Appended after the
+        // progress family; never reorder.
+        add(ChunkSequenceAckPacket.class, ChunkSequenceAckPacket::new);
     }
 
     private PeerProtocol() {

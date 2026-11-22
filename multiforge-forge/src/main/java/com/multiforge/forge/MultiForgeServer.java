@@ -333,8 +333,10 @@ public final class MultiForgeServer {
      *       {@code MasterConnection} reconnect to the new address;</li>
      *   <li>{@code server.peerPort}, {@code server.name}: bound/announced at startup and can
      *       only change with a restart (logged);</li>
-     *   <li>{@code compressionThreshold}: negotiated per peer connection, so only new peer
-     *       connections use the new value (logged);</li>
+     *   <li>{@code compressionThreshold}: an existing peer connection reads the new
+     *       threshold immediately; switching compression on or off (0 &lt;-&gt; positive)
+     *       is negotiated per connection and therefore needs a reconnect;</li>
+     *   <li>{@code master.pingIntervalSeconds}: the keep-alive loop is rescheduled;</li>
      *   <li>{@code debug.chunkBorders=false}: clears the enabled viewers immediately.</li>
      * </ul>
      */
@@ -360,7 +362,20 @@ public final class MultiForgeServer {
             LOGGER.warn("server.name is only applied on restart (current {}).", serverName);
         }
         if (updated.compressionThreshold() != previous.compressionThreshold()) {
-            LOGGER.info("Peer compression threshold applies to new peer connections only");
+            boolean wasEnabled = previous.compressionThreshold() > 0;
+            boolean enabled = updated.compressionThreshold() > 0;
+            if (wasEnabled != enabled) {
+                LOGGER.info("Peer compression is now {}; existing connections keep their setting until they reconnect",
+                        enabled ? "enabled" : "disabled");
+            } else {
+                LOGGER.info("Peer compression threshold changed to {} bytes; applied to existing connections",
+                        updated.compressionThreshold());
+            }
+        }
+        if (updated.pingIntervalSeconds() != previous.pingIntervalSeconds()) {
+            master.onConfigReloaded();
+            LOGGER.info("Master ping interval changed to {}s; keep-alive loop rescheduled",
+                    updated.pingIntervalSeconds());
         }
         if (!updated.debugChunkBorders()) {
             borders.clear();
@@ -406,6 +421,7 @@ public final class MultiForgeServer {
         world.invalidate();
         chunks.onMasterReconnected();
         files.onMasterReconnected();
+        chunkIo.flushBacklog();
     }
 
     /** Called when the master connection dropped. */
@@ -523,6 +539,7 @@ public final class MultiForgeServer {
         // The read-only world files are written by vanilla after beginStop(); upload
         // them (and any pending real-time files) while the master channel is alive.
         files.onShutdown();
+        chunks.close(Math.max(5_000L, config.ioTimeoutSeconds() * 1000L));
         peers.shutdown();
         peerServer.stop();
         master.stop();
