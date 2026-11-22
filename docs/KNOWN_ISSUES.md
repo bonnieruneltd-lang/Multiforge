@@ -96,7 +96,8 @@ remembered (`ChunkSyncIo.recordOfflineWrite`) and uploaded after the reconnect
 (`flushBacklog`); the same happens for an upload that failed. The backlog is bounded at
 65,536 chunks per server (further offline writes stay local and log once) and lives in
 memory, so a server that stops while the master is down still requires a restart before its
-changes reach the master. `/multiforge status` shows `local-backlog=<n>`.
+changes reach the master. If the master drops again during the replay, the chunk stays in the
+backlog and is retried on the next reconnect. `/multiforge status` shows `local-backlog=<n>`.
 
 ### 6. World state conflicts
 

@@ -300,6 +300,9 @@ public final class ChunkSyncIo {
         }
         if (!shouldIntercept(store)) {
             local.write(store, pos, tag);
+            // The master may have gone down between a reconnect and the backlog
+            // replay; keep the chunk queued so it is retried on the next connect.
+            recordOfflineWrite(store, pos);
             return;
         }
 
