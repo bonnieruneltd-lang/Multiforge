@@ -32,12 +32,16 @@ coding.
    sends its live entity snapshots before the fence, so the server holding the real projectile
    keeps simulating it. Mob navigation is transferred by `MobNavigationPacket` (destination,
    speed and combat target; the new owner recomputes the path). Boss bars (dragon, raids,
-   plugin bars) are replicated by `BossEventPacket`. Still missing: the raid and dragon
-   **fight state** itself (waves/phases), not the visible bar.
+   plugin bars) are replicated by `BossEventPacket`.
    Sign editing and pistons are already covered
    by the generic paths: a sign calls `BlockEntity.setChanged()` and a piston move is a
    block/block-entity change, so `BlockEntityUpdatePacket`/`BlockChangePacket` carry them
    (not separately live-tested).
+   **Raid and dragon fight state is transferred too** (`FightSyncManager`, peer ids 37-38):
+   the owner broadcasts the vanilla raid NBT and `EndDragonFight.Data` once per second when it
+   changed and sends it directly to the new owner before a handover; `RaidMixin` and
+   `EndDragonFightMixin` stop every other server from ticking those fights. Compile- and
+   startup-verified; a live raid/dragon handover test is still outstanding (KNOWN_ISSUES 26).
 6. **Chunk status protocol** - done: the master records load/unload status
    (`ChunkStatusTracker`) and does not redirect a read to a peer that is unloading; covered by
    `unloadingPeerIsNotChosenForChunkRead`. The client-side status view is still informational.
@@ -282,8 +286,9 @@ Done and verified:
   stack trace when the server is already stopping.
 
 Still open: the 15-target client matrix (needs a GPU), the live gameplay rows driven through
-`tools/compat/mcbot.js`, the Radium/ServerCore profile decision, and the larger protocols
-(mob navigation, raids, dragon fight, projectile handover). Chunk NBT compression off the
+`tools/compat/mcbot.js`, the Radium/ServerCore profile decision, and a live raid/dragon
+handover test. Mob navigation, raids, the dragon fight and projectile handover are
+implemented (fights in `FightSyncManager`; see above). Chunk NBT compression off the
 server thread (`respondToChunkRequest`, bounded pool with inline fallback), the `ChunkKey`
 cache for the entity tick path, per-chunk sequence numbers/acks, gamerule diffing without
 `createTag`, single-encode entity snapshots, the per-connection `Inflater`/`Deflater` reuse

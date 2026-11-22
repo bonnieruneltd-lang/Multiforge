@@ -312,14 +312,31 @@ acknowledged the upload. Remaining limits:
   `compat/evidence/handover-mirroring-20261122T040431Z.md`); the timeout and
   old-owner-disconnect paths are covered by master integration tests.
 
-### 26. Boss bars are replicated, fight state is not
+### 26. Raid and dragon fight transfer is polled, not event driven
 
-Dragon, raid and plugin boss bars are forwarded as vanilla `ClientboundBossEventPacket`s
-(`BossEventPacket`, peer id 36), so every server shows the same bar. The underlying fight is
-still simulated only by the owner: raid wave NBT, dragon-fight phase state and the raid/dragon
-objects are not transferred on a handover. A raid or dragon that moves between servers can
-therefore lose its in-progress phases even though the bar remains correct. See TODO 5 and
-`compat/evidence/boss-bar-20261122T044950Z.md`.
+Raid state and the dragon fight are replicated by `FightSyncManager` (peer ids 37-38). The
+remaining limits are deliberate trade-offs:
+
+* Changes are detected once per second, not on every mutation. The boss bar itself is still
+  forwarded immediately (`BossEventPacket`), so a player sees wave progress live; the fight
+  **object** on a mirror can be up to one second old. That is enough for a handover, which
+  also sends the snapshots directly to the new owner before the fence.
+* The owner serializes a raid once per second even when nothing changed, then drops the packet
+  because the hash is unchanged. A raid is a few hundred bytes, so the cost is small, but it
+  is not free on a world with several concurrent raids.
+* Applying a dragon snapshot constructs a new `EndDragonFight` (`ServerLevel.setDragonFight`)
+  instead of mutating the old object, because vanilla 1.20.1 has no public `load(Data)`.
+  The losing server removes its boss-bar players first, so there is at most a one-tick gap
+  where the dragon bar is absent during an ownership change.
+* Vanilla still persists each server's copy to its own `data/raids.dat` and level data. The
+  live packets are authoritative in memory; a server that starts with a stale file is
+  corrected by the first broadcast from the owner.
+* Live verification of a raid handover and a dragon handover has **not** run yet. The mixins,
+  packets and handover hook are compile-verified and the server starts with the mixins
+  applied; a two-player raid/dragon walk-across test should be added to
+  `tools/compat/cluster_check.py` when a test client is available.
+
+See TODO 5, `docs/SYNCHRONIZATION.md` and `docs/NETWORKING.md`.
 
 ## Fixed issues worth knowing about (regression tests cover them)
 

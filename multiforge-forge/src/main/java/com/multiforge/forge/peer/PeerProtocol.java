@@ -8,6 +8,7 @@ import com.multiforge.forge.peer.packet.ChatMessagePacket;
 import com.multiforge.forge.peer.packet.ChunkSequenceAckPacket;
 import com.multiforge.forge.peer.packet.ContainerClickPacket;
 import com.multiforge.forge.peer.packet.ContainerClosePacket;
+import com.multiforge.forge.peer.packet.DragonFightStatePacket;
 import com.multiforge.forge.peer.packet.EntityChunkChangedPacket;
 import com.multiforge.forge.peer.packet.EntityHurtPacket;
 import com.multiforge.forge.peer.packet.EntityRemovePacket;
@@ -28,6 +29,7 @@ import com.multiforge.forge.peer.packet.PlayerListInfoPacket;
 import com.multiforge.forge.peer.packet.PlayerRemovePacket;
 import com.multiforge.forge.peer.packet.PlayerSelectedSlotPacket;
 import com.multiforge.forge.peer.packet.PlayerStatsIncreasePacket;
+import com.multiforge.forge.peer.packet.RaidStatePacket;
 import com.multiforge.forge.peer.packet.ScoreboardUpdatePacket;
 import com.multiforge.forge.peer.packet.OpenContainerPacket;
 import com.multiforge.forge.peer.packet.RequestChunkPacket;
@@ -120,6 +122,11 @@ public final class PeerProtocol {
         // Boss bars (dragon fight, raids, plugins). Appended after every earlier
         // id; never reorder.
         add(BossEventPacket.class, BossEventPacket::new);
+        // Raid and ender-dragon fight state, which live in per-level saved data
+        // and therefore cannot travel with the chunk payload. Appended after every
+        // earlier id; never reorder.
+        add(RaidStatePacket.class, RaidStatePacket::new);
+        add(DragonFightStatePacket.class, DragonFightStatePacket::new);
     }
 
     private PeerProtocol() {

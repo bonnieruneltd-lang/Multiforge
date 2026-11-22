@@ -57,6 +57,7 @@ integration tests and by running two real Forge servers against a master:
 | Live statistics and advancement progress | implemented: 10 s statistic deltas + immediate criterion awards (peer packets 31-32); compile-verified, live check pending |
 | Master region file format | true zlib, readable by vanilla/tooling; legacy gzip transcoded on read (round-trip tested + live master bytes checked) |
 | Boss bars (dragon, raids, plugin bars) | implemented: owner forwards vanilla boss-event packets; verified live with two clients receiving the same add/progress/remove ([evidence](compat/evidence/boss-bar-20261122T044950Z.md)) |
+| Raid and ender-dragon fight state across handovers | implemented: owner broadcasts raid NBT and `EndDragonFight.Data` (peer packets 37-38), only the owner ticks them; compile-verified, live handover check pending |
 | Required-target detection and `/multiforge compat` | implemented |
 | Chunk-border debug visualization (`/multiforge borders`) | implemented (config `debug.chunkBorders`); compile-verified |
 | Prometheus `/metrics` endpoint for the master | implemented (`metrics-port`, default off); unit tested |
@@ -128,6 +129,7 @@ Read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before running a production wo
 * [Known issues](docs/KNOWN_ISSUES.md)
 * [Agent guide](docs/AGENT_GUIDE.md)
 * [Development handoff](docs/DEVELOPMENT_HANDOFF.md)
+* [Completion scorecard](docs/COMPLETION.md)
 * [Required mod compatibility](docs/REQUIRED_MOD_COMPATIBILITY.md)
 * [Distributed architecture research](docs/DISTRIBUTED_ARCHITECTURE_RESEARCH.md)
 * [Distributed roadmap](docs/DISTRIBUTED_ROADMAP.md)

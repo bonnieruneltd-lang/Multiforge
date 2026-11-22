@@ -22,6 +22,7 @@ import com.multiforge.forge.player.PlayerStateSyncManager;
 import com.multiforge.forge.player.PlayerSyncManager;
 import com.multiforge.forge.scoreboard.ScoreboardSyncManager;
 import com.multiforge.forge.world.BossEventSyncManager;
+import com.multiforge.forge.world.FightSyncManager;
 import com.multiforge.forge.world.FileSyncer;
 import com.multiforge.forge.world.WorldSyncManager;
 import com.multiforge.protocol.ChunkKey;
@@ -95,6 +96,7 @@ public final class MultiForgeServer {
     private final ChunkSyncIo chunkIo;
     private final WorldSyncManager world;
     private final BossEventSyncManager bossEvents;
+    private final FightSyncManager fights;
     private final PlayerSyncManager players;
     private final PlayerMirrorManager playerMirrors;
     private final PlayerStateSyncManager playerState;
@@ -129,6 +131,7 @@ public final class MultiForgeServer {
         this.chunkIo = new ChunkSyncIo(this);
         this.world = new WorldSyncManager(this);
         this.bossEvents = new BossEventSyncManager(this);
+        this.fights = new FightSyncManager(this);
         this.players = new PlayerSyncManager(this);
         this.playerMirrors = new PlayerMirrorManager(this);
         this.playerState = new PlayerStateSyncManager(this);
@@ -396,6 +399,7 @@ public final class MultiForgeServer {
         chunks.tick();
         borders.tick();
         entities.tick();
+        fights.tick();
         playerMirrors.tick();
         playerState.tick();
         progress.tick();
@@ -551,6 +555,7 @@ public final class MultiForgeServer {
         playerMirrors.clear();
         playerState.clear();
         bossEvents.clear();
+        fights.clear();
         containers.clear();
         scoreboards.clear();
         progress.clear();
@@ -637,6 +642,11 @@ public final class MultiForgeServer {
     /** @return boss-bar replication (dragon/raid/plugin bars) */
     public BossEventSyncManager bossEvents() {
         return bossEvents;
+    }
+
+    /** @return raid and ender-dragon fight state replication */
+    public FightSyncManager fights() {
+        return fights;
     }
 
     /** @return player synchronization */

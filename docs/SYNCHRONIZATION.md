@@ -201,11 +201,26 @@ the new owner restarts the path (the path nodes are recomputed, not copied). Bos
 replicated by `BossEventPacket`: the owner forwards the encoded vanilla
 `ClientboundBossEventPacket` (add/progress/name/style/properties/remove) and every server
 sends it to its local players in that world, without creating or ticking a second
-`ServerBossEvent`. This covers dragon, raid and plugin bars; the raid/dragon **simulation**
-(raid waves, dragon fight phases) still runs only on the owner. Verified live with vanilla
+`ServerBossEvent`. This covers dragon, raid and plugin bars. Verified live with vanilla
 `/bossbar`: two clients received the same add, progress and remove packets
-(`compat/evidence/boss-bar-20261122T044950Z.md`). Still missing: raid and dragon fight state
-transfer itself. See [TODO.md](TODO.md) and [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+(`compat/evidence/boss-bar-20261122T044950Z.md`).
+
+**Raids and the dragon fight** do not live in a chunk: vanilla stores them in per-level
+`SavedData` (`data/raids.dat` and the level data), so the chunk payload, the entity stream and
+the boss-bar packet cannot move them. `FightSyncManager` closes that gap (the port of
+MultiPaper's `Sync raids` and `Sync ender dragon fight` patches). The server that owns a
+raid's centre chunk or the end island chunk (0, 0) serializes the vanilla state every second
+(`Raid.save` / `EndDragonFight.saveData`) and broadcasts `RaidStatePacket` /
+`DragonFightStatePacket` when it changed, plus one removal packet when a raid ends. The old
+owner also sends the relevant snapshots directly to the new owner before a handover fence.
+`RaidMixin` and `EndDragonFightMixin` cancel `tick` on every server that does not own the
+centre chunk, so exactly one server advances the waves, raiders, dragon phases and respawn
+animation. Ownership epochs fence late snapshots; a server that already owns the chunk is
+authoritative and ignores remote state. On an ownership change the losing server clears its
+own `ServerBossEvent` so the player never sees two bars (the replacement fight object has a
+new bar UUID). See [NETWORKING.md](NETWORKING.md) ids 37-38 and [KNOWN_ISSUES.md](KNOWN_ISSUES.md) 26
+for the remaining limits. The live-cluster check for a raid and a dragon handover is still
+outstanding; the code path is compile-verified and startup-verified only.
 
 ## Players
 

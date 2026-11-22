@@ -540,6 +540,10 @@ public final class ChunkManager {
         // from its older mirror copy (visible for projectiles and mobs that moved).
         server.entities().sendChunkSnapshotsTo(key, newOwner);
         server.entities().sendMobNavigationTo(key, newOwner);
+        // Raids and the dragon fight are per-level saved data, not chunk data; a
+        // chunk handover must carry them explicitly or the new owner resumes from
+        // its older copy and can lose a wave or a respawn phase.
+        server.fights().sendRelevantTo(key, newOwner);
         try {
             ((ChunkMapAccessor) level.getChunkSource().chunkMap).multiforge$save(chunk);
         } catch (RuntimeException e) {
@@ -693,6 +697,10 @@ public final class ChunkManager {
             ownedLocally.remove(key);
             if (previous != null && previous.equals(server.serverName())) {
                 LOGGER.debug("Lost ownership of {} to {} (epoch {})", key, normalized, epoch);
+                // Drop the local boss bar of a raid/dragon fight rooted in this chunk;
+                // the new owner's fresh fight object has a different bar UUID, so
+                // keeping ours would show two bars.
+                server.fights().onChunkOwnershipLost(key);
             }
         }
     }
@@ -703,6 +711,62 @@ public final class ChunkManager {
      */
     public boolean isLocal(ChunkKey key) {
         return ownedLocally.contains(key);
+    }
+
+    /**
+     * Tells whether this server owns the chunk that contains a block position.
+     *
+     * <p>Used by the raid and dragon-fight mixins to keep simulation on the
+     * authoritative server only. The lookup goes through the same {@link ChunkKey}
+     * cache as the tick path, so it allocates nothing when called once per raid or
+     * once per dragon fight per tick. A chunk without a local ownership grant
+     * (unloaded, unowned while ownership is requested, or owned by a peer) returns
+     * {@code false}: callers must not simulate in that case.</p>
+     *
+     * @param level server level the position belongs to
+     * @param x     block X
+     * @param z     block Z
+     * @return {@code true} only when this server owns the containing chunk
+     */
+    public boolean isLocallyOwned(ServerLevel level, int x, int z) {
+        ChunkState state = states.get(keyCache.get(level, worldName(level), x >> 4, z >> 4));
+        return state != null && state.localOwner();
+    }
+
+    /**
+     * Tells whether a block position's chunk may be simulated right now.
+     *
+     * <p>Used by the raid and dragon-fight mixins. Reusing the chunk tick decision
+     * keeps fights on exactly the same ownership rules as blocks and entities:
+     * the local owner ticks, a chunk owned by a peer does not, a draining chunk
+     * does not, and an unowned chunk requests ownership and waits (instead of
+     * silently freezing or double-ticking).</p>
+     *
+     * @param level server level the position belongs to
+     * @param x     block X
+     * @param z     block Z
+     * @return {@code true} when this server should simulate the containing chunk
+     */
+    public boolean shouldTickAt(ServerLevel level, int x, int z) {
+        return shouldTick(level, x >> 4, z >> 4);
+    }
+
+    /**
+     * Returns the master ownership epoch this server knows for a chunk.
+     *
+     * <p>Fight snapshots carry the epoch of their centre chunk and receivers drop
+     * one that belongs to a superseded owner ({@code FightSyncManager}). The value
+     * is the same fence the block/block-entity stream uses, read through the tick
+     * path's {@link ChunkKey} cache so it allocates nothing.</p>
+     *
+     * @param level server level the position belongs to
+     * @param x     block X
+     * @param z     block Z
+     * @return epoch, or {@code 0} when the chunk is unknown or was never owned
+     */
+    public long chunkEpoch(ServerLevel level, int x, int z) {
+        ChunkState state = states.get(keyCache.get(level, worldName(level), x >> 4, z >> 4));
+        return state == null ? 0L : state.ownershipEpoch();
     }
 
     /**

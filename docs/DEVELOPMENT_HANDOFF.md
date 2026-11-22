@@ -290,8 +290,26 @@ two processes.
   does not broadcast objective add/remove, and the score packet constructor argument order was
   swapped. The config is now COMMON at `config/multiforge-server.toml` with a legacy migration.
   `/reload` does not fire config reload events on this Forge version, so restart for configs.
-* Test counts after this session: `./gradlew build :multiforge-protocol:test
-  :multiforge-master:test :multiforge-api:test` passes (protocol 36, master 44, api 4, example 3). Next
-  non-GPU work: live-verify the forge features above, per-chunk sequence numbers/acks and the
-  remaining performance items.
+## 11. Session 7 update (2026-11-22, no GPU)
+
+* **Raid and ender-dragon fight state transfer (TODO 5 / KNOWN_ISSUES 26).** `FightSyncManager`
+  ports MultiPaper's `Sync raids` and `Sync ender dragon fight` patches without touching
+  vanilla classes: the owner serializes `Raid.save` and `EndDragonFight.saveData()` once per
+  second, broadcasts `RaidStatePacket`/`DragonFightStatePacket` (peer ids 37-38) only when the
+  state changed, sends a removal packet when a raid ends, and sends the relevant snapshots to
+  the new owner before a handover fence. Receivers apply the state but never tick it:
+  `RaidMixin` and `EndDragonFightMixin` cancel `tick` unless this server owns the raid centre
+  chunk or the end island chunk. Ownership epochs fence late snapshots, and the losing server
+  clears its own boss bar so a handover cannot leave two visible bars.
+* **Verified:** `:multiforge-forge:build` (including reobf) succeeds; a real Forge 47.4.29 dev
+  server reached `Done (33.5s)` and `MultiForge ready (3 worlds)` with all 35 mixins applied,
+  including the four new ones (`RaidMixin`, `RaidsAccessor`, `EndDragonFightMixin`,
+  `RaidAccessor`), and no `FightSyncManager` exception during the run.
+* **Not yet verified live:** a raid or dragon handover on two servers. The mixins apply and the
+  packet path compiles, but a bot/client has to trigger a raid and walk across the boundary.
+  This stays in KNOWN_ISSUES 26 and TODO 5.
+* **Docs:** NETWORKING (ids 37-38), SYNCHRONIZATION, TODO, KNOWN_ISSUES, README, AGENT_GUIDE and
+  the new `docs/COMPLETION.md` scorecard were updated in the same change. Test counts are now
+  protocol 72, master 56, api 4, example 3.
+
 
