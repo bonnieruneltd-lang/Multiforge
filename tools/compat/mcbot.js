@@ -75,6 +75,9 @@ client.on('system_chat', (packet) => {
 client.on('player_chat', (packet) => {
   console.log(`[bot] PLAYERCHAT ${JSON.stringify(packet)}`);
 });
+client.on('action_bar', (packet) => {
+  console.log(`[bot] ACTIONBAR ${JSON.stringify(packet.text || packet)}`);
+});
 
 // Minimal entity index: minecraft-protocol does not track entities itself, so
 // the gameplay checks record player UUIDs from player_info and their entity ids
