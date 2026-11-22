@@ -176,18 +176,22 @@ the production Forge client, runs one client per shader pack and writes
 launch/log checks with `--allow-software` (labelled SOFTWARE; shader rows stay open). See
 [docs/CLIENT_MATRIX.md](CLIENT_MATRIX.md) for the machine specification and the verdict rules.
 
-## Velocity plugin
+## Proxy plugins
 
-`multiforge-velocity` is the optional port of MultiPaper's proxy-hosted master. It embeds the
-master in Velocity and balances connects by backend tick time:
+`multiforge-velocity` and `multiforge-bungee` are the optional ports of MultiPaper's
+proxy-hosted master. They embed the master in the proxy and balance connects by backend tick
+time:
 
 ```bash
-./gradlew :multiforge-velocity:build
+./gradlew :multiforge-velocity:build :multiforge-bungee:build
 cp multiforge-velocity/build/libs/multiforge-velocity-*.jar <velocity>/plugins/
+cp multiforge-bungee/build/libs/multiforge-bungee-*.jar <bungee>/plugins/
 ```
 
-Backends point at `proxy-host:35353` and use names that match `velocity.toml`'s `[servers]`.
-See [VELOCITY_PLUGIN.md](VELOCITY_PLUGIN.md) for configuration, limits and the live evidence.
+Backends point at `proxy-host:35353` and use names that match the proxy's server list
+(`[servers]` in `velocity.toml`, `servers` in BungeeCord's `config.yml`). For 1.20.1 backends
+use Waterfall 1.20 (the current BungeeCord build targets a newer protocol).
+See [PROXY_PLUGINS.md](PROXY_PLUGINS.md) for configuration, limits and the live evidence.
 
 ## One-command live cluster
 

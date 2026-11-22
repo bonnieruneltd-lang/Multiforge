@@ -225,10 +225,10 @@ coding.
     mixins were exercised with a raw forwarded login (UUID applied, IP logged) and through the
     built-in proxy (IP-only forwarding preserved the offline UUID). Velocity **modern**
     forwarding (login plugin + HMAC) is implemented and verified with a simulated proxy;
-    versions 2-4 (player key) are not requested. Remaining: MultiPaper's BungeeCord/Velocity
-    plugin that runs the master inside the proxy and balances players itself: the Velocity
-    variant is implemented (`multiforge-velocity`, live-verified with two backends); the
-    BungeeCord variant is not ported and relies on the proxy's own balancing.
+    versions 2-4 (player key) are not requested. MultiPaper's proxy-hosted master is ported for
+    both **Velocity** (`multiforge-velocity`) and **BungeeCord/Waterfall** (`multiforge-bungee`) —
+    each embeds the master and balances by tick time, live-verified with two backends
+    (`docs/PROXY_PLUGINS.md`).
 
 ## Done (for reference)
 

@@ -1,0 +1,5 @@
+# MultiForge BungeeCord plugin
+# Control port the Forge servers connect to.
+port: 35353
+# Balance a connecting player to the MultiForge backend with the lowest average tick time.
+balanceNodes: true

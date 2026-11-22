@@ -335,12 +335,13 @@ two processes.
   loaded, `BSL_v10.1.8.zip` `VERIFIED` with no shader compile error
   (`compat/evidence/client-matrix-20261122T080046Z.md`). Software GL cannot close the client
   rows; a hardware-GPU run is the remaining validation step.
-* **Velocity plugin (core parity):** `multiforge-velocity` is the port of MultiPaper's
-  proxy-hosted master. It embedded the master in Velocity 3.4.0 with no standalone master,
-  accepted live1/live2, moved a proxied client from `try=live1` to live2 by tick time, and the
-  cluster harness passed 18/18 (`compat/evidence/velocity-plugin-20261122T080834Z.md`,
-  `cluster-20261122T080834Z.md`). Limits and configuration: `docs/VELOCITY_PLUGIN.md`; the
-  BungeeCord variant is not ported.
+* **Proxy plugins (core parity) — complete:** `multiforge-velocity` and `multiforge-bungee`
+  embed the master in the proxy and balance by tick time. Velocity was verified with two
+  backends and a balanced client (`velocity-plugin-20261122T080834Z.md`); Waterfall 1.20 (the
+  1.20 BungeeCord fork; the current BungeeCord build targets a newer protocol) loaded the
+  BungeeCord plugin unchanged, accepted both backends, accepted a proxied client and passed the
+  cluster 18/18 (`bungee-plugin-20261122T082425Z.md`). Configuration and limits:
+  `docs/PROXY_PLUGINS.md`.
 * **Docs:** NETWORKING (ids 37-38), SYNCHRONIZATION, TODO, KNOWN_ISSUES, README, AGENT_GUIDE and
   the new `docs/COMPLETION.md` scorecard were updated in the same change. Test counts are now
   protocol 75, master 56, api 4, example 3.

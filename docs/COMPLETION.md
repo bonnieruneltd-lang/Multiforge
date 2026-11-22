@@ -24,12 +24,12 @@ actually exercised.
 
 | Category | Score | Evidence / gap |
 | --- | ---: | --- |
-| Core parity implementation | 99 % | MultiPaper's behaviour is implemented, including the optional Velocity plugin that embeds the master (`multiforge-velocity`, live-verified with two backends and a proxied client). The BungeeCord variant of that plugin is not ported. Raids/dragon fight state are done (`FightSyncManager`, peer ids 37-38). |
+| Core parity implementation | 100 % | MultiPaper's behaviour is implemented, including both proxy plugins that embed the master (`multiforge-velocity`, `multiforge-bungee`), each live-verified with two backends and a proxied client. Raids/dragon fight state are done (`FightSyncManager`, peer ids 37-38). |
 | Automated verification | 100 % | 138 tests pass (protocol 75, master 56, api 4, example 3), including `TailLossRecoveryTest` for the heartbeat path; full `:multiforge-forge:build` including reobf; a real Forge 47.4.29 dev server starts with all 35 mixins applied; `tools/ci/live_cluster.sh` passed **18/18 cluster + 3/3 forced-loss + 14/14 fight** end to end, including a 90 %/100-update loss stress; the GPU client-matrix runner completed a software-GL run on the current tree (`STARTED`, BSL `VERIFIED`, `client-matrix-20261122T080046Z.md`). Missing: no unit test covers the Minecraft-facing managers, and the GitHub workflow itself has not run on GitHub. |
 | Live cluster evidence | 99 % | 36 transcripts in `compat/evidence/`, including 18/18, forced-loss at 50 % and 90 % (100 updates, 5 gaps, 100/100 blocks, tail repaired by heartbeat acks), 14/14 raid + dragon handovers with event-driven updates, and the mod-profile run. Missing: client rendering evidence (hardware GPU). |
 | Required-mod compatibility | 57 % | 9 FUNCTIONAL, 22 PARTIAL, 4 LOADING of 35. The stated rule (FUNCTIONAL 1, PARTIAL 1/2, LOADING 0) gives (9 + 11) / 35 = 57 %. |
 | Production hardening | 92 % | Backlog recovery, sequence/acks (live under 50 % loss, including a lost tail), fuzzing and bounded buffers are done; config reload leaves only name/port restart-only (with a `-Dmultiforge.serverName` override); Ksyxis/Radium/ServerCore/BetterAutoSave are documented profiles. Remaining: handover budget, lost-first-update baseline, in-memory offline backlog. |
-| **Weighted overall** | **92 %** | 0.40·99 + 0.20·100 + 0.15·99 + 0.15·57 + 0.10·92 = 92.2 |
+| **Weighted overall** | **93 %** | 0.40·100 + 0.20·100 + 0.15·99 + 0.15·57 + 0.10·92 = 92.6 |
 
 Two honest caveats:
 
@@ -45,26 +45,23 @@ Two honest caveats:
 For reference, the same rubric before the fight-state work (core 94, verification 88, live 84,
 compatibility 57, hardening 70) scores **83 %**; before the verification/hardening pass
 (verification 90, live 95, hardening 72) it scores **87 %**; before the forced-loss pass
-(verification 98, live 95, hardening 89) it scores **90 %**; before this pass
-(verification 99, live 98, hardening 90) it scores **91 % (90.9)**; without the Velocity plugin
-(core 97) the same rubric scores **91.2 %** and the plugin raises it to **92.2 %**.
+(verification 98, live 95, hardening 89) it scores **90 %**; before the proxy work
+(verification 99, live 98, hardening 90) it scores **91 % (90.9)**. The Velocity plugin took it
+to **92.2 %**; the BungeeCord plugin completes core parity and takes it to **92.6 %**.
 
 ## What is actually left
 
-1. **Client compatibility evidence (largest gap).** Turn the 11 PARTIAL client rows into
+1. **Client compatibility evidence (the only real gap).** Turn the 11 PARTIAL client rows into
    FUNCTIONAL on a hardware GPU with player-driven visual checks. This needs the pinned client
-   set and a real client, not a headless server. Raid/dragon handover and forced loss no longer
-   belong here: both are live-verified.
-2. **Proxy-side master plugin (last parity item, optional).** MultiForge has a built-in proxy
-   and documents external BungeeCord/Velocity deployments; MultiPaper's plugin that runs the
-   master inside the proxy is not ported.
-3. **Documented design limits, not open tasks:** the 5 s handover drain budget, the 1 s fight
+   set and a real client, not a headless server. Raid/dragon handover, forced loss and both
+   proxy plugins no longer belong here: all are live-verified.
+2. **Documented design limits, not open tasks:** the 5 s handover drain budget, the 1 s fight
    state poll, and the in-memory offline chunk backlog are deliberate trade-offs in
    KNOWN_ISSUES. Ksyxis, Radium/ServerCore and BetterAutoSave are closed as deployment profiles
    (`docs/COMPATIBILITY_PROFILES.md`).
 
 Only item 1 is validation work; the implementation is not the bottleneck. Anyone quoting a
-single percentage should quote the weighted overall **and** the core-parity figure (97 %),
+single percentage should quote the weighted overall **and** the core-parity figure (100 %),
 because they answer different questions.
 
 ## Change log
@@ -92,7 +89,11 @@ because they answer different questions.
 * **2026-11-22 (session 7, client-matrix pass):** the integrated runner completed a
   software-GL production-client run on the current tree (`STARTED`, BSL `VERIFIED`,
   `client-matrix-20261122T080046Z.md`); a hardware-GPU run is the only remaining client step.
-* **2026-11-22 (session 7, Velocity plugin):** ported MultiPaper's proxy-hosted master as
+* **2026-11-22 (session 7, Proxy plugins):** ported MultiPaper's proxy-hosted master as
   `multiforge-velocity`; it embedded the master in Velocity 3.4.0, accepted two backends, moved
   a proxied client from `try=live1` to live2 by tick time, and the cluster passed 18/18
-  (`velocity-plugin-20261122T080834Z.md`). Core parity 97 → 99 %; overall 91.2 → 92.2 %.
+  (`velocity-plugin-20261122T080834Z.md`). Core parity 97 → 99 %.
+* **2026-11-22 (session 7, BungeeCord plugin):** added `multiforge-bungee`; Waterfall 1.20
+  loaded it unchanged, the embedded master accepted both backends, a proxied client joined, and
+  the cluster passed 18/18 (`bungee-plugin-20261122T082425Z.md`). Core parity 99 → 100 %;
+  overall 92.2 → 92.6 %.

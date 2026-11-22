@@ -31,7 +31,7 @@ integration tests and by running two real Forge servers against a master:
 | Area | Status |
 | --- | --- |
 | Master process (storage, ownership, subscriptions, proxy, CLI) | implemented |
-| Velocity plugin (embedded master + tick-time balancing) | implemented and live-verified: plugin loaded in Velocity 3.4.0, embedded master accepted two backends, a client through the proxy was balanced from `try=live1` to live2, cluster 18/18 ([evidence](compat/evidence/velocity-plugin-20261122T080834Z.md)) |
+| Proxy plugins (Velocity + BungeeCord, embedded master + tick-time balancing) | both implemented and live-verified: embedded master accepted two backends and a proxied client joined in each; Velocity balanced `try=live1` to live2, Waterfall/BungeeCord cluster 18/18 ([Velocity](compat/evidence/velocity-plugin-20261122T080834Z.md), [BungeeCord](compat/evidence/bungee-plugin-20261122T082425Z.md)) |
 | Master protocol (90 message types, data streams, compression) | implemented, unit tested |
 | Chunk data plane through the master (region, entities, poi) | implemented, verified live (previous session) |
 | Chunk generation lease (one generator per never-seen chunk) | implemented, integration tested |
@@ -141,7 +141,7 @@ Read [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) before running a production wo
 * [Required mod compatibility](docs/REQUIRED_MOD_COMPATIBILITY.md)
 * [Compatibility profiles](docs/COMPATIBILITY_PROFILES.md)
 * [Client matrix](docs/CLIENT_MATRIX.md)
-* [Velocity plugin](docs/VELOCITY_PLUGIN.md)
+* [Proxy plugins](docs/PROXY_PLUGINS.md)
 * [Distributed architecture research](docs/DISTRIBUTED_ARCHITECTURE_RESEARCH.md)
 * [Distributed roadmap](docs/DISTRIBUTED_ROADMAP.md)
 

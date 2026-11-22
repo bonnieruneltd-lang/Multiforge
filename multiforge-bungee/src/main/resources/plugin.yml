@@ -1,0 +1,5 @@
+name: MultiForgeBungee
+main: com.multiforge.bungee.MultiForgeBungee
+version: 1.0.0
+author: MultiForge contributors
+description: Runs the MultiForge master inside BungeeCord and balances players by tick time.

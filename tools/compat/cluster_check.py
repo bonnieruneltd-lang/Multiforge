@@ -150,13 +150,69 @@ def main(argv=None) -> int:
         return finish(cluster, results, args)
     check(results, "shared-loaded-chunk", True, f"{len(common)} common chunks, using {common[0]}")
 
+    def find_authoritative_common() -> tuple[int, int] | None:
+        """Pick a common chunk whose owner is known, preferably the player's chunk.
+
+        The chat listing is truncated and sorted chunks near spawn can be loaded on
+        both servers without any owner, so the entity checks need a chunk that is
+        actually ticked. Query the player's own chunk first (the bot always owns it),
+        then fall back to the owned section of the listing and verify each candidate
+        per chunk.
+        """
+        position = ""
+        for side in ("A", "B"):
+            position = cluster.run(side, "execute as @p run data get entity @s Pos")
+            if "entity data" in position:
+                break
+        numbers = re.findall(r"-?\d+(?:\.\d+)?", position)
+        if len(numbers) >= 3:
+            x = int(float(numbers[0]))
+            y = int(float(numbers[1]))
+            z = int(float(numbers[2]))
+            candidate = (x >> 4, z >> 4)
+            # The player's chunk can be unowned for a moment after login or a
+            # handover. Nudge the player within the chunk and wait for a server to
+            # claim it, so the entity checks run on an authoritative chunk.
+            for side in ("A", "B"):
+                cluster.run(side, f"execute as @p run tp @s {x + 0.5} {y} {z + 0.5}")
+            deadline = time.time() + 15.0
+            while time.time() < deadline:
+                info_a = cluster.run("A", f"multiforge chunk {candidate[0]} {candidate[1]}")
+                info_b = cluster.run("B", f"multiforge chunk {candidate[0]} {candidate[1]}")
+                if ("owner=unowned" not in info_a and "owner=" in info_a
+                        and "loaded=true" in info_b):
+                    return candidate
+                time.sleep(1.0)
+
+        text = cluster.run("A", "multiforge chunks")
+        owned = []
+        in_owned = False
+        for line in text.splitlines():
+            if line.startswith("Chunks owned by"):
+                in_owned = True
+                continue
+            if line.startswith("Loaded chunks"):
+                break
+            match = re.search(r"world,(-?\d+),(-?\d+)", line)
+            if in_owned and match:
+                owned.append((int(match.group(1)), int(match.group(2))))
+        for x, z in owned:
+            info_b = cluster.run("B", f"multiforge chunk {x} {z}")
+            if "loaded=true" in info_b:
+                return x, z
+        return None
+
     # Prefer a chunk that is loaded on both servers *and* has an owner: entity
     # damage/removal must be applied on the authoritative server, and "loaded on
     # both, owned by neither" can exist briefly during ownership handover.
-    owners_initial = parse_owners(cluster.run("A", "multiforge chunks"))
-    owned_common = [key for key in chunks_b
-                    if key in chunks_a and owners_initial.get(key) in ("live1", "live2")]
-    chunk_x, chunk_z = (owned_common or common)[0]
+    authoritative = find_authoritative_common()
+    if authoritative is not None:
+        chunk_x, chunk_z = authoritative
+    else:
+        owners_initial = parse_owners(cluster.run("A", "multiforge chunks"))
+        owned_common = [key for key in common
+                        if owners_initial.get(key) in ("live1", "live2")]
+        chunk_x, chunk_z = (owned_common or common)[0]
     block_x = chunk_x * 16 + 8
     block_z = chunk_z * 16 + 8
 
@@ -202,8 +258,11 @@ def main(argv=None) -> int:
     # Damage and removal must be applied on the chunk's authoritative owner; a
     # mirror only forwards the hit. The chosen common chunk can belong to either
     # server, so select the owner dynamically.
-    owners_for_chunk = parse_owners(cluster.run("A", "multiforge chunks"))
-    chunk_owner = owners_for_chunk.get((chunk_x, chunk_z))
+    # Read the owner of the chosen chunk directly: the chat listing is truncated,
+    # and guessing the side from a missing entry summons the entity on a mirror.
+    chunk_info = cluster.run("A", f"multiforge chunk {chunk_x} {chunk_z}")
+    owner_match = re.search(r"owner=(\S+)", chunk_info)
+    chunk_owner = owner_match.group(1) if owner_match else "unowned"
     owner_side = "A" if chunk_owner == "live1" else "B"
     mirror_side = "B" if owner_side == "A" else "A"
     cow = f"{block_x} 100 {block_z}"
