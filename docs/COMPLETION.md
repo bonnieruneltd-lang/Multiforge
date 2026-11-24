@@ -106,3 +106,14 @@ because they answer different questions.
   Just Player Heads dropped no head with chance 1.0 and Beautified Chat cross-server arrived as
   plain text — both recorded as PARTIAL/LOADING with negative evidence
   (`gameplay-mods-20261122T083900Z.md`). Compatibility 60 → 63 %; overall 93.1 → 93.5 %.
+* **2026-11-24 (session 8, mod-compatibility pass):** fixed cross-server chat losing the sender and
+  server-side formatting. `PlayerSyncManager.broadcastChat` now rebuilds the vanilla
+  `chat.type.text` line (`<name> text`) and the forward runs at `EventPriority.LOWEST` so other
+  chat mods' changes are captured; the pre-fix path re-broadcast bare raw text. A new
+  `tools/compat/chat_format_check.py` (self-testable) asserts the decoration and runs inside
+  `tools/ci/live_cluster.sh`. A real two-server dev cluster on the current tree passed
+  **chat + 18/18 cluster + 3/3 forced-loss + 14/14 fight**; the chat check received
+  `{"translate":"chat.type.text",...SyncBotA...,chatfmt-...}` on the other server
+  (`chat-format-20261124T000804Z.md`). Beautified Chat stays PARTIAL until a **production** run
+  confirms the mod's own timestamp/colour formatting survives the hop. Category scores unchanged;
+  the change is a correctness fix plus evidence.
