@@ -1,0 +1,45 @@
+{
+  "failed": true,
+  "results": [
+    {
+      "check": "anti-seed",
+      "state": "PASS",
+      "detail": "UltimateAntiSeedCracker data pack active"
+    },
+    {
+      "check": "tpa-cross-server",
+      "state": "SKIP",
+      "detail": "bot control unavailable: [Errno 111] Connection refused"
+    },
+    {
+      "check": "player-head",
+      "state": "SKIP",
+      "detail": "SyncBotB is not on server A (TPA did not co-locate them)"
+    },
+    {
+      "check": "stability-under-load",
+      "state": "PASS",
+      "detail": "60 armor stands; TPS A=20.0 B=20.0"
+    },
+    {
+      "check": "minecart-transport",
+      "state": "FAIL",
+      "detail": "minecart advanced 0.00 blocks (>=1.5 required)"
+    },
+    {
+      "check": "save-backlog",
+      "state": "PASS",
+      "detail": "pending writes after save-all: A=0 B=0"
+    },
+    {
+      "check": "seed-hidden-nonop",
+      "state": "PASS",
+      "detail": "seed not disclosed to non-op bot"
+    },
+    {
+      "check": "chat-format-beautified",
+      "state": "FAIL",
+      "detail": "no timestamped cross-server chat line seen"
+    }
+  ]
+}

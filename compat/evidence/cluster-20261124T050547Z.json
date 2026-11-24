@@ -1,0 +1,528 @@
+{
+  "generated_at": "20261124T050547Z",
+  "servers": {
+    "A": 25575,
+    "B": 25576
+  },
+  "passed": 8,
+  "total": 20,
+  "results": [
+    {
+      "check": "master-connected",
+      "passed": true,
+      "detail": "A=live1 | master=connected | tps=20.0 | chunks owned=0 loaded=2 | peers=1 | mirrored=0 | io reads=669 writes=44 failures=0 | seq gaps=0 dup=0 | local-backlog=0 | drop=0 B=live2 | master=connected | tps=20.0 | chunks owned=0 loaded=2 | peers=1 | mirrored=0 | io reads=529 writes=0 failures=0 | seq gaps=0 dup=0 | local-backlog=0 | drop=0"
+    },
+    {
+      "check": "cluster-membership",
+      "passed": true,
+      "detail": "both servers list live1 and live2"
+    },
+    {
+      "check": "required-targets-detected",
+      "passed": true,
+      "detail": "Required server targets loaded: 19/19"
+    },
+    {
+      "check": "required-datapack-enabled",
+      "passed": true,
+      "detail": "UltimateAntiSeedCracker.zip enabled"
+    },
+    {
+      "check": "shared-loaded-chunk",
+      "passed": true,
+      "detail": "1 common chunks, using (0, 0)"
+    },
+    {
+      "check": "block-a-to-b",
+      "passed": false,
+      "detail": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "check": "block-b-to-a",
+      "passed": false,
+      "detail": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "check": "block-entity-a-to-b",
+      "passed": false,
+      "detail": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "check": "scoreboard-objective-a-to-b",
+      "passed": false,
+      "detail": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "check": "scoreboard-score-a-to-b",
+      "passed": false,
+      "detail": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "check": "scoreboard-team-a-to-b",
+      "passed": false,
+      "detail": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "check": "entity-mirror-B-to-A",
+      "passed": false,
+      "detail": "owner=unowned <RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "check": "entity-damage-B-to-A",
+      "passed": false,
+      "detail": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "check": "entity-remove-B-to-A",
+      "passed": false,
+      "detail": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "check": "sign-text-a-to-b",
+      "passed": false,
+      "detail": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "check": "time-sync",
+      "passed": false,
+      "detail": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "check": "gamerule-sync",
+      "passed": false,
+      "detail": "Gamerule doDaylightCycle is currently set to: true"
+    },
+    {
+      "check": "single-authoritative-owner",
+      "passed": true,
+      "detail": "no chunk claimed by both servers"
+    },
+    {
+      "check": "tick-health",
+      "passed": true,
+      "detail": "both servers at 20 TPS"
+    },
+    {
+      "check": "save-all",
+      "passed": true,
+      "detail": "save-all flush completed on both servers"
+    }
+  ],
+  "transcript": [
+    {
+      "server": "A",
+      "command": "multiforge status",
+      "response": "live1 | master=connected | tps=20.0 | chunks owned=0 loaded=2 | peers=1 | mirrored=0 | io reads=669 writes=44 failures=0 | seq gaps=0 dup=0 | local-backlog=0 | drop=0\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge status",
+      "response": "live2 | master=connected | tps=20.0 | chunks owned=0 loaded=2 | peers=1 | mirrored=0 | io reads=529 writes=0 failures=0 | seq gaps=0 dup=0 | local-backlog=0 | drop=0\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge servers",
+      "response": "Servers in this MultiForge cluster:\n - live2 127.0.0.1:35447 tps=20.0 players=1 alive\n - live1 127.0.0.1:40545 tps=20.0 players=1 alive\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge servers",
+      "response": "Servers in this MultiForge cluster:\n - live1 127.0.0.1:40545 tps=20.0 players=1 alive\n - live2 127.0.0.1:35447 tps=20.0 players=1 alive\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge compat",
+      "response": "MultiForge compatibility (Forge 47.4.29, tested 47.4.29)\nRequired server targets loaded: 19/19\nServer targets:\n  [loaded] Darceno's Minecarts 1.3\n  [loaded] Just Player Heads 4.5\n  [loaded] Timber Strike 1.3\n  [loaded] Lithostitched 1.4.12\n  [loaded] Tectonic 3.0.17\n  [loaded] Fast Leaf Decay 2.0.0\n  [loaded] AI Improvements 0.5.2\n  [loaded] Async Locator 1.3.0\n  [loaded] Get It Together, Drops! 1.3\n  [loaded] Ksyxis 1.4.6\n  [loaded] Noisium 2.3.0+mc1.20-1.20.1\n  [loaded] Radium 0.12.4+git.26c9d8e\n  [loaded] ServerCore 1.5.2+1.20.1\n  [loaded] Shinoyuki-BetterAutoSave 0.20.2\n  [loaded] Structure Layout Optimizer 1.0.12\n  [loaded] AntiXray 1.4.6\n  [loaded] Beautified Chat [Server] 4.0\n  [loaded] Combatlog 2.8.5\n  [loaded] TPA Teleport 1.0.0\n  [pack] UltimateAntiSeedCracker (datapack, not detectable from the server)\nClient targets:\n  [pack] Anti Cords Leaker (resourcepack, not detectable from the server)\n  [missing] BadOptimizations\n  [pack] BSL Shaders (shader, not detectable from the server)\n  [pack] Complementary Shaders - Reimagined (shader, not detectable from the server)\n  [missing] Cull Leaves\n  [missing] Dynamic FPS\n  [missing] Embeddium\n  [missing] Entity Culling\n  [missing] ImmediatelyFast\n  [missing] Kerria\n  [missing] Optimized Block Entities [OBE]\n  [missing] Oculus\n  [missing] Remove Reloading Screen\n  [missing] Embeddium (Rubidium) Extra\n  [pack] Sildur's Vibrant Shaders (Lite) (shader, not detectable from the server)\nNo conflicts detected.\n"
+    },
+    {
+      "server": "A",
+      "command": "datapack list",
+      "response": "There are 29 data pack(s) enabled: [vanilla (built-in)], [mod:mr_timber_strike], [mod:radium], [mod:getittogetherdrops], [mod:tpateleport], [mod:lithostitched], [mod:resourcefulconfig], [mod:multiforge], [mod:ksyxis], [mod:servercore], [mod:justplayerheads], [mod:collective], [mod:noisium], [mod:mixinextras], [mod:shinoyuki_betterautosave], [mod:antixray], [mod:beautifiedchatserver], [mod:aiimprovements], [mod:asynclocator], [mod:structure_layout_optimizer], [mod:forge], [mod:fastleafdecay], [mod:combatlog], [mod:mr_darcenos_minecarts], [mod:tectonic], [file/UltimateAntiSeedCracker.zip (world)], [tectonic/tectonic (built-in)], [tectonic/tectonic/overlay.mod (built-in)], [lithostitched/breaks_seed_parity (built-in)]\nThere are no more data packs available\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunks",
+      "response": "Chunks owned by live1: 0\nLoaded chunks on this server:\n - world,-1,-1 owner=unowned\n - world,0,0 owner=unowned\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunks",
+      "response": "Chunks owned by live2: 0\nLoaded chunks on this server:\n - world,0,0 owner=unowned\n - world,0,-1 owner=unowned\n"
+    },
+    {
+      "server": "A",
+      "command": "execute as @p run data get entity @s Pos",
+      "response": "SyncBotA has the following entity data: [-6.5d, -60.0d, -2.5d]\n"
+    },
+    {
+      "server": "A",
+      "command": "execute as @p run tp @s -5.5 -60 -1.5",
+      "response": "Teleported SyncBotA to -5.500000, -60.000000, -1.500000\n"
+    },
+    {
+      "server": "B",
+      "command": "execute as @p run tp @s -5.5 -60 -1.5",
+      "response": "Teleported SyncBotB to -5.500000, -60.000000, -1.500000\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live2]\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live1]\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live2]\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live1]\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live2]\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live1]\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live2]\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live1]\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live2]\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live1]\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live2]\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live1]\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live2]\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live1]\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live2]\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live1]\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live2]\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live1]\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live2]\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live1]\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live2]\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live1]\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live2]\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live1]\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live2]\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=true subscribers=[live1]\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=false subscribers=[live2]\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=false subscribers=[live1]\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunk -1 -1",
+      "response": "Chunk world,-1,-1 owner=unowned local=false loaded=false subscribers=[live2]\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunk -1 -1",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunks",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunks",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "setblock 8 64 8 minecraft:gold_block",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "B",
+      "command": "execute if block 8 64 8 minecraft:gold_block",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "B",
+      "command": "setblock 9 64 8 minecraft:diamond_block",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "execute if block 9 64 8 minecraft:diamond_block",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "setblock 10 64 8 minecraft:chest",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "item replace block 10 64 8 container.0 with minecraft:diamond 5",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "B",
+      "command": "data get block 10 64 8 Items[0].id",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "scoreboard objectives add mfcheck96715 dummy",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "B",
+      "command": "scoreboard objectives list",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "scoreboard players set MFCheck mfcheck96715 7",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "B",
+      "command": "scoreboard players get MFCheck mfcheck96715",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "team add mfc96715",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "team join mfc96715 MFCheck",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "B",
+      "command": "team list mfc96715",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunk 0 0",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "kill @e[type=minecraft:cow,tag=mfcheck]",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "B",
+      "command": "kill @e[type=minecraft:cow,tag=mfcheck]",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "B",
+      "command": "summon minecraft:cow 8 100 8 {NoGravity:1b,Tags:[\"mfcheck\"]}",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "execute if entity @e[type=minecraft:cow,tag=mfcheck]",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "B",
+      "command": "damage @e[type=minecraft:cow,tag=mfcheck,limit=1] 2",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "data get entity @e[type=minecraft:cow,tag=mfcheck,limit=1] Health",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "B",
+      "command": "kill @e[type=minecraft:cow,tag=mfcheck]",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "execute if entity @e[type=minecraft:cow,tag=mfcheck]",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "scoreboard objectives remove mfcheck96715",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "team remove mfc96715",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "setblock 11 64 8 minecraft:oak_sign",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "data merge block 11 64 8 {front_text:{messages:['\"mf-sign\"','\"line2\"','\"\"','\"\"']}}",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "B",
+      "command": "data get block 11 64 8 front_text.messages[0]",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "gamerule doDaylightCycle false",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "time set 6000",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "B",
+      "command": "time query daytime",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "A",
+      "command": "gamerule doDaylightCycle false",
+      "response": "<RCON ERROR: [Errno 111] Connection refused>"
+    },
+    {
+      "server": "B",
+      "command": "gamerule doDaylightCycle",
+      "response": "Gamerule doDaylightCycle is currently set to: true\n"
+    },
+    {
+      "server": "A",
+      "command": "gamerule doDaylightCycle true",
+      "response": "Gamerule doDaylightCycle is now set to: true\n"
+    },
+    {
+      "server": "A",
+      "command": "multiforge chunks",
+      "response": "Chunks owned by live1: 0\nLoaded chunks on this server:\n - world,-2,-2 owner=unowned\n - world,-1,-1 owner=unowned\n"
+    },
+    {
+      "server": "B",
+      "command": "multiforge chunks",
+      "response": "Chunks owned by live2: 0\nLoaded chunks on this server:\n"
+    },
+    {
+      "server": "A",
+      "command": "forge tps",
+      "response": "Dim minecraft:overworld (minecraft:overworld): Mean tick time: 4.041 ms. Mean TPS: 20.000\nDim minecraft:the_nether (minecraft:the_nether): Mean tick time: 0.025 ms. Mean TPS: 20.000\nDim minecraft:the_end (minecraft:the_end): Mean tick time: 0.019 ms. Mean TPS: 20.000\nOverall: Mean tick time: 25.808 ms. Mean TPS: 20.000\n"
+    },
+    {
+      "server": "B",
+      "command": "forge tps",
+      "response": "Dim minecraft:overworld (minecraft:overworld): Mean tick time: 1.315 ms. Mean TPS: 20.000\nDim minecraft:the_nether (minecraft:the_nether): Mean tick time: 0.061 ms. Mean TPS: 20.000\nDim minecraft:the_end (minecraft:the_end): Mean tick time: 0.045 ms. Mean TPS: 20.000\nOverall: Mean tick time: 5.053 ms. Mean TPS: 20.000\n"
+    },
+    {
+      "server": "A",
+      "command": "save-all flush",
+      "response": "Saving the game (this may take a moment!)\nSaved the game\n"
+    },
+    {
+      "server": "B",
+      "command": "save-all flush",
+      "response": "Saving the game (this may take a moment!)\nSaved the game\n"
+    }
+  ]
+}

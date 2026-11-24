@@ -135,18 +135,20 @@ def check_tpa(ctrl_a, ctrl_b, port_a, port_b, password, host, wait=8.0) -> tuple
     return "tpa-cross-server", False, f"players not co-located (A:{list_a.strip()!r} B:{list_b.strip()!r})"
 
 
-def check_player_head(ctrl_a, port_a, password, host, wait=8.0) -> tuple[str, bool | None, str]:
-    """Bot A kills Bot B; a minecraft:player_head item should appear (Just Player Heads)."""
-    try:
-        control(ctrl_a, "attackplayer SyncBotB")
-    except OSError as error:
-        return "player-head", None, f"bot control unavailable: {error}"
+def check_player_head(port_a, password, host, wait=6.0) -> tuple[str, bool | None, str]:
+    """Kill Bot B with player-attack damage from Bot A; a player_head item should drop.
+
+    Both bots are co-located on server A by the preceding TPA check. ``/damage ... by``
+    credits Bot A as the attacker so Just Player Heads sees a player kill.
+    """
+    if "SyncBotB" not in rcon(host, port_a, password, "execute if entity SyncBotB run data get entity SyncBotB Health"):
+        return "player-head", None, "SyncBotB is not on server A (TPA did not co-locate them)"
+    rcon(host, port_a, password, "kill @e[type=item]")
+    rcon(host, port_a, password, "damage SyncBotB 200 minecraft:player_attack by SyncBotA")
     time.sleep(wait)
     items = rcon(host, port_a, password, "execute as @e[type=item] run data get entity @s Item")
     if "player_head" in items:
-        return "player-head", True, "a player_head item entity dropped"
-    # The victim may have respawned on B; also scan B.
-    items_b = rcon(host, port_a, password, "execute as @e[type=item] run data get entity @s Item")
+        return "player-head", True, "a player_head item entity dropped on the player kill"
     return "player-head", False, f"no player_head item (A items: {items.strip()[:120]!r})"
 
 
@@ -176,7 +178,9 @@ def check_stability(a_port, b_port, password, host, count=60, wait=6.0) -> tuple
 
 def check_minecart(a_port, password, host, wait=4.0) -> tuple[str, bool | None, str]:
     """A powered-rail lane moves a minecart forward (Darceno's Minecarts / vanilla carts)."""
-    x, y, z = 200, 100, 200
+    # Spawn-area chunk (loaded on both servers) in the air above the superflat surface,
+    # so the cart is not created in an unloaded chunk and does not need ground.
+    x, y, z = 2, -55, 2
     rcon(host, a_port, password, f"fill {x} {y} {z} {x + 8} {y} {z} minecraft:powered_rail")
     rcon(host, a_port, password, f"fill {x} {y - 1} {z} {x + 8} {y - 1} {z} minecraft:redstone_block")
     rcon(host, a_port, password, "kill @e[type=minecart]")
@@ -209,6 +213,22 @@ def check_seed_hidden(ctrl_a, a_log, wait=3.0) -> tuple[str, bool | None, str]:
     return "seed-hidden-nonop", (not leaked), ("seed not disclosed to non-op bot" if not leaked else "SEED LEAKED"),
 
 
+BACKLOG_PATTERN = re.compile(r"local-backlog=(\d+)")
+
+
+def check_save_backlog(a_port, b_port, password, host, wait=3.0) -> tuple[str, bool | None, str]:
+    """`save-all flush` must leave no pending chunk writes (async save, BetterAutoSave)."""
+    rcon(host, a_port, password, "save-all flush")
+    time.sleep(wait)
+    vals = []
+    for port in (a_port, b_port):
+        m = BACKLOG_PATTERN.search(rcon(host, port, password, "multiforge status"))
+        vals.append(int(m.group(1)) if m else None)
+    if any(v is None for v in vals):
+        return "save-backlog", None, "local-backlog not reported in /multiforge status"
+    return "save-backlog", all(v == 0 for v in vals), f"pending writes after save-all: A={vals[0]} B={vals[1]}"
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -237,9 +257,10 @@ def main(argv=None) -> int:
     record(*check_anti_seed(args.a_port, args.password, args.host))
     if args.a_control and args.b_control:
         record(*check_tpa(args.a_control, args.b_control, args.a_port, args.b_port, args.password, args.host))
-        record(*check_player_head(args.a_control, args.a_port, args.password, args.host))
+        record(*check_player_head(args.a_port, args.password, args.host))
     record(*check_stability(args.a_port, args.b_port, args.password, args.host))
     record(*check_minecart(args.a_port, args.password, args.host))
+    record(*check_save_backlog(args.a_port, args.b_port, args.password, args.host))
     record(*check_seed_hidden(args.a_control, args.a_log))
     if args.b_log:
         lines = received_lines(args.b_log)

@@ -135,7 +135,7 @@ trap cleanup EXIT
 wait_ready() {
   local logfile=$1 name=$2
   for _ in $(seq 1 240); do
-    if grep -aq "MultiForge ready" "$logfile" 2>/dev/null; then log "$name is ready"; return 0; fi
+    if grep -aq "Done (" "$logfile" 2>/dev/null && grep -aq "MultiForge ready" "$logfile" 2>/dev/null; then log "$name is ready"; return 0; fi
     if grep -aq "Failed to start the minecraft server\|FATAL" "$logfile" 2>/dev/null; then
       log "$name failed to start (see $logfile)"; return 1
     fi
@@ -194,24 +194,24 @@ if [[ ! -d "$ROOT/tools/compat/node_modules" ]]; then
   log "installing bot dependencies"
   (cd "$ROOT/tools/compat" && npm install --no-audit --no-fund > "$RUNTIME/npm.log" 2>&1) || { log "npm install failed"; exit 1; }
 fi
-log "connecting bots"
-(cd "$ROOT/tools/compat" && node mcbot.js 127.0.0.1 "$A_PORT" SyncBotA "$A_CTRL" > "$RUNTIME/bot-a.log" 2>&1) &
-BOT_A_PID=$!
-(cd "$ROOT/tools/compat" && node mcbot.js 127.0.0.1 "$B_PORT" SyncBotB "$B_CTRL" > "$RUNTIME/bot-b.log" 2>&1) &
-BOT_B_PID=$!
-logged_in() { grep -q LOGIN "$RUNTIME/bot-a.log" 2>/dev/null && grep -q LOGIN "$RUNTIME/bot-b.log" 2>/dev/null; }
-for _ in $(seq 1 60); do logged_in && break; sleep 1; done
-if ! logged_in; then
-  log "bots did not log in on the first try; retrying once"
-  tail -3 "$RUNTIME/bot-a.log" 2>/dev/null | sed 's/^/[a] /'
-  tail -3 "$RUNTIME/bot-b.log" 2>/dev/null | sed 's/^/[b] /'
-  kill "$BOT_A_PID" "$BOT_B_PID" 2>/dev/null || true; sleep 2
+start_bots() {
   (cd "$ROOT/tools/compat" && node mcbot.js 127.0.0.1 "$A_PORT" SyncBotA "$A_CTRL" > "$RUNTIME/bot-a.log" 2>&1) &
   BOT_A_PID=$!
   (cd "$ROOT/tools/compat" && node mcbot.js 127.0.0.1 "$B_PORT" SyncBotB "$B_CTRL" > "$RUNTIME/bot-b.log" 2>&1) &
   BOT_B_PID=$!
-  for _ in $(seq 1 45); do logged_in && break; sleep 1; done
-fi
+}
+logged_in() { grep -q LOGIN "$RUNTIME/bot-a.log" 2>/dev/null && grep -q LOGIN "$RUNTIME/bot-b.log" 2>/dev/null; }
+for attempt in 1 2 3; do
+  log "connecting bots (attempt $attempt)"
+  start_bots
+  for _ in $(seq 1 60); do logged_in && break; sleep 1; done
+  logged_in && break
+  log "attempt $attempt: not logged in; retrying"
+  tail -2 "$RUNTIME/bot-a.log" 2>/dev/null | sed 's/^/[a] /'
+  tail -2 "$RUNTIME/bot-b.log" 2>/dev/null | sed 's/^/[b] /'
+  kill "$BOT_A_PID" "$BOT_B_PID" 2>/dev/null || true
+  sleep 3
+done
 logged_in || { log "bots did not log in"; exit 1; }
 sleep 10
 
