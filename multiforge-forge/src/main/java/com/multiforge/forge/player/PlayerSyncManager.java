@@ -411,15 +411,45 @@ public final class PlayerSyncManager {
     /**
      * Broadcasts a chat message to all other servers.
      *
+     * <p>Vanilla decorates a player chat line on the client with the
+     * {@code chat.type.text} translation ({@code <%s> %s}); the
+     * {@code ServerChatEvent} message that reaches this method is only the raw
+     * content. A remote server re-broadcasts the forwarded component with
+     * {@link PlayerList#broadcastSystemMessage}, which renders the component
+     * verbatim, so forwarding the bare content produced a cross-server line with
+     * no sender and no server-side chat formatting (see KNOWN_ISSUES). This method
+     * rebuilds the same decorated line so every server renders an identical chat
+     * line and any formatting a server-side chat mod (for example Beautified Chat)
+     * applied to the event message is preserved.</p>
+     *
      * @param sender  sending player
-     * @param message rendered message
+     * @param message chat content as delivered by the chat event (already carrying
+     *                any formatting applied by lower-priority chat mods, because the
+     *                event handler runs last)
      */
     public void broadcastChat(ServerPlayer sender, Component message) {
         if (!server.config().playerSync()) {
             return;
         }
-        String json = Component.Serializer.toJson(message);
+        Component decorated = decorateChat(sender, message);
+        String json = Component.Serializer.toJson(decorated);
         server.peers().broadcast(new ChatMessagePacket(json, sender.getUUID(), server.serverName()));
+    }
+
+    /**
+     * Builds the same decorated chat line vanilla renders locally.
+     *
+     * <p>Uses the {@code chat.type.text} translation with the sender's display name
+     * so a re-broadcast system message matches the local player chat line instead of
+     * showing bare text. Kept separate and pure so the decoration contract can be
+     * unit tested without a Minecraft runtime.</p>
+     *
+     * @param sender  sending player (source of the display name)
+     * @param message chat content
+     * @return {@code <displayName> message}
+     */
+    static Component decorateChat(ServerPlayer sender, Component message) {
+        return Component.translatable("chat.type.text", sender.getDisplayName(), message);
     }
 
     /**

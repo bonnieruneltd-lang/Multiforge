@@ -12,6 +12,7 @@ import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.event.ServerChatEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import org.slf4j.Logger;
@@ -249,9 +250,15 @@ public final class ForgeEventHandlers {
     /**
      * Forwards chat to the other servers so the cluster behaves like one server.
      *
+     * <p>Registered at {@link EventPriority#LOWEST} so it runs after every other
+     * {@code ServerChatEvent} listener. Server-side chat mods (for example Beautified
+     * Chat) format the message by setting it on this event, so reading
+     * {@link ServerChatEvent#getMessage()} last captures their formatting instead of
+     * the raw typed text.</p>
+     *
      * @param event chat event
      */
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onServerChat(ServerChatEvent event) {
         MultiForgeServer runtime = MultiForgeServer.instanceOrNull();
         if (runtime != null) {

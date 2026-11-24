@@ -465,3 +465,13 @@ See TODO 5, `docs/SYNCHRONIZATION.md` and `docs/NETWORKING.md`.
   (`compat/evidence/player-state-20261115T054356Z.md`).
 * A read could be redirected to a peer that was already unloading the chunk; the master now
   records chunk status and serves its own copy in that case.
+* Cross-server chat lost the sender and any server-side formatting: `PlayerSyncManager.broadcastChat`
+  forwarded the raw `ServerChatEvent` content and re-broadcast it as a bare system message, so
+  players on another server saw plain text with no `<name>` (Beautified Chat's line arrived
+  unformatted). It now forwards at `EventPriority.LOWEST` (after other chat mods have modified the
+  event) and wraps the message in the vanilla `chat.type.text` line (`<name> text`), and
+  `tools/compat/chat_format_check.py` asserts the decoration on every `tools/ci/live_cluster.sh`
+  run. Remaining limit: client-side `ChatType` decoration and formatting applied at the packet
+  layer (`ServerGamePacketListenerImpl.sendDisguisedChatMessage`) are not reconstructed by the event
+  path, so a **production** two-server run with Beautified Chat is still required to move that row
+  to FUNCTIONAL.

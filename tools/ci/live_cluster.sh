@@ -227,6 +227,12 @@ grep -q "LOGIN" "$RUNTIME/bot-b.log" || { log "bot B did not log in"; exit 1; }
 # Give the servers a moment to tick the player chunks and claim ownership.
 sleep 10
 
+log "running the cross-server chat formatting check"
+python3 tools/compat/chat_format_check.py \
+  --a-control 25599 --b-log "$RUNTIME/bot-b.log" --sender SyncBotA \
+  --out "$OUT" 2>&1 | tee "$RUNTIME/chat_format.log"
+CHAT_STATUS=${PIPESTATUS[0]}
+
 log "running the cluster checks"
 python3 tools/compat/cluster_check.py \
   --a-port "$A_RCON" --b-port "$B_RCON" --password "$RCON_PASSWORD" \
@@ -246,11 +252,11 @@ python3 tools/compat/fight_sync_check.py \
   --out "$OUT" 2>&1 | tee "$RUNTIME/fight_check.log"
 FIGHT_STATUS=${PIPESTATUS[0]}
 
-if [[ "$CLUSTER_STATUS" -ne 0 || "$LOSS_STATUS" -ne 0 || "$FIGHT_STATUS" -ne 0 ]]; then
+if [[ "$CHAT_STATUS" -ne 0 || "$CLUSTER_STATUS" -ne 0 || "$LOSS_STATUS" -ne 0 || "$FIGHT_STATUS" -ne 0 ]]; then
   FAILED=1
-  log "FAILED (cluster=$CLUSTER_STATUS loss=$LOSS_STATUS fight=$FIGHT_STATUS)"
+  log "FAILED (chat=$CHAT_STATUS cluster=$CLUSTER_STATUS loss=$LOSS_STATUS fight=$FIGHT_STATUS)"
 else
-  log "PASS (cluster, forced-loss and fight checks)"
+  log "PASS (chat, cluster, forced-loss and fight checks)"
 fi
 exit "$FAILED"
 

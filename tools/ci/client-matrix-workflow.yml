@@ -1,0 +1,154 @@
+# Client GPU matrix check.
+#
+# Runs the pinned 15 client targets (Embeddium, Oculus, Entity Culling, ImmediatelyFast,
+# OBE Extra, Dynamic FPS + 3 shader packs) on a GitHub-hosted GPU runner (NVIDIA T4).
+# Uploads the evidence Markdown and JSON to the workflow run artifacts.
+#
+# Usage: copy to .github/workflows/client-matrix.yml, then trigger manually or on schedule.
+#
+# Cost control: GPU runners are billed at ~10x Linux runners. This workflow is
+# manual_dispatch + weekly cron to keep it predictable. It downloads the built mod jar
+# from the build workflow artifacts (or builds locally if SKIP_BUILD=false).
+name: client-matrix
+
+on:
+  workflow_dispatch:
+    inputs:
+      skip-build:
+        description: "Skip ./gradlew build and download jar from latest build workflow"
+        type: boolean
+        default: true
+      shaders:
+        description: "Shader packs to test (space-separated keys)"
+        type: string
+        default: "bsl-shaders complementary-reimagined sildurs-vibrant-lite"
+
+  schedule:
+    # Weekly Monday 04:00 UTC (after the weekly live-cluster run)
+    - cron: '0 4 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  client-matrix:
+    # GitHub-hosted GPU runner (NVIDIA T4, 4 vCPU, 16 GB RAM, OpenGL 4.6 via Mesa/NVIDIA driver)
+    # See https://docs.github.com/en/actions/using-github-hosted-runners/using-gpu-runners
+    runs-on: ubuntu-latest-4-cores
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Cache Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install system dependencies (Mesa, Xvfb, glxinfo)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mesa-utils xvfb libgl1-mesa-dri libx11-6 libxext6 libxrandr2 libxcursor1 libxi6 libxxf86vm1
+
+      - name: Verify GPU access
+        run: |
+          echo "=== lspci ==="
+          lspci | grep -i nvidia || true
+          echo "=== nvidia-smi ==="
+          nvidia-smi || true
+          echo "=== glxinfo ==="
+          glxinfo -B || true
+          echo "=== /dev/dri ==="
+          ls -la /dev/dri/ || true
+
+      - name: Download mod jar from build workflow (if skip-build)
+        if: ${{ github.event.inputs.skip-build == 'true' || github.event.inputs.skip-build == '' }}
+        run: |
+          gh run list --repo bonnieruneltd-lang/Multiforge --workflow build --limit 1 --json databaseId -q '.[0].databaseId' > /tmp/latest_build_id.txt
+          BUILD_ID=$(cat /tmp/latest_build_id.txt)
+          gh run download "$BUILD_ID" --repo bonnieruneltd-lang/Multiforge --name multiforge-jars --dir .runtime/build-jars
+          ls -la .runtime/build-jars/
+
+      - name: Build the mod and master (if not skip-build)
+        if: ${{ github.event.inputs.skip-build != 'true' }}
+        run: ./gradlew --no-daemon :multiforge-forge:build :multiforge-master:fatJar
+
+      - name: Locate MultiForge jar
+        id: jar
+        run: |
+          if [ -f .runtime/build-jars/multiforge-1.0.0-alpha.1.jar ]; then
+            echo "jar=.runtime/build-jars/multiforge-1.0.0-alpha.1.jar" >> $GITHUB_OUTPUT
+          elif [ -f multiforge-forge/build/libs/multiforge-1.0.0-alpha.1.jar ]; then
+            echo "jar=multiforge-forge/build/libs/multiforge-1.0.0-alpha.1.jar" >> $GITHUB_OUTPUT
+          else
+            echo "error: MultiForge jar not found" >&2
+            exit 1
+          fi
+
+      - name: Install bot dependencies
+        working-directory: tools/compat
+        run: npm install --no-audit --no-fund
+
+      - name: Run client matrix (BSL shaders)
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
+        run: |
+          ./tools/compat/run_client_matrix.sh \
+            --java "${JAVA_HOME}/bin/java" \
+            --multiforge-jar "${{ steps.jar.outputs.jar }}" \
+            --shaders "bsl-shaders" \
+            --settle 180
+
+      - name: Run client matrix (Complementary Reimagined)
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
+        run: |
+          ./tools/compat/run_client_matrix.sh \
+            --java "${JAVA_HOME}/bin/java" \
+            --multiforge-jar "${{ steps.jar.outputs.jar }}" \
+            --shaders "complementary-reimagined" \
+            --settle 180 \
+            --skip-build
+
+      - name: Run client matrix (Sildur's Vibrant Lite)
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
+        run: |
+          ./tools/compat/run_client_matrix.sh \
+            --java "${JAVA_HOME}/bin/java" \
+            --multiforge-jar "${{ steps.jar.outputs.jar }}" \
+            --shaders "sildurs-vibrant-lite" \
+            --settle 180 \
+            --skip-build
+
+      - name: Upload client matrix evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-matrix-evidence
+          path: |
+            compat/evidence/client-matrix-*.md
+            compat/evidence/client-matrix-*.json
+          if-no-files-found: warn
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Client Matrix Results" >> $GITHUB_STEP_SUMMARY
+          for f in compat/evidence/client-matrix-*.md; do
+            if [ -f "$f" ]; then
+              echo "### $(basename $f)" >> $GITHUB_STEP_SUMMARY
+              head -80 "$f" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
