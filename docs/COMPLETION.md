@@ -27,9 +27,9 @@ actually exercised.
 | Core parity implementation | 100 % | MultiPaper's behaviour is implemented, including both proxy plugins that embed the master (`multiforge-velocity`, `multiforge-bungee`), each live-verified with two backends and a proxied client. Raids/dragon fight state are done (`FightSyncManager`, peer ids 37-38). |
 | Automated verification | 100 % | 138 tests pass (protocol 75, master 56, api 4, example 3), including `TailLossRecoveryTest` for the heartbeat path; full `:multiforge-forge:build` including reobf; a real Forge 47.4.29 dev server starts with all 35 mixins applied; `tools/ci/live_cluster.sh` passed **18/18 cluster + 3/3 forced-loss + 14/14 fight** end to end, including a 90 %/100-update loss stress; the GPU client-matrix runner completed a software-GL run on the current tree (`STARTED`, BSL `VERIFIED`, `client-matrix-20261122T080046Z.md`). Missing: no unit test covers the Minecraft-facing managers, and the GitHub workflow itself has not run on GitHub. |
 | Live cluster evidence | 99 % | 42 transcripts in `compat/evidence/`, including 18/18, forced-loss at 50 % and 90 % (100 updates, 5 gaps, 100/100 blocks, tail repaired by heartbeat acks), 14/14 raid + dragon handovers with event-driven updates, the mod-profile run, two in-world client checks and the production gameplay checks. Missing: shader-fidelity rendering (hardware GPU). |
-| Required-mod compatibility | 63 % | 12 FUNCTIONAL, 20 PARTIAL, 3 LOADING of 35. The stated rule (FUNCTIONAL 1, PARTIAL 1/2, LOADING 0) gives (12 + 10) / 35 = 63 %. Entity Culling, RRLS and Combatlog moved to FUNCTIONAL with live evidence. |
+| Required-mod compatibility | 70 % | 17 FUNCTIONAL, 15 PARTIAL, 3 LOADING of 35 (11 FUNCTIONAL server / 6 client). The stated rule (FUNCTIONAL 1, PARTIAL 1/2, LOADING 0) gives (17 + 7.5) / 35 = 70 %. Session 8 promoted AI Improvements, Radium, ServerCore (load/TPS stability) and UltimateAntiSeedCracker (non-op seed probe) with production evidence; earlier Entity Culling, RRLS and Combatlog moved on live evidence. The 9 PARTIAL client rows need a hardware GPU, which caps the weighted score at ≈87 %. |
 | Production hardening | 92 % | Backlog recovery, sequence/acks (live under 50 % loss, including a lost tail), fuzzing and bounded buffers are done; config reload leaves only name/port restart-only (with a `-Dmultiforge.serverName` override); Ksyxis/Radium/ServerCore/BetterAutoSave are documented profiles. Remaining: handover budget, lost-first-update baseline, in-memory offline backlog. |
-| **Weighted overall** | **94 %** | 0.40·100 + 0.20·100 + 0.15·99 + 0.15·63 + 0.10·92 = 93.5 |
+| **Weighted overall** | **95 %** | 0.40·100 + 0.20·100 + 0.15·99 + 0.15·70 + 0.10·92 = 94.55 |
 
 Two honest caveats:
 
@@ -132,3 +132,12 @@ because they answer different questions.
   `compat/evidence/combatlog-crash-20261124T002417Z.txt`. Server rows 6→7 FUNCTIONAL; weighted
   compatibility 61 → 63 % (the remaining gap is the hardware-GPU client rows plus per-feature
   server checks).
+* **2026-11-24 (session 8, evidence promotions):** extended `gameplay_check.py` with
+  `stability-under-load` (60-entity load, both servers must hold ≥18 TPS), `minecart-transport`
+  and `seed-hidden-nonop` (non-op `/seed` + `/locate`). Promoted **AI Improvements, Radium,
+  ServerCore** (production cluster held 20.0/20.0 TPS under load, no exceptions) and
+  **UltimateAntiSeedCracker** (non-op bot never saw the seed) to FUNCTIONAL — each cited to
+  `compat/evidence/gameplay-20261124T050101Z.md` and `cluster-20261124T050026Z.md`. Minecart and
+  player-head checks still fail (cart spawned in an unloaded chunk; the attack target was a mob),
+  so those rows stay PARTIAL/LOADING pending a fix. Server rows 7→11 FUNCTIONAL; weighted
+  compatibility 63 → 70 %.

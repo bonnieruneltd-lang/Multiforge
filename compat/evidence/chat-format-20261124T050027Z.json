@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "token": "chatfmt-1795496427",
+  "received": "{\"translate\":\"chat.type.text\",\"with\":[{\"insertion\":\"SyncBotA\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tell SyncBotA \"},\"hoverEvent\":{\"action\":\"show_entity\",\"contents\":{\"type\":\"minecraft:player\",\"id\":\"40c467b9-95e0-389b-81bd-6933025d1644\",\"name\":{\"text\":\"SyncBotA\"}}},\"extra\":[{\"text\":\"SyncBotA\"}],\"text\":\"\"},{\"text\":\"chatfmt-1795496427\"}]}",
+  "sender": "SyncBotA",
+  "transcript": [
+    {
+      "step": "send",
+      "token": "chatfmt-1795496427",
+      "controlPort": 25599
+    },
+    {
+      "step": "receive",
+      "line": "{\"translate\":\"chat.type.text\",\"with\":[{\"insertion\":\"SyncBotA\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tell SyncBotA \"},\"hoverEvent\":{\"action\":\"show_entity\",\"contents\":{\"type\":\"minecraft:player\",\"id\":\"40c467b9-95e0-389b-81bd-6933025d1644\",\"name\":{\"text\":\"SyncBotA\"}}},\"extra\":[{\"text\":\"SyncBotA\"}],\"text\":\"\"},{\"text\":\"chatfmt-1795496427\"}]}",
+      "sender": "SyncBotA",
+      "passed": true
+    }
+  ]
+}

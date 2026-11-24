@@ -150,6 +150,65 @@ def check_player_head(ctrl_a, port_a, password, host, wait=8.0) -> tuple[str, bo
     return "player-head", False, f"no player_head item (A items: {items.strip()[:120]!r})"
 
 
+TPS_PATTERN = re.compile(r"tps=([0-9.]+)")
+POS_PATTERN = re.compile(r"\[(-?[0-9.]+)d?, (-?[0-9.]+)d?, (-?[0-9.]+)d?\]")
+
+
+def parse_tps(status: str) -> float | None:
+    """Lowest per-server TPS mentioned in a `/multiforge status` reply."""
+    values = [float(v) for v in TPS_PATTERN.findall(status)]
+    return min(values) if values else None
+
+
+def check_stability(a_port, b_port, password, host, count=60, wait=6.0) -> tuple[str, bool | None, str]:
+    """Spawn entity load and assert both servers stay near 20 TPS (performance mods)."""
+    rcon(host, a_port, password, "kill @e[type=armor_stand]")
+    for i in range(count):
+        rcon(host, a_port, password, f"summon minecraft:armor_stand {8 + i * 0.2:.1f} 64 8")
+    time.sleep(wait)
+    ta = parse_tps(rcon(host, a_port, password, "multiforge status"))
+    tb = parse_tps(rcon(host, b_port, password, "multiforge status"))
+    rcon(host, a_port, password, "kill @e[type=armor_stand]")
+    if ta is None or tb is None:
+        return "stability-under-load", None, "TPS not readable from /multiforge status"
+    return "stability-under-load", (ta >= 18.0 and tb >= 18.0), f"{count} armor stands; TPS A={ta} B={tb}"
+
+
+def check_minecart(a_port, password, host, wait=4.0) -> tuple[str, bool | None, str]:
+    """A powered-rail lane moves a minecart forward (Darceno's Minecarts / vanilla carts)."""
+    x, y, z = 200, 100, 200
+    rcon(host, a_port, password, f"fill {x} {y} {z} {x + 8} {y} {z} minecraft:powered_rail")
+    rcon(host, a_port, password, f"fill {x} {y - 1} {z} {x + 8} {y - 1} {z} minecraft:redstone_block")
+    rcon(host, a_port, password, "kill @e[type=minecart]")
+    rcon(host, a_port, password, f"summon minecart {x}.5 {y}.1 {z}.5")
+    rcon(host, a_port, password,
+         "data merge entity @e[type=minecart,limit=1,sort=nearest] {Motion:[0.2d,0.0d,0.0d]}")
+    time.sleep(wait)
+    pos = rcon(host, a_port, password, "data get entity @e[type=minecart,limit=1,sort=nearest] Pos")
+    m = POS_PATTERN.search(pos)
+    rcon(host, a_port, password, "kill @e[type=minecart]")
+    if not m:
+        return "minecart-transport", False, f"no minecart position ({pos.strip()[:100]!r})"
+    moved = float(m.group(1)) - (x + 0.5)
+    return "minecart-transport", (moved >= 1.5), f"minecart advanced {moved:.2f} blocks (>=1.5 required)"
+
+
+def check_seed_hidden(ctrl_a, a_log, wait=3.0) -> tuple[str, bool | None, str]:
+    """A non-op bot's `/seed` and `/locate` must not disclose the seed/structure coords."""
+    if not (ctrl_a and a_log):
+        return "seed-hidden-nonop", None, "no bot control/log provided"
+    before = len(a_log.read_text(errors="replace")) if a_log.exists() else 0
+    try:
+        control(ctrl_a, "command seed")
+        control(ctrl_a, "command locate structure minecraft:village")
+    except OSError as error:
+        return "seed-hidden-nonop", None, f"bot control unavailable: {error}"
+    time.sleep(wait)
+    text = a_log.read_text(errors="replace")[before:] if a_log.exists() else ""
+    leaked = bool(re.search(r"Seed:\s*\[?-?\d+", text))
+    return "seed-hidden-nonop", (not leaked), ("seed not disclosed to non-op bot" if not leaked else "SEED LEAKED"),
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -179,6 +238,9 @@ def main(argv=None) -> int:
     if args.a_control and args.b_control:
         record(*check_tpa(args.a_control, args.b_control, args.a_port, args.b_port, args.password, args.host))
         record(*check_player_head(args.a_control, args.a_port, args.password, args.host))
+    record(*check_stability(args.a_port, args.b_port, args.password, args.host))
+    record(*check_minecart(args.a_port, args.password, args.host))
+    record(*check_seed_hidden(args.a_control, args.a_log))
     if args.b_log:
         lines = received_lines(args.b_log)
         decorated = [l for l in lines if has_beautified_timestamp(l)]

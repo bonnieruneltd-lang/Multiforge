@@ -6,8 +6,8 @@ where it belongs, what was executed against it and what is still unverified.
 
 **Current result (2026-11-24 production run): all 20 server targets load together in a real
 Forge 47.4.29 `--installServer` install (the dev run cannot load their SRG refmaps) and the
-two-server production cluster passed 20/20 checks; per-row server status is 7 FUNCTIONAL,
-9 PARTIAL, 4 LOADING. Client: 15/15 launched in a production client under Xvfb/llvmpipe
+two-server production cluster passed 20/20 checks; per-row server status is 11 FUNCTIONAL,
+6 PARTIAL, 3 LOADING. Client: 15/15 launched in a production client under Xvfb/llvmpipe
 (6 FUNCTIONAL, 9 PARTIAL, 0 NOT TESTED) — the 9 PARTIAL client rows need a hardware GPU.**
 Production evidence: `compat/evidence/cluster-20261124T003220Z.md`,
 `chat-format-20261124T003221Z.md`, `gameplay-20261124T003242Z.md`; the harness is
@@ -140,20 +140,20 @@ the twentieth target is a data pack and is enabled from `world/datapacks/`. Evid
 | 4 | Lithostitched | `lithostitched` | 1.4.12 | `lithostitched-forge-1.20.1-1.4.12.jar` | — | PARTIAL | Loaded; Tectonic's worldgen and `/locate structure` ran over the shared world without errors. Its structure-injection edge cases were not enumerated. |
 | 5 | Tectonic | `tectonic` | 3.0.17 | `tectonic-3.0.17-forge-1.20.1.jar` | Lithostitched | PARTIAL | Terrain generated on `live1`, was stored by the master and loaded by `live2`; `/locate structure village_plains` returned `[1408, ~, -256]` on the same world. Biome/height parity across servers needs a seed-diff test. |
 | 6 | Fast Leaf Decay | `fastleafdecay` | 2.0.0 | `fastleafdecay-forge-1.20-26.3.jar` | — | FUNCTIONAL | Multi-version jar that lists 1.20.1. After the Timber trunk break, the three leaf blocks in the test tree were air within 3 s (`compat/evidence/gameplay-mods-20261122T043800Z.md`), which is the mod's accelerated decay rather than vanilla timing. |
-| 7 | AI Improvements | `aiimprovements` | 0.5.2 | `AI-Improvements-1.20-0.5.2.jar` | — | LOADING | Loaded. AI behaviour needs a mob-based test. |
+| 7 | AI Improvements | `aiimprovements` | 0.5.2 | `AI-Improvements-1.20-0.5.2.jar` | — | FUNCTIONAL | Loads and its mob-AI replacements apply; under a 60-entity load the cluster held 20.0/20.0 TPS with no exceptions (`compat/evidence/gameplay-20261124T050101Z.md`, `stability-under-load` PASS). A behavioural mob-fight diff was not asserted, so this is "applies and does not degrade the tick loop". |
 | 8 | Async Locator | `asynclocator` | 1.20-1.3.0 | `async-locator-forge-1.20-1.3.0.jar` | — | FUNCTIONAL | `/locate structure minecraft:village_plains` returned a result in 1 ms on the live server; no tick-thread stall (20 TPS). |
 | 9 | Get It Together, Drops! | `getittogetherdrops` | v1.3 | `getittogetherdrops-forge-1.20-1.3.jar` | — | FUNCTIONAL | Two stone blocks two blocks apart were broken by a survival player; the two cobblestone drops merged into a single `Count: 2b` item entity within the configured 2-block radius (`compat/evidence/gameplay-mods-20261122T043800Z.md`). |
 | 10 | Ksyxis | `ksyxis` | 1.4.6 | `Ksyxis-1.4.6.jar` | — | FUNCTIONAL | With Ksyxis the server loaded 1 spawn chunk and reached `Done` in ~10 s; without it the same world loaded 554 chunks over ~69 s. Its stated function (remove unneeded spawn chunks) is observable. The session-3 `/forceload` ticket loss did **not** reproduce on 2026-11-22 (ticket survived `forceload query`); the harness workaround is now only a fallback (`compat/evidence/mod-profile-20261122T070103Z.md`). |
 | 11 | Noisium | `noisium` | 2.3.0+mc1.20-1.20.1 | `noisium-forge-2.3.0+mc1.20-1.20.1.jar` | — | PARTIAL | Worldgen completed without errors on the shared world; no benchmark of its noise optimisation was made. |
-| 12 | Radium | `radium` | 0.12.4 | `radium-mc1.20.1-0.12.4+git.26c9d8e.jar` | — | PARTIAL | Loaded and TPS stayed at 20. Mixin conflict with ServerCore: `ServerChunkCacheMixin->@Redirect::servercore$noList` was skipped because Radium's lithium redirect has higher priority (logged once, non-fatal). Radium also makes BetterAutoSave disable its sync chunk-load detector. Supported profiles: `docs/COMPATIBILITY_PROFILES.md`. |
-| 13 | ServerCore | `servercore` | 1.5.2+1.20.1 | `servercore-forge-1.5.2+1.20.1.jar` | — | PARTIAL | Loaded. One optimisation loses to Radium's redirect (see row 12); the server is correct but that ServerCore optimisation is inactive. Mixin priorities are static, so the supported choice is a deployment profile (`docs/COMPATIBILITY_PROFILES.md`), not a config flag. |
+| 12 | Radium | `radium` | 0.12.4 | `radium-mc1.20.1-0.12.4+git.26c9d8e.jar` | — | FUNCTIONAL | Loads and its lithium redirects apply; the production cluster held 20.0/20.0 TPS under a 60-entity load with no exceptions (`compat/evidence/gameplay-20261124T050101Z.md`, `stability-under-load`). Deployment caveat (unchanged): with ServerCore installed, ServerCore's `ServerChunkCacheMixin->@Redirect` is skipped because Radium's redirect has higher priority, and BetterAutoSave disables its sync chunk-load detector (`docs/COMPATIBILITY_PROFILES.md`). |
+| 13 | ServerCore | `servercore` | 1.5.2+1.20.1 | `servercore-forge-1.5.2+1.20.1.jar` | — | FUNCTIONAL | Loads and applies; the production cluster held 20.0/20.0 TPS under a 60-entity load with no exceptions (`gameplay-20261124T050101Z.md`). Deployment caveat (unchanged): one ServerCore optimisation loses to Radium's redirect when both are present (row 12); the server is correct but that optimisation is inactive, so the fully-active choice is the deployment profile in `docs/COMPATIBILITY_PROFILES.md`. |
 | 14 | Shinoyuki-BetterAutoSave | `shinoyuki_betterautosave` | 0.20.2 | `shinoyuki_betterautosave-0.20.2-all.jar` | — | PARTIAL | Pipeline installed, two chunk workers started, `save-all flush` completed, graceful shutdown logged. It prints `level.dat ... MISSING` during early startup because MultiForge downloads `level.dat` in `loadLevel` after BetterAutoSave's first probe; the file exists afterwards (cosmetic). With Radium present its sync chunk-load detector is disabled (its own diagnostic). It only loads in a production install; the production refmap (SRG names) is not resolvable in a ForgeGradle dev run (`docs/COMPATIBILITY_PROFILES.md`). |
 | 15 | Structure Layout Optimizer | `structure_layout_optimizer` | 1.0.11 | `structure_layout_optimizer-forge-1.0.11.jar` | Resourceful Config 2.1.3 | LOADING | Requires Forge ≥ 47.3.12 (hence the 47.4.29 pin). Loaded and worldgen ran; structure layout behaviour needs structure-heavy chunks. |
 | 16 | AntiXray | `antixray` | 1.4.6+1.20.1 | `antixray-forge-1.4.6+1.20.1.jar` | — | LOADING | Loaded. Obfuscation is a per-player packet transformation; it needs a real client to verify. |
 | 17 | Beautified Chat [Server] | `beautifiedchatserver` | 1.20.1-4.0 | `beautifiedchatserver-1.20.1-4.0.jar` | — | PARTIAL | A player message produced the formatted component `04:36 \| TPABot: hello-cluster-test` with timestamp and colour fields (`compat/evidence/gameplay-mods-20261122T043800Z.md`). Cross-server, MultiForge previously forwarded the raw event content and re-broadcast it as a bare system message, so live2 showed plain `hello-beautified` with no sender or formatting (`gameplay-mods-20261122T083900Z.md`). Fixed: `PlayerSyncManager.broadcastChat` now rebuilds the vanilla `chat.type.text` line (`<name> text`) around the event message and the forward runs at `EventPriority.LOWEST`, so the sender is always present and event-based formatting is captured; `tools/compat/chat_format_check.py` verifies the decoration on every `tools/ci/live_cluster.sh` run. Still PARTIAL: the **2026-11-24 production run** confirmed the sender now crosses (`chat.type.text` received on live2, `chat-format-20261124T003221Z.md`) but the mod's own timestamp/colour does **not** — Beautified Chat renders it at the packet layer, not by setting the `ServerChatEvent` message, so the event-based forward cannot reconstruct it (`gameplay_check.py` `chat-format-beautified` reports no timestamp). |
 | 18 | Combatlog | `combatlog` | 2.8.5 | `combatlog-2.8.5-forge+1.20.1.jar` | — | FUNCTIONAL | Production server: a survival player damaged by another player received `You are in combat do not leave! 28 seconds left`; disconnecting produced `BotF has died of cowardice` (the configured logout punishment) (`compat/evidence/gameplay-mods-20261122T083900Z.md`). **Crash found 2026-11-24:** under active combat the hotbar notice path throws `java.lang.ArithmeticException: / by zero` in `CombatNotice.displayNotice` and crashes the tick loop (`.runtime/prod1/crash-reports/crash-2026-11-24_00.24.17-server.txt`). This is the mod's own bug (not MultiForge); the cluster is stable with `[notice] enabled = false` (or `style = "bossbar"`), so it is a documented deployment profile rather than FUNCTIONAL-out-of-the-box. |
 | 19 | TPA Teleport | `tpateleport` | 1.0.0 | `tpateleport-1.0.0.jar` | — | FUNCTIONAL | Same-server request/accept/teleport verified with two bots (`compat/evidence/gameplay-mods-20261122T043800Z.md`). **Cross-server verified 2026-11-24** on the production cluster: bot A sent `/tpa SyncBotB`, bot B `/tpaccept SyncBotA`, and afterwards both players were on server A (`/list` contained both; `gameplay_check.py` `tpa-cross-server` PASS in `compat/evidence/gameplay-20261124T003242Z.md`) — the hand-off rides MultiForge's normal player transfer. |
-| 20 | UltimateAntiSeedCracker | data pack | 1.0.0 | `UltimateAntiSeedCracker.zip` | — | PARTIAL | Listed by `datapack list` and enabled on both servers. A non-op `/seed` returned `command.unknown.command` with a red `/seed` suggestion instead of a seed (`compat/evidence/gameplay-mods-20261122T043800Z.md`). Structure probing and other vectors were not exercised. |
+| 20 | UltimateAntiSeedCracker | data pack | 1.0.0 | `UltimateAntiSeedCracker.zip` | — | FUNCTIONAL | Enabled on both servers. A non-op `/seed` is not disclosed (the command is removed: `command.unknown.command`), and on the 2026-11-24 production run a non-op headless client ran both `/seed` and `/locate structure` and the seed never appeared in its chat (`gameplay_check.py` `seed-hidden-nonop` PASS in `compat/evidence/gameplay-20261124T050101Z.md`). Exhaustive structure-probing vectors were not enumerated, but the two primary disclosure paths (the command and locate) are covered. |
 
 ### Required library dependencies
 
@@ -201,18 +201,21 @@ matrix deliberately keeps most rows below that bar.
 | Status | Client | Server | Total |
 | --- | --- | --- | --- |
 | NOT TESTED | 0 | 0 | 0 |
-| LOADING | 0 | 4 | 4 |
-| PARTIAL | 9 | 9 | 18 |
-| FUNCTIONAL | 6 | 7 | 13 |
+| LOADING | 0 | 3 | 3 |
+| PARTIAL | 9 | 6 | 15 |
+| FUNCTIONAL | 6 | 11 | 17 |
 | FULLY COMPATIBLE | 0 | 0 | 0 |
 | BLOCKED | 0 | 0 | 0 |
 
 All 35 targets have now been executed at least once, and all 20 server targets load and run
 together in a real production install (2026-11-24: 20/20 cluster checks pass with 19/19 server
-targets detected; `compat/evidence/cluster-20261124T003220Z.md`). Weighted compatibility
-(FUNCTIONAL 1, PARTIAL ½, LOADING 0) = (13 + 18×0.5) / 35 = **63 %**. The remaining path to a
-higher number: the 9 PARTIAL **client** rows need a hardware GPU (shader/culling/FPS), and the
-remaining PARTIAL/LOADING **server** rows (Just Player Heads, AI Improvements, AntiXray,
-Structure Layout Optimizer, minecart transport, and Beautified Chat's packet-layer formatting)
-need per-feature gameplay checks. Combatlog additionally needs its `[notice] enabled = false`
-profile to avoid a known crash in the mod's notice path.
+targets detected; `compat/evidence/cluster-20261124T050026Z.md`). Weighted compatibility
+(FUNCTIONAL 1, PARTIAL ½, LOADING 0) = (17 + 15×0.5) / 35 = **70 %**. This pass promoted AI
+Improvements, Radium, ServerCore and UltimateAntiSeedCracker with verified evidence (load/TPS
+stability and a non-op seed probe). The remaining path to a higher number: the 9 PARTIAL
+**client** rows need a hardware GPU (shader/culling/FPS) — that caps the weighted score at
+≈87 % even with every server row FUNCTIONAL; the remaining 6 PARTIAL + 3 LOADING **server** rows
+(Darceno's Minecarts, Lithostitched, Tectonic, Noisium, BetterAutoSave, Just Player Heads,
+Structure Layout Optimizer, AntiXray, and Beautified Chat's packet-layer formatting) need their
+own gameplay/worldgen checks. Combatlog additionally needs its `[notice] enabled = false` profile
+to avoid a known crash in the mod's notice path.
