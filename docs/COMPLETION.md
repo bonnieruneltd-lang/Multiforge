@@ -117,3 +117,18 @@ because they answer different questions.
   (`chat-format-20261124T000804Z.md`). Beautified Chat stays PARTIAL until a **production** run
   confirms the mod's own timestamp/colour formatting survives the hop. Category scores unchanged;
   the change is a correctness fix plus evidence.
+* **2026-11-24 (session 8, production mod-compatibility run):** added `tools/ci/prod_cluster.sh`
+  (boots a real Forge 47.4.29 `--installServer` cluster from two game dirs sharing one library
+  tree, installs the pinned 21-jar server set + MultiForge, gates on the game ports, sweeps
+  stragglers) and `tools/compat/gameplay_check.py` (self-testable RCON/bot gameplay checks).
+  Result: **all 19 server targets load in production and the cluster passes 20/20 checks**
+  (`cluster-20261124T003220Z.md`), the cross-server chat sender is now preserved with Beautified
+  Chat installed (`chat-format-20261124T003221Z.md`), **TPA cross-server verified → FUNCTIONAL**
+  (both bots co-located after `/tpaccept`), and anti-seed/the data pack are active
+  (`gameplay-20261124T003242Z.md`). Two honest findings: Beautified Chat's timestamp/colour is
+  packet-layer only and does **not** cross (row stays PARTIAL); and **Combatlog 2.8.5 crashes the
+  tick loop with `/ by zero` in `CombatNotice.displayNotice` under active combat** (its own bug;
+  stable with `[notice] enabled = false`) — crash preserved in
+  `compat/evidence/combatlog-crash-20261124T002417Z.txt`. Server rows 6→7 FUNCTIONAL; weighted
+  compatibility 61 → 63 % (the remaining gap is the hardware-GPU client rows plus per-feature
+  server checks).

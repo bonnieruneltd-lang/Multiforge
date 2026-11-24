@@ -1,0 +1,25 @@
+{
+  "failed": true,
+  "results": [
+    {
+      "check": "anti-seed",
+      "state": "PASS",
+      "detail": "UltimateAntiSeedCracker data pack active"
+    },
+    {
+      "check": "tpa-cross-server",
+      "state": "PASS",
+      "detail": "both players on server A after tpaccept"
+    },
+    {
+      "check": "player-head",
+      "state": "FAIL",
+      "detail": "no player_head item (A items: 'Leather has the following entity data: {id: \"minecraft:leather\", Count: 1b}\\nRaw Beef has the following entity data: {id:')"
+    },
+    {
+      "check": "chat-format-beautified",
+      "state": "FAIL",
+      "detail": "no timestamped cross-server chat line seen"
+    }
+  ]
+}

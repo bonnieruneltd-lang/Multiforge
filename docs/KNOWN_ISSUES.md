@@ -475,3 +475,11 @@ See TODO 5, `docs/SYNCHRONIZATION.md` and `docs/NETWORKING.md`.
   layer (`ServerGamePacketListenerImpl.sendDisguisedChatMessage`) are not reconstructed by the event
   path, so a **production** two-server run with Beautified Chat is still required to move that row
   to FUNCTIONAL.
+* **Combatlog 2.8.5 crashes the tick loop under active combat** (`ArithmeticException: / by zero`
+  in `me.toastymop.combatlog.CombatNotice.displayNotice`, reached from `CombatTicks.CombatTick`).
+  It is the mod's own bug, not MultiForge: the stack is the mod's ServerTickEvent handler with no
+  MultiForge frame. Found on the 2026-11-24 production cluster (`.runtime/prod1/crash-reports`,
+  preserved as `compat/evidence/combatlog-crash-20261124T002417Z.txt`). Mitigation: set
+  `[notice] enabled = false` (or `style = "bossbar"`) in `config/combatlog.toml`; with the hotbar
+  notice disabled the cluster runs the full gameplay check without crashing. Any deployment that
+  needs the hotbar combat popup must pin a fixed Combatlog build.

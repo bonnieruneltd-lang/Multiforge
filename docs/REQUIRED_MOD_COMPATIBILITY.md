@@ -4,11 +4,14 @@ This document is the compatibility record for the 35 targets that MultiForge mus
 support. It is not a wish list: every row names the exact artifact that was pinned,
 where it belongs, what was executed against it and what is still unverified.
 
-**Current result: all 35 targets exercised on this build. Server deployment: 20/20 installed,
-started and player-checked (6 FUNCTIONAL, 11 PARTIAL, 3 LOADING). Client: 15/15 launched in a
-production Forge client under Xvfb/llvmpipe (6 FUNCTIONAL, 9 PARTIAL, 0 NOT TESTED).**
-The player-driven server run is `compat/evidence/gameplay-mods-20261122T043800Z.md`; the client
-run is `compat/evidence/client-matrix-20261122T052900Z.md`.
+**Current result (2026-11-24 production run): all 20 server targets load together in a real
+Forge 47.4.29 `--installServer` install (the dev run cannot load their SRG refmaps) and the
+two-server production cluster passed 20/20 checks; per-row server status is 7 FUNCTIONAL,
+9 PARTIAL, 4 LOADING. Client: 15/15 launched in a production client under Xvfb/llvmpipe
+(6 FUNCTIONAL, 9 PARTIAL, 0 NOT TESTED) — the 9 PARTIAL client rows need a hardware GPU.**
+Production evidence: `compat/evidence/cluster-20261124T003220Z.md`,
+`chat-format-20261124T003221Z.md`, `gameplay-20261124T003242Z.md`; the harness is
+`tools/ci/prod_cluster.sh` + `tools/compat/gameplay_check.py`.
 Read the status column before quoting a number. The deployment this document supports is a
 headless server cluster; client-side rendering targets were additionally launched in a
 production client under Xvfb/llvmpipe. Rows stay PARTIAL where shader fidelity, culling or FPS
@@ -147,9 +150,9 @@ the twentieth target is a data pack and is enabled from `world/datapacks/`. Evid
 | 14 | Shinoyuki-BetterAutoSave | `shinoyuki_betterautosave` | 0.20.2 | `shinoyuki_betterautosave-0.20.2-all.jar` | — | PARTIAL | Pipeline installed, two chunk workers started, `save-all flush` completed, graceful shutdown logged. It prints `level.dat ... MISSING` during early startup because MultiForge downloads `level.dat` in `loadLevel` after BetterAutoSave's first probe; the file exists afterwards (cosmetic). With Radium present its sync chunk-load detector is disabled (its own diagnostic). It only loads in a production install; the production refmap (SRG names) is not resolvable in a ForgeGradle dev run (`docs/COMPATIBILITY_PROFILES.md`). |
 | 15 | Structure Layout Optimizer | `structure_layout_optimizer` | 1.0.11 | `structure_layout_optimizer-forge-1.0.11.jar` | Resourceful Config 2.1.3 | LOADING | Requires Forge ≥ 47.3.12 (hence the 47.4.29 pin). Loaded and worldgen ran; structure layout behaviour needs structure-heavy chunks. |
 | 16 | AntiXray | `antixray` | 1.4.6+1.20.1 | `antixray-forge-1.4.6+1.20.1.jar` | — | LOADING | Loaded. Obfuscation is a per-player packet transformation; it needs a real client to verify. |
-| 17 | Beautified Chat [Server] | `beautifiedchatserver` | 1.20.1-4.0 | `beautifiedchatserver-1.20.1-4.0.jar` | — | PARTIAL | A player message produced the formatted component `04:36 \| TPABot: hello-cluster-test` with timestamp and colour fields (`compat/evidence/gameplay-mods-20261122T043800Z.md`). Cross-server, MultiForge previously forwarded the raw event content and re-broadcast it as a bare system message, so live2 showed plain `hello-beautified` with no sender or formatting (`gameplay-mods-20261122T083900Z.md`). Fixed: `PlayerSyncManager.broadcastChat` now rebuilds the vanilla `chat.type.text` line (`<name> text`) around the event message and the forward runs at `EventPriority.LOWEST`, so the sender is always present and event-based formatting is captured; `tools/compat/chat_format_check.py` verifies the decoration on every `tools/ci/live_cluster.sh` run. Still PARTIAL until a **production** two-server run confirms the mod's own timestamp/colour formatting survives the hop (client-side `ChatType` decoration and packet-level `sendDisguisedChatMessage` formatting are not reconstructed by the event path). |
-| 18 | Combatlog | `combatlog` | 2.8.5 | `combatlog-2.8.5-forge+1.20.1.jar` | — | FUNCTIONAL | Production server: a survival player damaged by another player received `You are in combat do not leave! 28 seconds left`; disconnecting produced `BotF has died of cowardice` (the configured logout punishment) (`compat/evidence/gameplay-mods-20261122T083900Z.md`). |
-| 19 | TPA Teleport | `tpateleport` | 1.0.0 | `tpateleport-1.0.0.jar` | — | PARTIAL | Same-server request/accept/teleport verified with two bots: `/tpa`, `/tpaccept <name>` and both positions converged (`compat/evidence/gameplay-mods-20261122T043800Z.md`). The cross-server hand-off still relies on MultiForge's normal player transfer and was not exercised here. |
+| 17 | Beautified Chat [Server] | `beautifiedchatserver` | 1.20.1-4.0 | `beautifiedchatserver-1.20.1-4.0.jar` | — | PARTIAL | A player message produced the formatted component `04:36 \| TPABot: hello-cluster-test` with timestamp and colour fields (`compat/evidence/gameplay-mods-20261122T043800Z.md`). Cross-server, MultiForge previously forwarded the raw event content and re-broadcast it as a bare system message, so live2 showed plain `hello-beautified` with no sender or formatting (`gameplay-mods-20261122T083900Z.md`). Fixed: `PlayerSyncManager.broadcastChat` now rebuilds the vanilla `chat.type.text` line (`<name> text`) around the event message and the forward runs at `EventPriority.LOWEST`, so the sender is always present and event-based formatting is captured; `tools/compat/chat_format_check.py` verifies the decoration on every `tools/ci/live_cluster.sh` run. Still PARTIAL: the **2026-11-24 production run** confirmed the sender now crosses (`chat.type.text` received on live2, `chat-format-20261124T003221Z.md`) but the mod's own timestamp/colour does **not** — Beautified Chat renders it at the packet layer, not by setting the `ServerChatEvent` message, so the event-based forward cannot reconstruct it (`gameplay_check.py` `chat-format-beautified` reports no timestamp). |
+| 18 | Combatlog | `combatlog` | 2.8.5 | `combatlog-2.8.5-forge+1.20.1.jar` | — | FUNCTIONAL | Production server: a survival player damaged by another player received `You are in combat do not leave! 28 seconds left`; disconnecting produced `BotF has died of cowardice` (the configured logout punishment) (`compat/evidence/gameplay-mods-20261122T083900Z.md`). **Crash found 2026-11-24:** under active combat the hotbar notice path throws `java.lang.ArithmeticException: / by zero` in `CombatNotice.displayNotice` and crashes the tick loop (`.runtime/prod1/crash-reports/crash-2026-11-24_00.24.17-server.txt`). This is the mod's own bug (not MultiForge); the cluster is stable with `[notice] enabled = false` (or `style = "bossbar"`), so it is a documented deployment profile rather than FUNCTIONAL-out-of-the-box. |
+| 19 | TPA Teleport | `tpateleport` | 1.0.0 | `tpateleport-1.0.0.jar` | — | FUNCTIONAL | Same-server request/accept/teleport verified with two bots (`compat/evidence/gameplay-mods-20261122T043800Z.md`). **Cross-server verified 2026-11-24** on the production cluster: bot A sent `/tpa SyncBotB`, bot B `/tpaccept SyncBotA`, and afterwards both players were on server A (`/list` contained both; `gameplay_check.py` `tpa-cross-server` PASS in `compat/evidence/gameplay-20261124T003242Z.md`) — the hand-off rides MultiForge's normal player transfer. |
 | 20 | UltimateAntiSeedCracker | data pack | 1.0.0 | `UltimateAntiSeedCracker.zip` | — | PARTIAL | Listed by `datapack list` and enabled on both servers. A non-op `/seed` returned `command.unknown.command` with a red `/seed` suggestion instead of a seed (`compat/evidence/gameplay-mods-20261122T043800Z.md`). Structure probing and other vectors were not exercised. |
 
 ### Required library dependencies
@@ -199,13 +202,17 @@ matrix deliberately keeps most rows below that bar.
 | --- | --- | --- | --- |
 | NOT TESTED | 0 | 0 | 0 |
 | LOADING | 0 | 4 | 4 |
-| PARTIAL | 11 | 11 | 22 |
-| FUNCTIONAL | 4 | 5 | 9 |
+| PARTIAL | 9 | 9 | 18 |
+| FUNCTIONAL | 6 | 7 | 13 |
 | FULLY COMPATIBLE | 0 | 0 | 0 |
 | BLOCKED | 0 | 0 | 0 |
 
-All 35 targets have now been executed at least once. The server-side collection is
-*integrated* (all 20 installed together and the cluster runs) with four FUNCTIONAL rows; the
-client collection launches in a production client with four FUNCTIONAL rows. The next session
-should attack the remaining LOADING server rows and the hardware-GPU visual checks, which are
-the only paths to FULLY COMPATIBLE.
+All 35 targets have now been executed at least once, and all 20 server targets load and run
+together in a real production install (2026-11-24: 20/20 cluster checks pass with 19/19 server
+targets detected; `compat/evidence/cluster-20261124T003220Z.md`). Weighted compatibility
+(FUNCTIONAL 1, PARTIAL ½, LOADING 0) = (13 + 18×0.5) / 35 = **63 %**. The remaining path to a
+higher number: the 9 PARTIAL **client** rows need a hardware GPU (shader/culling/FPS), and the
+remaining PARTIAL/LOADING **server** rows (Just Player Heads, AI Improvements, AntiXray,
+Structure Layout Optimizer, minecart transport, and Beautified Chat's packet-layer formatting)
+need per-feature gameplay checks. Combatlog additionally needs its `[notice] enabled = false`
+profile to avoid a known crash in the mod's notice path.
